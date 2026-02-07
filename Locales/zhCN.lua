@@ -243,8 +243,7 @@ if GetLocale() == "zhCN" then
     L["KIT_ROLL"] = "Roll点"
     L["KIT_ROLL_SHORT"] = "骰"
     L["KIT_ROLL_TOOLTIP"] = "掷点 (1-100)"
-    L["KIT_ROLL_TOOLTIP"] = "掷点 (1-100)"
-    
+
     -- Selection Dialog
     L["LABEL_SELECT_ACTION"] = "选择动作"
     L["CATEGORY_channel"] = "频道发言"
@@ -254,4 +253,23 @@ if GetLocale() == "zhCN" then
     L["CATEGORY_other"] = "其他"
     L["LABEL_BINDING_LEFT_SHORT"] = "左"
     L["LABEL_BINDING_RIGHT_SHORT"] = "右"
+
+    -- Missing entries
+    L["ACTION_RESET_ALL"] = "全部重置"
+    L["ACTION_RESET_ALL_DESC"] = "将所有设置重置为默认值"
+    L["FONT_STANDARD"] = "标准"
+    L["FONT_CHAT"] = "聊天"
+    L["FONT_DAMAGE"] = "伤害"
+    L["LABEL_CUSTOM"] = "自定义"
+    L["LABEL_PROFILE_DESC"] = "管理配置方案"
+    L["LABEL_SNAPSHOT_CHANNELS_ALL"] = "全部"
+    L["LABEL_SNAPSHOT_CHANNELS_NONE"] = "无"
+    L["MSG_RESET_ALL_CONFIRM"] = "确定要将所有设置重置为默认值吗？此操作不可撤销。"
+    L["MSG_RESET_COMPLETE"] = "设置已重置为默认值。"
+    L["SECTION_AUTO_JOIN_CHANNELS"] = "自动加入频道"
+    L["SECTION_CHAT_CHANNEL"] = "聊天频道"
+    L["SECTION_CHAT_CONTENT"] = "聊天内容"
+    L["SECTION_CHAT_FONT"] = "字体设置"
+    L["SECTION_CHAT_INTERACTION"] = "交互"
+    L["SECTION_RESET"] = "重置设置"
 end

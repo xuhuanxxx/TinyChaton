@@ -35,6 +35,7 @@ Libs\Registry\ColorSets.lua
 Libs\Registry\Settings.lua
 Libs\MultiDropdown\MultiDropdown.xml
 Libs\MultiDropdown\Core.lua
+
 Libs\TinyReactor\TinyReactor.xml
 
 Config.lua

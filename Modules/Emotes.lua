@@ -169,44 +169,101 @@ end
 
 function addon:ToggleEmotePanel(anchorFrame)
     if not panel then
-        panel = CreateFrame("Frame", "TinyChatonEmotePanel", UIParent, "BackdropTemplate")
-        panel:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", -- Lighter border
-            tile = true, tileSize = 16, edgeSize = 16,
-            insets = { left = 4, right = 4, top = 4, bottom = 4 }
-        })
-        panel:SetBackdropColor(0, 0, 0, 0.9)
+        panel = CreateFrame("Frame", "TinyChatonEmotePanel", UIParent, "DialogBorderDarkTemplate")
+        panel:ClearAllPoints()
         panel:SetFrameStrata("DIALOG")
         panel:SetClampedToScreen(true)
         panel:EnableMouse(true)
         
-        -- Register for ESC key closing
-        table.insert(UISpecialFrames, "TinyChatEmotePanel")
+        -- Right-click on background to close
+        panel:SetScript("OnMouseUp", function(self, button)
+            if button == "RightButton" then
+                self:Hide()
+            end
+        end)
+        
+        -- Register for ESC key closing (Fixed typo)
+        table.insert(UISpecialFrames, "TinyChatonEmotePanel")
+
+        -- Header (Native Style)
+        panel.Header = CreateFrame("Frame", nil, panel, "DialogHeaderTemplate")
+        panel.Header:SetPoint("TOP", 0, 12)
+        -- DialogHeaderTemplate puts text in .Text
+        if panel.Header.Text then
+            panel.Header.Text:SetText(L["KIT_EMOTE"] or "Emotes")
+        else
+             -- Fallback scan
+            for _, region in ipairs({panel.Header:GetRegions()}) do
+                if region:GetObjectType() == "FontString" then
+                    region:SetText(L["KIT_EMOTE"] or "Emotes")
+                    break
+                end
+            end
+        end
+        panel.Header:SetFrameLevel(panel:GetFrameLevel() + 5)
+        -- Allow right-click on header to close
+        panel.Header:EnableMouse(true)
+        panel.Header:SetScript("OnMouseUp", function(self, button)
+            if button == "RightButton" then panel:Hide() end
+        end)
+        
+        -- Close Button
+        panel.CloseButton = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
+        panel.CloseButton:SetSize(24, 24)
+        panel.CloseButton:SetPoint("TOPRIGHT", -5, -5)
+        -- Allow right-click on close button to "close" (same as left)
+        panel.CloseButton:RegisterForClicks("AnyUp")
+        panel.CloseButton:SetScript("OnClick", function(self, button) 
+            panel:Hide() 
+        end)
 
         local size = 24
         local padding = 6
         local cols = 8 
         local rows = 5
         
-        local width = 16 + (cols * (size + padding)) + 10
-        local height = 16 + (rows * (size + padding)) + 30 -- +30 for navigation bar
-        panel:SetSize(width, height)
+        -- Adaptive Grid Container
+        if not panel.Content then
+            panel.Content = CreateFrame("Frame", nil, panel)
+        end
+        panel.Content:ClearAllPoints()
+        -- Anchor content relative to the Header's bottom
+        panel.Content:SetPoint("TOP", panel.Header, "BOTTOM", 0, -10)
+        
+        local gridWidth = (cols * (size + padding)) - padding
+        local gridHeight = (rows * (size + padding)) - padding
+        panel.Content:SetSize(gridWidth, gridHeight)
+        
+        -- Resize main panel to wrap content
+        -- Width: Grid + Side Margins (approx 32 total)
+        -- Height: Grid + Top Margin (Header area) + Bottom Margin (Nav area)
+        -- We estimate header area takes ~40 space, Nav area ~30
+        panel:SetSize(gridWidth + 40, gridHeight + 70) 
 
         -- Create Buttons
         for i = 1, GetPageSize() do
-            local btn = CreateFrame("Button", nil, panel)
+            local btn = CreateFrame("Button", nil, panel.Content) -- Parent to Content
             btn:SetSize(size, size)
             local row = math.floor((i-1) / cols)
             local col = (i-1) % cols
-            btn:SetPoint("TOPLEFT", 16 + (col * (size + padding)), -16 - (row * (size + padding)))
+            
+            -- Relative to Content Frame (0,0 is TopLeft of content)
+            btn:SetPoint("TOPLEFT", col * (size + padding), -(row * (size + padding)))
 
             btn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
-
-            btn:SetScript("OnClick", function(self)
+            
+            -- Register right-click to close
+            btn:RegisterForClicks("AnyUp")
+            btn:SetScript("OnClick", function(self, button)
+                if button == "RightButton" then
+                    panel:Hide()
+                    return
+                end
+                
                 local editBox = ChatEdit_ChooseBoxForSend()
                 if editBox then
                     ChatEdit_ActivateChat(editBox)
+                    -- ... insert logic ...
                     editBox:Insert(self.emoteKey)
                     if not IsShiftKeyDown() then
                         panel:Hide()
@@ -228,9 +285,11 @@ function addon:ToggleEmotePanel(anchorFrame)
         local navHeight = 20
         local prevBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
         prevBtn:SetSize(20, navHeight)
-        prevBtn:SetPoint("BOTTOMLEFT", 16, 8)
+        prevBtn:SetPoint("BOTTOMLEFT", 16, 12) -- Fixed margin from bottom
         prevBtn:SetText("<")
-        prevBtn:SetScript("OnClick", function()
+        prevBtn:RegisterForClicks("AnyUp")
+        prevBtn:SetScript("OnClick", function(self, button)
+            if button == "RightButton" then panel:Hide() return end
             if currentPage > 1 then
                 currentPage = currentPage - 1
                 UpdateEmotePanel()
@@ -240,9 +299,11 @@ function addon:ToggleEmotePanel(anchorFrame)
         
         local nextBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
         nextBtn:SetSize(20, navHeight)
-        nextBtn:SetPoint("BOTTOMRIGHT", -16, 8)
+        nextBtn:SetPoint("BOTTOMRIGHT", -16, 12)
         nextBtn:SetText(">")
-        nextBtn:SetScript("OnClick", function()
+        nextBtn:RegisterForClicks("AnyUp")
+        nextBtn:SetScript("OnClick", function(self, button)
+            if button == "RightButton" then panel:Hide() return end
             if currentPage < maxPage then
                 currentPage = currentPage + 1
                 UpdateEmotePanel()

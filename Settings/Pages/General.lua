@@ -114,9 +114,28 @@ CategoryBuilders.general = function(rootCat)
             end
         end)
     
-    shelfProxySettings["font"] = addon.AddNativeDropdown(cat, S .. "font", L["LABEL_FONT"], "",
-        function() local c = Settings.CreateControlTextContainer(); c:Add("", L["LABEL_DEFAULT"]); return c:GetData() end,
-        function() return GetThemeVal("font") end, function(v) SetThemeVal("font", v) end, nil)
+    shelfProxySettings["font"] = addon.AddNativeDropdown(cat, S .. "font", L["LABEL_FONT"], addon.CONSTANTS.SHELF_DEFAULT_FONT,
+        function() 
+            local c = Settings.CreateControlTextContainer()
+            c:Add("STANDARD", L["FONT_STANDARD"] or "默认")
+            c:Add("CHAT", L["FONT_CHAT"] or "聊天")
+            c:Add("DAMAGE", L["FONT_DAMAGE"] or "伤害")
+            
+            -- If current value is not one of the presets, show it as Custom
+            local val = GetThemeVal("font")
+            if val and val ~= "STANDARD" and val ~= "CHAT" and val ~= "DAMAGE" and val ~= "" then
+                local name = (L["LABEL_CUSTOM"] or "自定义") .. " (" .. (val:match("([^\\]+)$") or val) .. ")"
+                c:Add(val, name) 
+            end
+            
+            return c:GetData() 
+        end,
+        function() 
+            -- Return the raw value so it matches the Custom option if applicable
+            return GetThemeVal("font") 
+        end,
+        function(v) SetThemeVal("font", v) end,
+        nil)
 
     shelfProxySettings["colorSet"] = addon.AddNativeDropdown(cat, S .. "colorSet", L["LABEL_SHELF_COLORSET"], addon.CONSTANTS.SHELF_DEFAULT_COLORSET,
         function() return addon:GetColorSetOptions() end,

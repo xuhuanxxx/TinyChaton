@@ -57,10 +57,30 @@ CategoryBuilders.chat = function(rootCat)
     addon.AddSectionHeader(subCat, L["SECTION_CHAT_FONT"])
     CreateSettingFromRegistry(subCat, "fontManaged")
     
-    addon.AddNativeDropdown(subCat, P .. "font", L["LABEL_FONT"], "",
-        function() local c = Settings.CreateControlTextContainer(); c:Add("", L["LABEL_DEFAULT"]); return c:GetData() end,
-        function() return addon.db.plugin.chat.font.font or "" end,
-        function(v) addon.db.plugin.chat.font.font = (v ~= "") and v or nil; if addon.ApplyChatFontSettings then addon:ApplyChatFontSettings() end end, nil)
+    addon.AddNativeDropdown(subCat, P .. "font", L["LABEL_FONT"], addon.CONSTANTS.CHAT_DEFAULT_FONT,
+        function() 
+            local c = Settings.CreateControlTextContainer()
+            c:Add("STANDARD", L["FONT_STANDARD"] or "默认")
+            c:Add("CHAT", L["FONT_CHAT"] or "聊天")
+            c:Add("DAMAGE", L["FONT_DAMAGE"] or "伤害")
+            
+            local val = addon.db.plugin.chat.font.font
+            if val and val ~= "STANDARD" and val ~= "CHAT" and val ~= "DAMAGE" and val ~= "" then
+                 local name = (L["LABEL_CUSTOM"] or "自定义") .. " (" .. (val:match("([^\\]+)$") or val) .. ")"
+                 c:Add(val, name)
+            end
+            return c:GetData() 
+        end,
+        function() 
+            local val = addon.db.plugin.chat.font.font
+            if val == "CHAT" or val == "DAMAGE" then return val end
+            if val and val ~= "" and val ~= "STANDARD" then return val end
+            return "STANDARD"
+        end,
+        function(v) 
+             addon.db.plugin.chat.font.font = (v ~= "STANDARD") and v or nil; 
+             if addon.ApplyChatFontSettings then addon:ApplyChatFontSettings() end 
+        end, nil)
     
     CreateSettingFromRegistry(subCat, "fontSize")
     CreateSettingFromRegistry(subCat, "fontOutline")

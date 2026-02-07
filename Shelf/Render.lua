@@ -259,9 +259,21 @@ function ShelfButton:Render(props)
                 local fs = btnSelf:GetFontString()
                 if fs then
                     local font, _, outline = fs:GetFont()
-                    -- Use Standard Text Font if theme doesn't specify one, but apply size/outline
-                    if not font then font = addon.CONSTANTS.SHELF_DEFAULT_FONT end
-                    fs:SetFont(theme.font ~= "" and theme.font or font, theme.fontSize, outline)
+                    if not font then font = "Fonts\\FRIZQT__.TTF" end
+                    
+                    local themeFont = theme.font
+                    local fontToUse
+                    
+                    if themeFont == "STANDARD" then fontToUse = STANDARD_TEXT_FONT
+                    elseif themeFont == "CHAT" then fontToUse = UNIT_NAME_FONT
+                    elseif themeFont == "DAMAGE" then fontToUse = DAMAGE_TEXT_FONT
+                    elseif themeFont and themeFont ~= "" then fontToUse = themeFont
+                    else fontToUse = font end
+                    
+                    -- Ensure we don't accidentally use a number as font path (if database corruption)
+                    if type(fontToUse) ~= "string" then fontToUse = "Fonts\\FRIZQT__.TTF" end
+                        
+                    fs:SetFont(fontToUse, theme.fontSize, outline)
                 end
             end
         end,
@@ -414,8 +426,20 @@ function addon.Shelf:Render()
                     local fs = child:GetFontString()
                     if fs then
                         local font, _, outline = fs:GetFont()
-                        if not font then font = addon.CONSTANTS.SHELF_DEFAULT_FONT end
-                        fs:SetFont(currentTheme.font ~= "" and currentTheme.font or font, currentTheme.fontSize, outline)
+                        if not font then font = "Fonts\\FRIZQT__.TTF" end
+                        
+                        local themeFont = currentTheme.font
+                        local fontToUse
+                        
+                        if themeFont == "STANDARD" then fontToUse = STANDARD_TEXT_FONT
+                        elseif themeFont == "CHAT" then fontToUse = UNIT_NAME_FONT
+                        elseif themeFont == "DAMAGE" then fontToUse = DAMAGE_TEXT_FONT
+                        elseif themeFont and themeFont ~= "" then fontToUse = themeFont
+                        else fontToUse = font end
+                        
+                        if type(fontToUse) ~= "string" then fontToUse = "Fonts\\FRIZQT__.TTF" end
+                        
+                        fs:SetFont(fontToUse, currentTheme.fontSize, outline)
                     end
                 end
                 ApplyFontRecursively(child)

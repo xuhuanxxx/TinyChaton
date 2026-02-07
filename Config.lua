@@ -26,12 +26,13 @@ addon.CONSTANTS = {
     SHELF_DEFAULT_ALPHA = 1.0,
     SHELF_DEFAULT_SCALE = 1.0,
     SHELF_DEFAULT_FONT_SIZE = 14,
-    SHELF_DEFAULT_FONT = "Fonts\\FRIZQT__.TTF",
-    SHELF_DEFAULT_FONT_SIZE = 14,
-    SHELF_DEFAULT_FONT = "Fonts\\FRIZQT__.TTF",
+    SHELF_DEFAULT_FONT = "STANDARD",
     SHELF_DEFAULT_THEME = "Modern",
     SHELF_DEFAULT_COLORSET = "rainbow",
     SHELF_DEFAULT_ANCHOR = "chat_top",
+    
+    -- Chat Defaults
+    CHAT_DEFAULT_FONT = "STANDARD",
 }
 
 addon.CHAT_EVENTS = {
@@ -108,7 +109,7 @@ addon.DEFAULTS = {
         chat = {
             font = {
                 managed = false,
-                font = nil,
+                font = addon.CONSTANTS.CHAT_DEFAULT_FONT,
                 size = 16,
                 outline = "NONE",
             },

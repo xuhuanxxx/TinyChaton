@@ -20,7 +20,7 @@ addon.ThemeRegistry:RegisterPreset("Modern", {
         hoverBorderColor = {0.5, 0.5, 0.5, 1},
         -- 注意：textColor 不再在主题中定义，由每个按钮的 color 字段决定
         
-        font = "",
+        font = addon.CONSTANTS.SHELF_DEFAULT_FONT,
         fontSize = 14,
         scale = 1.0,
         alpha = 1.0,
@@ -28,7 +28,7 @@ addon.ThemeRegistry:RegisterPreset("Modern", {
         offset = 0,
         spacing = addon.CONSTANTS.SHELF_DEFAULT_SPACING,
         fontSize = addon.CONSTANTS.SHELF_DEFAULT_FONT_SIZE,
-        font = "",
+        font = addon.CONSTANTS.SHELF_DEFAULT_FONT,
         alpha = addon.CONSTANTS.SHELF_DEFAULT_ALPHA,
         scale = addon.CONSTANTS.SHELF_DEFAULT_SCALE,
         colorSet = addon.CONSTANTS.SHELF_DEFAULT_COLORSET,
@@ -50,7 +50,7 @@ addon.ThemeRegistry:RegisterPreset("Legacy", {
         borderColor = {0.8, 0.8, 0.8, 1},
         hoverBorderColor = {1, 0.82, 0, 1},
         
-        font = "",
+        font = addon.CONSTANTS.SHELF_DEFAULT_FONT,
         fontSize = addon.CONSTANTS.SHELF_DEFAULT_FONT_SIZE,
         scale = addon.CONSTANTS.SHELF_DEFAULT_SCALE,
         alpha = addon.CONSTANTS.SHELF_DEFAULT_ALPHA,
@@ -76,7 +76,7 @@ addon.ThemeRegistry:RegisterPreset("Soft", {
         borderColor = {0.3, 0.3, 0.3, 0.5},
         hoverBorderColor = {0.6, 0.6, 0.6, 0.8},
         
-        font = "",
+        font = addon.CONSTANTS.SHELF_DEFAULT_FONT,
         fontSize = 16, -- Soft theme uses slightly larger font by default, keeping it hardcoded or creating a new constant? Let's just use constant for consistency or keep 16? Plan said remove hardcoded 30/2 etc. Let's stick to using constants where values match defaults, but Soft uses 16. I will change it to constant (14) for consistency or keep it? User wants to extract "defaults". I should probably respect the theme's unique default if it differs, or standardise it. 
         -- Wait, the user asked to extract "30", "2", "1.0". 
         -- Soft uses 16. Flat uses 16.
@@ -111,7 +111,7 @@ addon.ThemeRegistry:RegisterPreset("Flat", {
         borderColor = {0, 0, 0, 0},
         hoverBorderColor = {0.4, 0.4, 0.4, 1},
         
-        font = "",
+        font = addon.CONSTANTS.SHELF_DEFAULT_FONT,
         fontSize = 16,
         scale = addon.CONSTANTS.SHELF_DEFAULT_SCALE,
         alpha = addon.CONSTANTS.SHELF_DEFAULT_ALPHA,
@@ -134,7 +134,7 @@ addon.ThemeRegistry:RegisterPreset("Retro", {
         hoverBorderColor = nil,
         -- 注意：没有 textColor，文字颜色由每个按钮的 color 字段决定
         
-        font = "",
+        font = addon.CONSTANTS.SHELF_DEFAULT_FONT,
         fontSize = addon.CONSTANTS.SHELF_DEFAULT_FONT_SIZE,
         scale = addon.CONSTANTS.SHELF_DEFAULT_SCALE,
         alpha = addon.CONSTANTS.SHELF_DEFAULT_ALPHA,

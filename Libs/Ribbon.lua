@@ -195,8 +195,11 @@ end
     dialog:Open(items, selectedKey, callback)
 ]]
 function addon.CreateSelectionRibbon(name, parent)
-    local f = CreateFrame("Frame", name, parent, "BackdropTemplate")
-    f:SetSize(500, 350)
+    -- User requested "DialogBorderDarkTemplate" for high-res look.
+    -- We MUST use ClearAllPoints() because this template likely defaults to full screen anchors.
+    local f = CreateFrame("Frame", name, parent, "DialogBorderDarkTemplate")
+    f:ClearAllPoints()
+    f:SetSize(350, 400)
     f:SetPoint("CENTER")
     f:SetFrameStrata("DIALOG")
     f:EnableMouse(true)
@@ -206,25 +209,45 @@ function addon.CreateSelectionRibbon(name, parent)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:Hide()
     
-    f:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 }
-    })
-    f:SetBackdropColor(0, 0, 0, 1)
-    
     table.insert(UISpecialFrames, f:GetName())
 
-    -- f.Title = f:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    -- f.Title:SetPoint("TOP", 0, -8)
-    -- f.Title:SetText(addon.L["LABEL_SELECT_ACTION"] or "Select Action")
+    -- Title Header (Native Style)
+    -- Use the native DialogHeaderTemplate which handles the 3-part texture automatically
+    f.Header = CreateFrame("Frame", nil, f, "DialogHeaderTemplate")
+    f.Header:SetPoint("TOP", 0, 12)
+    -- Ensure it sits above the dialog border
+    f.Header:SetFrameLevel(f:GetFrameLevel() + 5)
 
+    -- Alias for compatibility so existing code can change text
+    -- DialogHeaderTemplate puts the fontstring in .Text (Capitalized)
+    f.Title = f.Header.Text
+    
+    -- Safe fallback if .Text isn't directly accessible (varies by version sometimes?)
+    if not f.Title then
+        for _, region in ipairs({f.Header:GetRegions()}) do
+            if region:GetObjectType() == "FontString" then
+                f.Title = region
+                break
+            end
+        end
+    end
+    
+    -- Sync initial text
+    if f.Title then f.Title:SetText("Selection") end
+
+    -- Clean up old TitleContainer if it existed (from previous attempts)
+    if f.TitleContainer then f.TitleContainer:Hide() end
+    
     -- Close Button
-    f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-    f.CloseButton:SetSize(24, 24)
-    f.CloseButton:SetPoint("TOPRIGHT", -2, -2)
-
+    if not f.CloseButton then
+        f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        f.CloseButton:SetSize(24, 24)
+        f.CloseButton:SetPoint("TOPRIGHT", -5, -5)
+    else
+        f.CloseButton:SetPoint("TOPRIGHT", -5, -5)
+        f.CloseButton:SetFrameLevel(f:GetFrameLevel() + 10)
+    end
+        
     -- Fixed Categories for now
     local CATEGORY_ORDER = { "channel", "join", "leave", "kit" }
     
@@ -250,21 +273,34 @@ function addon.CreateSelectionRibbon(name, parent)
         table.insert(ribbonTabs, { label = COMPACT_LABELS[cat] or cat, key = cat })
     end
 
+    -- Dynamic Layout: Anchor Ribbon below Header
     f.ribbon = addon.CreateRibbon(f, ribbonTabs, {
-        tabWidth = 80, -- Dynamic?
+        tabWidth = 80,
         tabHeight = 24,
         tabSpacing = 2,
         startX = 10,
-        startY = -10, -- Removed Title, move up
-        onTabChanged = function(index, tab)
-            -- Page switching is handled by ribbon internally
-        end
+        startY = 0, -- Overridden below
+        onTabChanged = function() end
     })
+    
+    -- Manually re-anchor ribbon to be relative to Header
+    f.ribbon:ClearAllPoints()
+    f.ribbon:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -40) -- Fallback if no header
+    if f.Header then
+        f.ribbon:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -32) -- Adjust based on header visual
+    end
+    f.ribbon:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -32)
     
     -- Pre-create pages with ScrollFrames
     f.pages = {}
     for i, cat in ipairs(CATEGORY_ORDER) do
-        local pageContainer = f.ribbon:CreateContentPage(i, f, { top = 40, bottom = 40, left = 10, right = 10 })
+        -- Dynamic Layout: Anchor Content below Ribbon
+        -- We ignore the 'top' inset from CreateContentPage and re-anchor manually
+        local pageContainer = f.ribbon:CreateContentPage(i, f, { top = 0, bottom = 40, left = 10, right = 10 })
+        
+        pageContainer:ClearAllPoints()
+        pageContainer:SetPoint("TOPLEFT", f.ribbon, "BOTTOMLEFT", 0, -5) -- 5px gap below tabs
+        pageContainer:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 40) -- 40px bottom for buttons
         
         local scroll = CreateFrame("ScrollFrame", nil, pageContainer, "UIPanelScrollFrameTemplate")
         scroll:SetPoint("TOPLEFT", 0, 0)
@@ -309,9 +345,10 @@ function addon.CreateSelectionRibbon(name, parent)
     end)
     
     
-    function f:Open(items, selectedKey, callback)
+    function f:Open(items, selectedKey, title, callback)
         f.callback = callback
         f.selectedKey = selectedKey
+        f.Title:SetText(title or addon.L["LABEL_SELECT_ACTION"] or "Select Action")
         
         -- Distribute items
         local categorized = {}

@@ -145,7 +145,14 @@ CategoryBuilders.shelf = function(rootCat)
             bindingDialog = addon.CreateSelectionRibbon(addonName .. "BindingSelectionDialog", UIParent)
         end
         
-        bindingDialog:Open(items, currentAction, function(selectedKey)
+        -- Resolve Title
+        local item = registryMap[channelKey] or kitRegistryMap[channelKey]
+        local title = item and (item.label or item.key) or channelKey
+        if item and item.mappingKey and L[item.mappingKey] then
+             title = L[item.mappingKey]
+        end
+        
+        bindingDialog:Open(items, currentAction, title, function(selectedKey)
             bindings[channelKey][buttonType] = selectedKey
             
             addon:ApplyAllSettings()

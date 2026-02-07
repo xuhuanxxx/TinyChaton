@@ -190,12 +190,12 @@ function addon:ToggleEmotePanel(anchorFrame)
         panel.Header:SetPoint("TOP", 0, 12)
         -- DialogHeaderTemplate puts text in .Text
         if panel.Header.Text then
-            panel.Header.Text:SetText(L["KIT_EMOTE"] or "Emotes")
+            panel.Header.Text:SetText(L["KIT_EMOTE"])
         else
              -- Fallback scan
             for _, region in ipairs({panel.Header:GetRegions()}) do
                 if region:GetObjectType() == "FontString" then
-                    region:SetText(L["KIT_EMOTE"] or "Emotes")
+                    region:SetText(L["KIT_EMOTE"])
                     break
                 end
             end

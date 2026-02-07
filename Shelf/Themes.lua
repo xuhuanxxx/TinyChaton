@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local L = addon.L
 
 -- =========================================================================
 -- Shelf Themes - 使用 ThemeRegistry 注册 Shelf 主题
@@ -6,7 +7,7 @@ local addonName, addon = ...
 
 -- 注册 Modern 主题
 addon.ThemeRegistry:RegisterPreset("Modern", {
-    name = L and L["LABEL_SHELF_STYLE_MODERN"] or "Modern",
+    name = L["LABEL_SHELF_THEME_MODERN"],
     description = "Clean modern appearance with subtle borders",
     properties = {
         backdrop = {
@@ -37,7 +38,7 @@ addon.ThemeRegistry:RegisterPreset("Modern", {
 
 -- 注册 Legacy 主题
 addon.ThemeRegistry:RegisterPreset("Legacy", {
-    name = L and L["LABEL_SHELF_STYLE_LEGACY"] or "Legacy",
+    name = L["LABEL_SHELF_THEME_LEGACY"],
     description = "Classic WoW tooltip style",
     properties = {
         backdrop = {
@@ -63,7 +64,7 @@ addon.ThemeRegistry:RegisterPreset("Legacy", {
 
 -- 注册 Soft 主题
 addon.ThemeRegistry:RegisterPreset("Soft", {
-    name = L and L["LABEL_SHELF_STYLE_SOFT"] or "Soft",
+    name = L["LABEL_SHELF_THEME_SOFT"],
     description = "Soft rounded appearance",
     properties = {
         backdrop = {
@@ -98,7 +99,7 @@ addon.ThemeRegistry:RegisterPreset("Soft", {
 
 -- 注册 Flat 主题
 addon.ThemeRegistry:RegisterPreset("Flat", {
-    name = L and L["LABEL_SHELF_STYLE_FLAT"] or "Flat",
+    name = L["LABEL_SHELF_THEME_FLAT"],
     description = "Flat design without borders",
     properties = {
         backdrop = {
@@ -124,7 +125,7 @@ addon.ThemeRegistry:RegisterPreset("Flat", {
 
 -- 注册 Retro 主题（经典红色 - UIPanelButton红色按钮样式）
 addon.ThemeRegistry:RegisterPreset("Retro", {
-    name = L and L["LABEL_SHELF_STYLE_RETRO"] or "Retro",
+    name = L["LABEL_SHELF_THEME_RETRO"],
     description = "Classic WoW UIPanelButton red button style",
     properties = {
         template = "UIPanelButtonTemplate",

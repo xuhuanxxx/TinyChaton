@@ -34,7 +34,7 @@ CategoryBuilders.general = function(rootCat)
                     -- Skip internal fallback frames if not meant for user selection
                     if anchor.name ~= "fallback_frame" then
                         local labelKey = "LABEL_SHELF_POSITION_" .. string.upper(anchor.name)
-                        c:Add(anchor.name, L[labelKey] or anchor.name)
+                        c:Add(anchor.name, L[labelKey])
                     end
                 end
             end
@@ -99,7 +99,7 @@ CategoryBuilders.general = function(rootCat)
             for _, themeKey in ipairs(themes) do
                 local preset = addon.ThemeRegistry:GetPreset(themeKey)
                 local labelKey = "LABEL_SHELF_THEME_" .. string.upper(themeKey)
-                local label = L[labelKey] or preset.name or themeKey
+                local label = L[labelKey]
                 c:Add(themeKey, label)
             end
             return c:GetData() 
@@ -117,14 +117,14 @@ CategoryBuilders.general = function(rootCat)
     shelfProxySettings["font"] = addon.AddNativeDropdown(cat, S .. "font", L["LABEL_FONT"], addon.CONSTANTS.SHELF_DEFAULT_FONT,
         function() 
             local c = Settings.CreateControlTextContainer()
-            c:Add("STANDARD", L["FONT_STANDARD"] or "默认")
-            c:Add("CHAT", L["FONT_CHAT"] or "聊天")
-            c:Add("DAMAGE", L["FONT_DAMAGE"] or "伤害")
+            c:Add("STANDARD", L["FONT_STANDARD"])
+            c:Add("CHAT", L["FONT_CHAT"])
+            c:Add("DAMAGE", L["FONT_DAMAGE"])
             
             -- If current value is not one of the presets, show it as Custom
             local val = GetThemeVal("font")
             if val and val ~= "STANDARD" and val ~= "CHAT" and val ~= "DAMAGE" and val ~= "" then
-                local name = (L["LABEL_CUSTOM"] or "自定义") .. " (" .. (val:match("([^\\]+)$") or val) .. ")"
+                local name = L["LABEL_CUSTOM"] .. " (" .. (val:match("([^\\]+)$") or val) .. ")"
                 c:Add(val, name) 
             end
             

@@ -318,7 +318,7 @@ function addon.CreateSelectionRibbon(name, parent)
     f.DefaultButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.DefaultButton:SetSize(100, 22)
     f.DefaultButton:SetPoint("BOTTOMRIGHT", -20, 10) -- Swapped to Right
-    f.DefaultButton:SetText(L["LABEL_DEFAULT"] or "Default")
+    f.DefaultButton:SetText(L["LABEL_DEFAULT"])
     f.DefaultButton:SetScript("OnClick", function()
         if f.callback then f.callback(nil) end
         f:Hide()
@@ -327,7 +327,7 @@ function addon.CreateSelectionRibbon(name, parent)
     f.ClearButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     f.ClearButton:SetSize(100, 22)
     f.ClearButton:SetPoint("BOTTOMLEFT", 20, 10) -- Swapped to Left
-    f.ClearButton:SetText(L["LABEL_NONE"] or "None")
+    f.ClearButton:SetText(L["LABEL_NONE"])
     f.ClearButton:SetScript("OnClick", function()
         if f.callback then f.callback(false) end
         f:Hide()
@@ -348,7 +348,7 @@ function addon.CreateSelectionRibbon(name, parent)
     function f:Open(items, selectedKey, title, callback)
         f.callback = callback
         f.selectedKey = selectedKey
-        f.Title:SetText(title or addon.L["LABEL_SELECT_ACTION"] or "Select Action")
+        f.Title:SetText(title or addon.L["LABEL_SELECT_ACTION"])
         
         -- Distribute items
         local categorized = {}

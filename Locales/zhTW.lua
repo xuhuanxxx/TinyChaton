@@ -142,6 +142,9 @@ if GetLocale() == "zhTW" then
     L["LABEL_SHELF_THEME_RETRO"] = "復古"
     L["LABEL_SHELF_THEME_SOFT"] = "柔和"
     L["LABEL_SHELF_THEME"] = "主題"
+    L["LABEL_EMOTE_RENDER"] = "表情渲染"
+    L["LABEL_SNAPSHOT_ENABLED"] = "聊天快照"
+    L["LABEL_SNAPSHOT_ENABLED_DESC"] = "記錄最近的聊天消息"
     L["LABEL_STATUS_DISABLED"] = "已禁用"
     L["LABEL_STATUS_ENABLED"] = "已啟用"
     L["LABEL_STATUS_UNKNOWN"] = "状态未知"
@@ -253,6 +256,7 @@ if GetLocale() == "zhTW" then
     L["CATEGORY_leave"] = "離開頻道"
     L["CATEGORY_other"] = "其他"
     L["LABEL_SHELF_COLORSET"] = "字體顏色"
+    L["LABEL_TIMESTAMP_ENABLED"] = "顯示時間戳"
 
     -- Missing entries
     L["ACTION_RESET_ALL"] = "全部重置"

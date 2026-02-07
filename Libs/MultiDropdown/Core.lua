@@ -141,9 +141,9 @@ function TinyChaton_MultiDropdownMixin:UpdateDropdownText()
     
     local text
     if selectedCount == 0 then
-        text = L and L["LABEL_DROPDOWN_NONE"] or "无"
+        text = L["LABEL_DROPDOWN_NONE"]
     elseif selectedCount >= #opts then
-        text = L and L["LABEL_DROPDOWN_ALL"] or "全部"
+        text = L["LABEL_DROPDOWN_ALL"]
     else
         text = string.format("%d/%d", selectedCount, #opts)
     end
@@ -327,7 +327,7 @@ function TinyChaton_MultiDropdownMixin:SetupDropdownMenu(button, setting, option
         self:RefreshSelectionCache()
         local opts = optionsFunc() or {}
         
-        local selectAllLabel = L and L["LABEL_SELECT_ALL"] or "全选"
+        local selectAllLabel = L["LABEL_SELECT_ALL"]
         
         rootDescription:CreateCheckbox(selectAllLabel, function()
             return self:IsAllSelected()

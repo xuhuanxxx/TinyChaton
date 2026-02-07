@@ -20,8 +20,8 @@ addon.KIT_REGISTRY = {
         order = 10, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
-        actions = { { key = "default", label = L["KIT_READYCHECK"], tooltip = L["KIT_READYCHECK_TOOLTIP"] or L["KIT_READYCHECK"], execute = function() DoReadyCheck() end } }, 
-        tooltip = L["KIT_READYCHECK_TOOLTIP"] or L["KIT_READYCHECK"] 
+        actions = { { key = "default", label = L["KIT_READYCHECK"], tooltip = L["KIT_READYCHECK_TOOLTIP"], execute = function() DoReadyCheck() end } }, 
+        tooltip = L["KIT_READYCHECK_TOOLTIP"] 
     },
     { 
         key = "resetInstances", 
@@ -35,8 +35,8 @@ addon.KIT_REGISTRY = {
         order = 20, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
-        actions = { { key = "default", label = L["KIT_RESET_INSTANCES"], tooltip = L["KIT_RESET_INSTANCES_TOOLTIP"] or L["KIT_RESET_INSTANCES"], execute = function() ResetInstances() end } }, 
-        tooltip = L["KIT_RESET_INSTANCES_TOOLTIP"] or L["KIT_RESET_INSTANCES"] 
+        actions = { { key = "default", label = L["KIT_RESET_INSTANCES"], tooltip = L["KIT_RESET_INSTANCES_TOOLTIP"], execute = function() ResetInstances() end } }, 
+        tooltip = L["KIT_RESET_INSTANCES_TOOLTIP"] 
     },
     { 
         key = "countdown", 
@@ -55,7 +55,7 @@ addon.KIT_REGISTRY = {
             { key = "secondary", label = L["ACTION_TIMER_SECONDARY"], tooltip = L["ACTION_TIMER_SECONDARY_DESC"], execute = function() C_PartyInfo.DoCountdown(addon.db.plugin.shelf.kitOptions.countdown.secondary or 5) end }, 
             { key = "cancel", label = L["ACTION_CANCEL"], tooltip = L["ACTION_CANCEL"], execute = function() C_PartyInfo.DoCountdown(0) end } 
         }, 
-        tooltip = L["KIT_COUNTDOWN_TOOLTIP"] or L["KIT_COUNTDOWN"] 
+        tooltip = L["KIT_COUNTDOWN_TOOLTIP"] 
     },
     { 
         key = "roll", 
@@ -69,8 +69,8 @@ addon.KIT_REGISTRY = {
         order = 40, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
-        actions = { { key = "default", label = L["KIT_ROLL"], tooltip = L["KIT_ROLL_TOOLTIP"] or L["KIT_ROLL"], execute = function() RandomRoll(1, 100) end } }, 
-        tooltip = L["KIT_ROLL_TOOLTIP"] or L["KIT_ROLL"] 
+        actions = { { key = "default", label = L["KIT_ROLL"], tooltip = L["KIT_ROLL_TOOLTIP"], execute = function() RandomRoll(1, 100) end } }, 
+        tooltip = L["KIT_ROLL_TOOLTIP"] 
     },
     { 
         key = "filter", 
@@ -99,8 +99,8 @@ addon.KIT_REGISTRY = {
         order = 60, 
         defaultPinned = false, 
         defaultBindings = { left = "default" }, 
-        actions = { { key = "default", label = L["KIT_MACRO"], tooltip = L["KIT_MACRO_TOOLTIP"] or L["KIT_MACRO"], execute = function() if MacroFrame and MacroFrame:IsShown() then HideUIPanel(MacroFrame) else ShowMacroFrame() end end } }, 
-        tooltip = L["KIT_MACRO_TOOLTIP"] or L["KIT_MACRO"] 
+        actions = { { key = "default", label = L["KIT_MACRO"], tooltip = L["KIT_MACRO_TOOLTIP"], execute = function() if MacroFrame and MacroFrame:IsShown() then HideUIPanel(MacroFrame) else ShowMacroFrame() end end } }, 
+        tooltip = L["KIT_MACRO_TOOLTIP"] 
     },
     { 
         key = "leave", 
@@ -114,8 +114,8 @@ addon.KIT_REGISTRY = {
         order = 70, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
-        actions = { { key = "default", label = L["KIT_LEAVE"], tooltip = L["KIT_LEAVE_TOOLTIP"] or L["KIT_LEAVE"], execute = function() C_PartyInfo.LeaveParty() end } }, 
-        tooltip = L["KIT_LEAVE_TOOLTIP"] or L["KIT_LEAVE"] 
+        actions = { { key = "default", label = L["KIT_LEAVE"], tooltip = L["KIT_LEAVE_TOOLTIP"], execute = function() C_PartyInfo.LeaveParty() end } }, 
+        tooltip = L["KIT_LEAVE_TOOLTIP"] 
     },
     { 
         key = "emotePanel", 
@@ -129,8 +129,8 @@ addon.KIT_REGISTRY = {
         order = 80, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
-        actions = { { key = "default", label = L["KIT_EMOTE"], tooltip = L["KIT_EMOTE_TOOLTIP"] or L["KIT_EMOTE"], execute = function(self) if addon.ToggleEmotePanel then addon:ToggleEmotePanel(self) end end } }, 
-        tooltip = L["KIT_EMOTE_TOOLTIP"] or L["KIT_EMOTE"] 
+        actions = { { key = "default", label = L["KIT_EMOTE"], tooltip = L["KIT_EMOTE_TOOLTIP"], execute = function(self) if addon.ToggleEmotePanel then addon:ToggleEmotePanel(self) end end } }, 
+        tooltip = L["KIT_EMOTE_TOOLTIP"] 
     },
     { 
         key = "reload", 
@@ -144,7 +144,7 @@ addon.KIT_REGISTRY = {
         order = 90, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
-        actions = { { key = "default", label = L["KIT_RELOAD"], tooltip = L["KIT_RELOAD_TOOLTIP"] or L["KIT_RELOAD"], execute = function() ReloadUI() end } }, 
-        tooltip = L["KIT_RELOAD_TOOLTIP"] or L["KIT_RELOAD"] 
+        actions = { { key = "default", label = L["KIT_RELOAD"], tooltip = L["KIT_RELOAD_TOOLTIP"], execute = function() ReloadUI() end } }, 
+        tooltip = L["KIT_RELOAD_TOOLTIP"] 
     },
 }

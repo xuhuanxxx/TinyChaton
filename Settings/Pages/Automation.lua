@@ -69,11 +69,11 @@ CategoryBuilders.automation = function(rootCat)
     addon.AddSectionHeader(cat, L["SECTION_AUTO_JOIN_CHANNELS"])
     
     addon.AddProxyMultiDropdown(cat, P .. "autoJoinChannels", 
-        L["LABEL_AUTO_JOIN_CHANNELS"] or "自动加入",
+        L["LABEL_AUTO_JOIN_CHANNELS"],
         function() return addon:GetAutoJoinChannelsItems() end,
         function() return addon:GetAutoJoinChannelSelection() end,
         function(sel) addon:SetAutoJoinChannelSelection(sel) end,
-        L["TOOLTIP_AUTO_JOIN_CHANNELS"] or "选择登录后自动加入的频道")
+        L["TOOLTIP_AUTO_JOIN_CHANNELS"])
 
 
     local function ResetAutomationData()

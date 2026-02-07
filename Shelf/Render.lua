@@ -360,7 +360,7 @@ function addon.Shelf:Render()
         local tooltip = function(tt, btnSelf)
             local headerText = item.label
             if info.isChannel and item.isDynamic and item.mappingKey then
-                 headerText = L[item.mappingKey] or headerText
+                 headerText = L[item.mappingKey]
             end
             tt:SetText(headerText, 1, 0.82, 0)
             

@@ -48,7 +48,7 @@ local function FindRegistryKeyByChannelBaseName(baseName)
     local normalized = addon.Utils.NormalizeChannelBaseName(baseName)
     for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
         if reg.isDynamic and reg.mappingKey then
-            local realName = L and L[reg.mappingKey]
+            local realName = L[reg.mappingKey]
             if realName then
                 if realName == normalized then
                     channelNameCache[baseName] = reg.key

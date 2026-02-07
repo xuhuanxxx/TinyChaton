@@ -148,7 +148,9 @@ if GetLocale() == "zhCN" then
     L["LABEL_SHELF_THEME_RETRO"] = "复古"
     L["LABEL_SHELF_THEME_SOFT"] = "柔和"
     L["LABEL_SHELF_THEME"] = "主题"
-    L["LABEL_SHELF_COLORSET"] = "字体颜色"
+    L["LABEL_EMOTE_RENDER"] = "表情渲染"
+    L["LABEL_SNAPSHOT_ENABLED"] = "聊天快照"
+    L["LABEL_SNAPSHOT_ENABLED_DESC"] = "记录最近的聊天消息"
     L["COLORSET_WHITE"] = "白色"
     L["COLORSET_BLIZZARD"] = "暴雪金"
     L["COLORSET_RAINBOW"] = "彩虹"
@@ -271,5 +273,6 @@ if GetLocale() == "zhCN" then
     L["SECTION_CHAT_CONTENT"] = "聊天内容"
     L["SECTION_CHAT_FONT"] = "字体设置"
     L["SECTION_CHAT_INTERACTION"] = "交互"
+    L["LABEL_TIMESTAMP_ENABLED"] = "显示时间戳"
     L["SECTION_RESET"] = "重置设置"
 end

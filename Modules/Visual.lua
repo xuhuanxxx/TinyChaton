@@ -119,7 +119,7 @@ local function ApplyShortChannelGlobals()
             addon.ChatTypeFormatBackup[key] = _G[key]
         end
         local base = addon.ChatTypeFormatBackup[key]
-        local shortTag = L[lkey] or "G"
+        local shortTag = L[lkey]
         if type(base) == "string" and base:match("%[([^%]]+)%]") then
             _G[key] = base:gsub("()%[([^%]]+)%]", function(_, _inner) return "[" .. shortTag .. "]" end, 1)
         end

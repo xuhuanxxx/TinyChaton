@@ -250,11 +250,11 @@ CategoryBuilders.shelf = function(rootCat)
                     local config = addon.Shelf:GetItemConfig(item.key)
                     local actionKey = config and ((btnType == "left" and config.leftClick) or (btnType == "right" and config.rightClick))
                     
-                    local text = L["LABEL_NONE"] or "None"
+                    local text = L["LABEL_NONE"]
                     
                     if actionKey then
                         if actionKey == false then
-                            text = L["LABEL_NONE"] or "None"
+                            text = L["LABEL_NONE"]
                         else
                             local action = addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey]
                             text = action and action.label or actionKey

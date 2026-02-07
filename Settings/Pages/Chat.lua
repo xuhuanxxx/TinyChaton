@@ -60,13 +60,13 @@ CategoryBuilders.chat = function(rootCat)
     addon.AddNativeDropdown(subCat, P .. "font", L["LABEL_FONT"], addon.CONSTANTS.CHAT_DEFAULT_FONT,
         function() 
             local c = Settings.CreateControlTextContainer()
-            c:Add("STANDARD", L["FONT_STANDARD"] or "默认")
-            c:Add("CHAT", L["FONT_CHAT"] or "聊天")
-            c:Add("DAMAGE", L["FONT_DAMAGE"] or "伤害")
+            c:Add("STANDARD", L["FONT_STANDARD"])
+            c:Add("CHAT", L["FONT_CHAT"])
+            c:Add("DAMAGE", L["FONT_DAMAGE"])
             
             local val = addon.db.plugin.chat.font.font
             if val and val ~= "STANDARD" and val ~= "CHAT" and val ~= "DAMAGE" and val ~= "" then
-                 local name = (L["LABEL_CUSTOM"] or "自定义") .. " (" .. (val:match("([^\\]+)$") or val) .. ")"
+                 local name = L["LABEL_CUSTOM"] .. " (" .. (val:match("([^\\]+)$") or val) .. ")"
                  c:Add(val, name)
             end
             return c:GetData() 
@@ -93,25 +93,25 @@ CategoryBuilders.chat = function(rootCat)
     CreateSettingFromRegistry(subCat, "snapshotEnabled")
 
     addon.AddProxyMultiDropdown(subCat, P .. "snapshotPersonal",
-        L["LABEL_SNAPSHOT_PERSONAL"] or "Personal",
+        L["LABEL_SNAPSHOT_PERSONAL"],
         function() return addon:GetSnapshotChannelsItems("private") end,
         function() return addon:GetSnapshotChannelSelection("private") end,
         function(sel) addon:SetSnapshotChannelSelection("private", sel) end,
-        L["TOOLTIP_SNAPSHOT_PERSONAL"] or "Select personal channels to snapshot")
+        L["TOOLTIP_SNAPSHOT_PERSONAL"])
 
     addon.AddProxyMultiDropdown(subCat, P .. "snapshotSystem",
-        L["LABEL_SNAPSHOT_SYSTEM"] or "System",
+        L["LABEL_SNAPSHOT_SYSTEM"],
         function() return addon:GetSnapshotChannelsItems("system") end,
         function() return addon:GetSnapshotChannelSelection("system") end,
         function(sel) addon:SetSnapshotChannelSelection("system", sel) end,
-        L["TOOLTIP_SNAPSHOT_SYSTEM"] or "Select system channels to snapshot")
+        L["TOOLTIP_SNAPSHOT_SYSTEM"])
 
     addon.AddProxyMultiDropdown(subCat, P .. "snapshotDynamic",
-        L["LABEL_SNAPSHOT_DYNAMIC"] or "Dynamic",
+        L["LABEL_SNAPSHOT_DYNAMIC"],
         function() return addon:GetSnapshotChannelsItems("dynamic") end,
         function() return addon:GetSnapshotChannelSelection("dynamic") end,
         function(sel) addon:SetSnapshotChannelSelection("dynamic", sel) end,
-        L["TOOLTIP_SNAPSHOT_DYNAMIC"] or "Select dynamic channels to snapshot")
+        L["TOOLTIP_SNAPSHOT_DYNAMIC"])
 
     addon.AddSectionHeader(subCat, L["SECTION_CHAT_INTERACTION"])
     CreateSettingFromRegistry(subCat, "timestampEnabled")

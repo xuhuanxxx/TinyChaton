@@ -60,19 +60,19 @@ end
 
 -- 方案1：纯白（统一白色）
 CSR:RegisterSet("white", {
-    name = L and L["COLORSET_WHITE"] or "White",
+    name = L["COLORSET_WHITE"],
     description = "Uniform white text for all buttons",
 })
 
 -- 方案2：暴雪游戏黄（经典金色）
 CSR:RegisterSet("blizzard", {
-    name = L and L["COLORSET_BLIZZARD"] or "Blizzard Gold",
+    name = L["COLORSET_BLIZZARD"],
     description = "Classic Blizzard gold/yellow text",
 })
 
 -- 方案3：彩虹色（每个频道/工具有自己的独特颜色）
 CSR:RegisterSet("rainbow", {
-    name = L and L["COLORSET_RAINBOW"] or "Rainbow",
+    name = L["COLORSET_RAINBOW"],
     description = "Distinct colors for each channel and tool",
 })
 

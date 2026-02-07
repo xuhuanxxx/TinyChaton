@@ -5,12 +5,12 @@ local CategoryBuilders = addon.CategoryBuilders or {}
 addon.CategoryBuilders = CategoryBuilders
 
 CategoryBuilders.profile = function(rootCat)
-    local cat, _ = Settings.RegisterVerticalLayoutSubcategory(rootCat, L["PAGE_PROFILE"] or "Profile")
+    local cat, _ = Settings.RegisterVerticalLayoutSubcategory(rootCat, L["PAGE_PROFILE"])
     Settings.RegisterAddOnCategory(cat)
     
-    addon.AddText(cat, L["LABEL_PROFILE_DESC"] or "Manage your settings profile.")
+    addon.AddText(cat, L["LABEL_PROFILE_DESC"])
     
-    addon.AddSectionHeader(cat, L["SECTION_RESET"] or "Reset")
+    addon.AddSectionHeader(cat, L["SECTION_RESET"])
     
     local function ResetAllSettings()
         -- 1. Force Synchronize Config (Revert db to defaults)
@@ -23,20 +23,20 @@ CategoryBuilders.profile = function(rootCat)
         if addon.RefreshShelfList then addon.RefreshShelfList() end
         if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         
-        print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r " .. (L["MSG_RESET_COMPLETE"] or "Settings reset to defaults."))
+        print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r " .. L["MSG_RESET_COMPLETE"])
     end
     
-    addon.AddNativeButton(cat, L["ACTION_RESET_ALL"] or "Reset All Settings", L["ACTION_RESET"] or "Reset", function()
+    addon.AddNativeButton(cat, L["ACTION_RESET_ALL"], L["ACTION_RESET"], function()
         -- Show confirmation
         StaticPopupDialogs["TINYCHATON_RESET_ALL_CONFIRM"] = {
-            text = L["MSG_RESET_ALL_CONFIRM"] or "Are you sure you want to reset ALL settings to defaults?",
+            text = L["MSG_RESET_ALL_CONFIRM"],
             button1 = YES,
             button2 = NO,
             OnAccept = ResetAllSettings,
             hideOnEscape = true,
         }
         StaticPopup_Show("TINYCHATON_RESET_ALL_CONFIRM")
-    end, (L["ACTION_RESET_ALL_DESC"] or "Reset all configuration to default values."))
+    end, L["ACTION_RESET_ALL_DESC"])
 
     return cat
 end

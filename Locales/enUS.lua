@@ -244,3 +244,13 @@ L["KIT_RESET_INSTANCES_TOOLTIP"] = "Reset all instances"
 L["KIT_ROLL"] = "Roll"
 L["KIT_ROLL_SHORT"] = "Roll"
 L["KIT_ROLL_TOOLTIP"] = "Roll (1-100)"
+
+-- Selection Dialog
+L["LABEL_SELECT_ACTION"] = "Select Action"
+L["CATEGORY_channel"] = "Channel Speech"
+L["CATEGORY_join"] = "Join Channel"
+L["CATEGORY_leave"] = "Leave Channel"
+L["CATEGORY_kit"] = "Kit Actions"
+L["CATEGORY_other"] = "Other"
+L["LABEL_BINDING_LEFT_SHORT"] = "L"
+L["LABEL_BINDING_RIGHT_SHORT"] = "R"

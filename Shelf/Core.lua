@@ -101,27 +101,50 @@ function addon.Shelf:GetItemConfig(key)
         return nil
     end
     
+    local bindings = (addon.db and addon.db.plugin and addon.db.plugin.shelf and addon.db.plugin.shelf.bindings) or {}
+    local customBind = bindings[key]
+    
     -- Check CHANNEL_REGISTRY
     for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
         if reg.key == key and (reg.isSystem or reg.isDynamic) then
-            local bindings = reg.defaultBindings or {}
+            local defBindings = reg.defaultBindings or {}
+            
+            -- Resolve Actions
             local leftAction, rightAction
             
-            -- Map binding key to full action key
-            if bindings.left then
-                if bindings.left == "send" then
-                    leftAction = "sendTo_" .. key
+            -- Helper to map shorthand to full action key
+            local function MapAction(actionKey, typePrefix, itemKey)
+                if not actionKey then return nil end
+                if actionKey == false then return false end -- Explicit Unbind
+                
+                -- Check if it's already a full key (from custom binding)
+                if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
+                    return actionKey
+                end
+                
+                -- Otherwise map short key
+                if typePrefix == "channel" then
+                    if actionKey == "send" then return "sendTo_" .. itemKey
+                    elseif actionKey == "join" then return "join_" .. itemKey
+                    elseif actionKey == "leave" then return "leave_" .. itemKey
+                    else return "channel_" .. itemKey .. "_" .. actionKey end
                 else
-                    leftAction = key .. "_" .. bindings.left
+                     return "kit_" .. itemKey .. "_" .. actionKey
                 end
             end
             
-            if bindings.right then
-                if bindings.right == "leave" then
-                    rightAction = "leave_" .. key
-                else
-                    rightAction = key .. "_" .. bindings.right
-                end
+            -- 1. Left Click
+            if customBind and customBind.left ~= nil then
+                leftAction = customBind.left -- Can be false or string
+            else
+                leftAction = MapAction(defBindings.left, "channel", key)
+            end
+            
+            -- 2. Right Click
+            if customBind and customBind.right ~= nil then
+                rightAction = customBind.right
+            else
+                rightAction = MapAction(defBindings.right, "channel", key)
             end
             
             return {
@@ -142,9 +165,32 @@ function addon.Shelf:GetItemConfig(key)
     -- Check KIT_REGISTRY
     for _, reg in ipairs(addon.KIT_REGISTRY) do
         if reg.key == key then
-            local bindings = reg.defaultBindings or {}
-            local leftAction = bindings.left and ("kit_" .. key .. "_" .. bindings.left) or nil
-            local rightAction = bindings.right and ("kit_" .. key .. "_" .. bindings.right) or nil
+            local defBindings = reg.defaultBindings or {}
+            local leftAction, rightAction
+            
+             -- Helper to map shorthand to full action key
+            local function MapKitAction(actionKey, itemKey)
+                if not actionKey then return nil end
+                 if actionKey == false then return false end
+                 
+                 if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
+                    return actionKey
+                end
+                
+                return "kit_" .. itemKey .. "_" .. actionKey
+            end
+
+            if customBind and customBind.left ~= nil then
+                leftAction = customBind.left
+            else
+                leftAction = MapKitAction(defBindings.left, key)
+            end
+            
+            if customBind and customBind.right ~= nil then
+                rightAction = customBind.right
+            else
+                rightAction = MapKitAction(defBindings.right, key)
+            end
             
             return {
                 type = "kit",
@@ -174,9 +220,8 @@ function addon.Shelf:GetVisibleItems()
     local dynamicMode = addon.db.plugin.shelf.dynamicMode or "hide"
     
     -- Debug: Check initialization
-    -- print("Shelf Core Debug: GetVisibleItems. Order Count:", #shelfOrder, "Pins:", (addon.db.plugin.shelf.channelPins and "Yes" or "No"))
     if #shelfOrder == 0 then
-         print("Shelf Core Debug: WARNING - shelfOrder is EMPTY! Registry likely missing or config corrupt.")
+         -- print("Shelf Core Debug: WARNING - shelfOrder is EMPTY! Registry likely missing or config corrupt.")
     end
 
     -- Get joined channels for dynamic channel detection (using cache)
@@ -280,15 +325,26 @@ function addon.Shelf:BuildActionRegistry()
                 for _, actionSpec in ipairs(item.actions) do
                     local fullKey
                     local label = actionSpec.label
+                    local category = "other"
                     
                     if typePrefix == "channel" then
-                        if actionSpec.key == "send" then fullKey = "sendTo_" .. item.key
-                        elseif actionSpec.key == "join" then fullKey = "join_" .. item.key
-                        elseif actionSpec.key == "leave" then fullKey = "leave_" .. item.key
-                        else fullKey = "channel_" .. item.key .. "_" .. actionSpec.key end
+                        if actionSpec.key == "send" then 
+                            fullKey = "sendTo_" .. item.key
+                            category = "channel"
+                        elseif actionSpec.key == "join" then 
+                            fullKey = "join_" .. item.key
+                            category = "join"
+                        elseif actionSpec.key == "leave" then 
+                            fullKey = "leave_" .. item.key
+                            category = "leave"
+                        else 
+                            fullKey = "channel_" .. item.key .. "_" .. actionSpec.key 
+                            category = "channel"
+                        end
                     else
                         fullKey = "kit_" .. item.key .. "_" .. actionSpec.key
                         label = L["ACTION_PREFIX_KIT"] .. actionSpec.label
+                        category = "kit"
                     end
 
                     actions[fullKey] = {
@@ -298,6 +354,7 @@ function addon.Shelf:BuildActionRegistry()
                         kitKey = (typePrefix == "kit") and item.key or nil,
                         channelKey = (typePrefix == "channel") and item.key or nil,
                         execute = actionSpec.execute,
+                        category = category
                     }
                 end
             end

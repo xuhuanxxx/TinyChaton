@@ -116,35 +116,44 @@ CategoryBuilders.shelf = function(rootCat)
     end
 
 
-    local function OpenBindingMenu(owner, channelKey, buttonType)
+    local bindingDialog = nil
+    local function OpenBindingDialog(channelKey, buttonType)
         local bindings = shelfDB.bindings
         if not bindings[channelKey] then bindings[channelKey] = {} end
         
-        local function SetBinding(actionKey)
-            bindings[channelKey][buttonType] = actionKey
-            if not bindings[channelKey].left and not bindings[channelKey].right then bindings[channelKey] = nil end
+        local currentAction = bindings[channelKey][buttonType]
+
+        -- Build items list for dialog
+        local items = {}
+        
+        -- table.insert(items, { key = nil, label = L["LABEL_DEFAULT"] or "Default", category = "other" })
+        -- table.insert(items, { key = false, label = L["LABEL_NONE"] or "None", category = "other" })
+        
+        local sortedActions = {}
+        for key, action in pairs(addon.ACTION_REGISTRY or {}) do table.insert(sortedActions, action) end
+        
+        for _, action in ipairs(sortedActions) do
+            table.insert(items, {
+                key = action.key,
+                label = action.label,
+                tooltip = action.tooltip,
+                category = action.category
+            })
+        end
+        
+        if not bindingDialog then
+            bindingDialog = addon.CreateSelectionRibbon(addonName .. "BindingSelectionDialog", UIParent)
+        end
+        
+        bindingDialog:Open(items, currentAction, function(selectedKey)
+            bindings[channelKey][buttonType] = selectedKey
+            
             addon:ApplyAllSettings()
             if addon.RefreshShelf then addon:RefreshShelf() end
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
-        end
-        
-        MenuUtil.CreateContextMenu(owner, function(owner, rootDescription)
-            rootDescription:CreateTitle(buttonType == "left" and L["LABEL_BINDING_LEFT"] or L["LABEL_BINDING_RIGHT"])
-            rootDescription:CreateButton(L["LABEL_DEFAULT"], function() SetBinding(nil) end)
-            rootDescription:CreateButton(L["LABEL_NONE"], function() SetBinding(false) end)
-            rootDescription:CreateDivider()
-
-            local sortedActions = {}
-            for key, action in pairs(addon.ACTION_REGISTRY or {}) do table.insert(sortedActions, action) end
-            table.sort(sortedActions, function(a, b) return (a.label or "") < (b.label or "") end)
-            
-            for _, action in ipairs(sortedActions) do
-                local function IsSelected() return bindings[channelKey] and bindings[channelKey][buttonType] == action.key end
-                rootDescription:CreateRadio(action.label or action.key, IsSelected, function() SetBinding(action.key) end)
-            end
+            if addon.RefreshShelfList then addon.RefreshShelfList() end
         end)
     end
-
 
     if not addon.shelfTabState then addon.shelfTabState = { activeTab = 1 } end
 
@@ -192,22 +201,63 @@ CategoryBuilders.shelf = function(rootCat)
                 row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
                 row.label:SetPoint("LEFT", row.cb, "RIGHT", 6, 0); row.label:SetText(item.label or item.key)
 
-                local function CreateBindBtn(text, pos, btnType)
-                    local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-                    btn:SetSize(40, 22); btn:SetPoint("RIGHT", row, "RIGHT", pos, 0); btn:SetText(text)
-                    btn:SetScript("OnClick", function(self) OpenBindingMenu(self, item.key, btnType) end)
-                    return btn
-                end
-                CreateBindBtn(L["LABEL_LEFT"], -120, "left")
-                CreateBindBtn(L["LABEL_RIGHT"], -75, "right")
-
+                -- Layout Constants
+                local RIGHT_MARGIN = -5
+                local BTN_SPACING = 4
+                local MOVE_BTN_WIDTH = 24
+                
+                -- Move Buttons (Right Side)
+                local downBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                downBtn:SetSize(MOVE_BTN_WIDTH, 22)
+                downBtn:SetPoint("RIGHT", RIGHT_MARGIN, 0)
+                downBtn:SetText("▼")
+                downBtn:SetScript("OnClick", function() MoveInShelfOrder(item.key, 1); addon.RefreshShelfList() end)
+                
                 local upBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-                upBtn:SetSize(28, 22); upBtn:SetPoint("RIGHT", -40, 0); upBtn:SetText("▲")
+                upBtn:SetSize(MOVE_BTN_WIDTH, 22)
+                upBtn:SetPoint("RIGHT", downBtn, "LEFT", -BTN_SPACING, 0)
+                upBtn:SetText("▲")
                 upBtn:SetScript("OnClick", function() MoveInShelfOrder(item.key, -1); addon.RefreshShelfList() end)
                 
-                local downBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-                downBtn:SetSize(28, 22); downBtn:SetPoint("RIGHT", -6, 0); downBtn:SetText("▼")
-                downBtn:SetScript("OnClick", function() MoveInShelfOrder(item.key, 1); addon.RefreshShelfList() end)
+                -- Action Buttons & Labels
+                -- Layout: [Left Btn]  [Right Btn] ... [Up] [Down]
+                
+                local ACTION_BTN_WIDTH = 150
+                local BTN_GAP = 4
+                
+                -- Right Action
+                local rightBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                rightBtn:SetSize(ACTION_BTN_WIDTH, 22)
+                rightBtn:SetPoint("RIGHT", upBtn, "LEFT", -15, 0) -- Gap after move buttons
+                rightBtn:SetScript("OnClick", function(self) OpenBindingDialog(item.key, "right") end)
+                
+                -- Left Action
+                local leftBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                leftBtn:SetSize(ACTION_BTN_WIDTH, 22)
+                leftBtn:SetPoint("RIGHT", rightBtn, "LEFT", -BTN_GAP, 0) -- Gap between Right Btn and Left Btn
+                leftBtn:SetScript("OnClick", function(self) OpenBindingDialog(item.key, "left") end)
+                
+                -- Update Text Logic
+                local function UpdateButtonText(btn, btnType)
+                    -- Use Shelf:GetItemConfig to resolve the EFFECTIVE action (handling defaults)
+                    local config = addon.Shelf:GetItemConfig(item.key)
+                    local actionKey = config and ((btnType == "left" and config.leftClick) or (btnType == "right" and config.rightClick))
+                    
+                    local text = L["LABEL_NONE"] or "None"
+                    
+                    if actionKey then
+                        if actionKey == false then
+                            text = L["LABEL_NONE"] or "None"
+                        else
+                            local action = addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey]
+                            text = action and action.label or actionKey
+                        end
+                    end
+                    
+                    -- Truncate removed to avoid UTF-8 issues.
+                    -- if #text > 16 then text = string.sub(text, 1, 14) .. "..." end
+                    btn:SetText(text)
+                end
 
                 row.Refresh = function()
                     local id = item.key
@@ -217,7 +267,11 @@ CategoryBuilders.shelf = function(rootCat)
                     local idx = GetKeyIndex(item.key)
                     upBtn:SetEnabled(idx > 1 and GetPrevEnabledIndex(idx) ~= nil)
                     downBtn:SetEnabled(idx > 0 and idx < #shelfOrder and GetNextEnabledIndex(idx) ~= nil)
+                    
+                    UpdateButtonText(leftBtn, "left")
+                    UpdateButtonText(rightBtn, "right")
                 end
+                
                 return row
             end
 

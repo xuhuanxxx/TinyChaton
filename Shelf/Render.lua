@@ -219,6 +219,9 @@ function ShelfButton:Render(props)
         end,
         
         onEnter = function(btnSelf)
+            -- Ensure clicks are registered (fix for right-click issue)
+            btnSelf:RegisterForClicks("AnyUp")
+
             if theme.hoverBorderColor then
                 btnSelf:SetBackdropBorderColor(unpack(theme.hoverBorderColor))
             end
@@ -242,6 +245,8 @@ function ShelfButton:Render(props)
         end,
 
         onShow = function(btnSelf)
+            btnSelf:RegisterForClicks("AnyUp")
+            
             if theme.fontSize then
                 local fs = btnSelf:GetFontString()
                 if fs then

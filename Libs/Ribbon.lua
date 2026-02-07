@@ -186,3 +186,215 @@ function addon.CreateRibbon(parent, tabsConfig, options)
     container:SetActiveTab(1)
     return container
 end
+
+--[[
+    Selection Ribbon Dialog
+    Replaces the old SelectionDialog.
+    Usage:
+    local dialog = addon.CreateSelectionRibbon("MySelectionDialog", UIParent)
+    dialog:Open(items, selectedKey, callback)
+]]
+function addon.CreateSelectionRibbon(name, parent)
+    local f = CreateFrame("Frame", name, parent, "BackdropTemplate")
+    f:SetSize(500, 350)
+    f:SetPoint("CENTER")
+    f:SetFrameStrata("DIALOG")
+    f:EnableMouse(true)
+    f:SetMovable(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f:Hide()
+    
+    f:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 }
+    })
+    f:SetBackdropColor(0, 0, 0, 1)
+    
+    table.insert(UISpecialFrames, f:GetName())
+
+    -- f.Title = f:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    -- f.Title:SetPoint("TOP", 0, -8)
+    -- f.Title:SetText(addon.L["LABEL_SELECT_ACTION"] or "Select Action")
+
+    -- Close Button
+    f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    f.CloseButton:SetSize(24, 24)
+    f.CloseButton:SetPoint("TOPRIGHT", -2, -2)
+
+    -- Fixed Categories for now
+    local CATEGORY_ORDER = { "channel", "join", "leave", "kit" }
+    
+    -- Compact Labels
+    local L = addon.L
+    local COMPACT_LABELS = {
+        channel = "发言",
+        join = "进入",
+        leave = "退出",
+        kit = "工具",
+    }
+    if GetLocale() ~= "zhCN" then
+        COMPACT_LABELS = {
+            channel = "Say",
+            join = "Join",
+            leave = "Leave",
+            kit = "Tools",
+        }
+    end
+    
+    local ribbonTabs = {}
+    for i, cat in ipairs(CATEGORY_ORDER) do
+        table.insert(ribbonTabs, { label = COMPACT_LABELS[cat] or cat, key = cat })
+    end
+
+    f.ribbon = addon.CreateRibbon(f, ribbonTabs, {
+        tabWidth = 80, -- Dynamic?
+        tabHeight = 24,
+        tabSpacing = 2,
+        startX = 10,
+        startY = -10, -- Removed Title, move up
+        onTabChanged = function(index, tab)
+            -- Page switching is handled by ribbon internally
+        end
+    })
+    
+    -- Pre-create pages with ScrollFrames
+    f.pages = {}
+    for i, cat in ipairs(CATEGORY_ORDER) do
+        local pageContainer = f.ribbon:CreateContentPage(i, f, { top = 40, bottom = 40, left = 10, right = 10 })
+        
+        local scroll = CreateFrame("ScrollFrame", nil, pageContainer, "UIPanelScrollFrameTemplate")
+        scroll:SetPoint("TOPLEFT", 0, 0)
+        scroll:SetPoint("BOTTOMRIGHT", -26, 0)
+        
+        local child = CreateFrame("Frame")
+        child:SetSize(460, 1) -- Estimated width
+        scroll:SetScrollChild(child)
+        
+        f.pages[cat] = { container = pageContainer, scroll = scroll, child = child, buttons = {} }
+    end
+    
+    -- Bottom Buttons
+    -- Bottom Buttons
+    f.DefaultButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.DefaultButton:SetSize(100, 22)
+    f.DefaultButton:SetPoint("BOTTOMRIGHT", -20, 10) -- Swapped to Right
+    f.DefaultButton:SetText(L["LABEL_DEFAULT"] or "Default")
+    f.DefaultButton:SetScript("OnClick", function()
+        if f.callback then f.callback(nil) end
+        f:Hide()
+    end)
+
+    f.ClearButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.ClearButton:SetSize(100, 22)
+    f.ClearButton:SetPoint("BOTTOMLEFT", 20, 10) -- Swapped to Left
+    f.ClearButton:SetText(L["LABEL_NONE"] or "None")
+    f.ClearButton:SetScript("OnClick", function()
+        if f.callback then f.callback(false) end
+        f:Hide()
+    end)
+    
+    -- ESC Handling
+    f:EnableKeyboard(true)
+    f:SetScript("OnKeyDown", function(self, key)
+        if key == "ESCAPE" then
+            self:SetPropagateKeyboardInput(false)
+            self:Hide()
+        else
+            self:SetPropagateKeyboardInput(true)
+        end
+    end)
+    
+    
+    function f:Open(items, selectedKey, callback)
+        f.callback = callback
+        f.selectedKey = selectedKey
+        
+        -- Distribute items
+        local categorized = {}
+        for _, cat in ipairs(CATEGORY_ORDER) do categorized[cat] = {} end
+        
+        local defaultCat = "channel"
+        local selectedCat = "channel"
+        
+        for _, item in ipairs(items) do
+            -- Filter out special items (nil/false) as they are now handled by buttons
+            if item.key ~= nil and item.key ~= false then
+                local c = item.category or "other"
+                if not categorized[c] then c = "other" end -- Fallback
+                table.insert(categorized[c], item)
+                
+                if item.key == selectedKey then selectedCat = c end
+            end
+        end
+        
+        -- Render each page
+        for cat, list in pairs(categorized) do
+            local page = f.pages[cat]
+            if page then
+                -- Sort
+                table.sort(list, function(a, b) return (a.label or "") < (b.label or "") end)
+                
+                -- Grid Layout
+                local COLS = 3
+                local ROW_HEIGHT = 28
+                local COL_WIDTH = (page.child:GetWidth()) / COLS
+                
+                -- Hide all existing
+                for _, btn in ipairs(page.buttons) do btn:Hide() end
+                
+                for i, item in ipairs(list) do
+                    local btn = page.buttons[i]
+                    if not btn then
+                        btn = CreateFrame("Button", nil, page.child)
+                        btn:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+                        btn.Text = btn:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+                        btn.Text:SetPoint("LEFT", 4, 0)
+                        btn.Text:SetPoint("RIGHT", -4, 0)
+                        btn.Text:SetJustifyH("LEFT")
+                        btn.Text:SetWordWrap(false)
+                        
+                        btn:SetScript("OnClick", function(self)
+                            if f.callback then f.callback(self.data.key) end
+                            f:Hide()
+                        end)
+                        table.insert(page.buttons, btn)
+                    end
+                    
+                    btn:SetSize(COL_WIDTH, ROW_HEIGHT)
+                    local col = (i - 1) % COLS
+                    local row = math.floor((i - 1) / COLS)
+                    btn:SetPoint("TOPLEFT", col * COL_WIDTH, -(row * ROW_HEIGHT))
+                    
+                    btn.Text:SetText(item.label or item.key)
+                    btn.data = item
+                    
+                    if item.key == selectedKey then
+                        btn.Text:SetTextColor(1, 0.82, 0)
+                    else
+                        btn.Text:SetTextColor(1, 1, 1)
+                    end
+                    
+                    btn:Show()
+                end
+                
+                local totalRows = math.ceil(#list / COLS)
+                page.child:SetHeight(math.max(1, totalRows * ROW_HEIGHT))
+            end
+        end
+        
+        -- Select Tab
+        local tabIdx = 1
+        for i, cat in ipairs(CATEGORY_ORDER) do
+            if cat == selectedCat then tabIdx = i break end
+        end
+        f.ribbon:SetActiveTab(tabIdx)
+        
+        f:Show()
+    end
+    
+    return f
+end

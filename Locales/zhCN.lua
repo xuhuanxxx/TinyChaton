@@ -243,4 +243,15 @@ if GetLocale() == "zhCN" then
     L["KIT_ROLL"] = "Roll点"
     L["KIT_ROLL_SHORT"] = "骰"
     L["KIT_ROLL_TOOLTIP"] = "掷点 (1-100)"
+    L["KIT_ROLL_TOOLTIP"] = "掷点 (1-100)"
+    
+    -- Selection Dialog
+    L["LABEL_SELECT_ACTION"] = "选择动作"
+    L["CATEGORY_channel"] = "频道发言"
+    L["CATEGORY_join"] = "加入频道"
+    L["CATEGORY_leave"] = "离开频道"
+    L["CATEGORY_kit"] = "工具列表"
+    L["CATEGORY_other"] = "其他"
+    L["LABEL_BINDING_LEFT_SHORT"] = "左"
+    L["LABEL_BINDING_RIGHT_SHORT"] = "右"
 end

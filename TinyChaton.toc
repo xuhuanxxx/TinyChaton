@@ -1,0 +1,65 @@
+## Interface: 120000
+## Title: TinyChaton
+## Notes: A lightweight chat addon with copying, emotes, and shelf tools.
+## Notes-zhCN: 聊天增强插件
+## Notes-zhTW: 聊天增強插件
+## Notes-koKR: 가벼운 채팅 강화 애드온
+## Notes-ruRU: Легковесный аддон для чата
+## Notes-deDE: Leichtgewichtiges Chat-Erweiterungs-Addon
+## Category: Chat
+## Category-zhCN: 聊天增强
+## Category-zhTW: 聊天增強
+## Category-koKR: 채팅
+## Category-ruRU: Чат
+## Category-deDE: Chat
+## Author: xuhuaxxx
+## Version: 1.0.0
+## SavedVariables: TinyChatonDB
+## IconTexture: Interface\AddOns\TinyChaton\icon.png
+
+Locales\Init.lua
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Locales\koKR.lua
+Locales\ruRU.lua
+Locales\deDE.lua
+
+
+Libs\Ribbon.lua
+Libs\Registry\Channels.lua
+Libs\Registry\Anchors.lua
+Libs\Registry\Kits.lua
+Libs\Registry\Themes.lua
+Libs\Registry\ColorSets.lua
+Libs\Registry\Settings.lua
+Libs\MultiDropdown\MultiDropdown.xml
+Libs\MultiDropdown\Core.lua
+Libs\TinyReactor\TinyReactor.xml
+
+Config.lua
+Core.lua
+Events.lua
+
+Modules\Utils.lua
+Modules\Visual.lua
+Modules\Filters.lua
+Modules\Highlight.lua
+Modules\Snapshot.lua
+Modules\Copy.lua
+Modules\Emotes.lua
+Modules\Social.lua
+Modules\Tweaks.lua
+
+Shelf\Core.lua
+Shelf\Themes.lua
+Shelf\Render.lua
+
+Settings\Option.lua
+Settings\Pages\General.lua
+Settings\Pages\Filters.lua
+Settings\Pages\Shelf.lua
+Settings\Pages\Chat.lua
+Settings\Pages\Automation.lua
+Settings\Pages\Profile.lua
+Settings.lua

@@ -198,6 +198,14 @@ function ShelfButton:Render(props)
     
     local textColor = addon:GetButtonColor(props.item)
     
+    -- Gray out if inactive
+    -- Gray out if inactive? No, user requested "Cross out" (叉号)
+    -- So we will use an overlay texture instead of dimming.
+    if props.isActive == false then
+        -- Optional: slight dim to make the cross pop more? 
+        -- textColor = { textColor[1], textColor[2], textColor[3], (textColor[4] or 1) * 0.6 }
+    end
+    
     return TR:CreateElement("Button", {
         key = props.key,
         size = {props.size or 30, props.size or 30},
@@ -254,6 +262,33 @@ function ShelfButton:Render(props)
                     -- Use Standard Text Font if theme doesn't specify one, but apply size/outline
                     if not font then font = addon.CONSTANTS.SHELF_DEFAULT_FONT end
                     fs:SetFont(theme.font ~= "" and theme.font or font, theme.fontSize, outline)
+                end
+            end
+        end,
+        
+        -- Use ref to manage the "Cross" overlay for inactive state manually
+        ref = function(btnSelf)
+            if not btnSelf.DisabledOverlay then
+                btnSelf.DisabledOverlay = btnSelf:CreateTexture(nil, "OVERLAY")
+                btnSelf.DisabledOverlay:SetTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
+                btnSelf.DisabledOverlay:SetPoint("CENTER")
+                btnSelf.DisabledOverlay:SetAlpha(0.9)
+            end
+            
+            -- Update size based on current button size
+            local s = (props.size or 30) * 0.8
+            btnSelf.DisabledOverlay:SetSize(s, s)
+            
+            if props.isActive == false then
+                btnSelf.DisabledOverlay:Show()
+                -- Also dim the text slightly
+                if btnSelf:GetFontString() then
+                    btnSelf:GetFontString():SetAlpha(0.5)
+                end
+            else
+                btnSelf.DisabledOverlay:Hide()
+                if btnSelf:GetFontString() then
+                    btnSelf:GetFontString():SetAlpha(1)
                 end
             end
         end,
@@ -331,6 +366,10 @@ function addon.Shelf:Render()
             key = info.key,
             text = info.text,
             item = item,
+            key = info.key,
+            text = info.text,
+            item = item,
+            isActive = info.isActive, -- Pass active state
             size = btnSize,
             theme = currentTheme, -- Pass the theme!
             

@@ -265,7 +265,6 @@ if GetLocale() == "zhTW" then
     L["FONT_CHAT"] = "聊天"
     L["FONT_DAMAGE"] = "傷害"
     L["LABEL_CUSTOM"] = "自定義"
-    L["LABEL_PROFILE_DESC"] = "管理配置方案"
     L["LABEL_SNAPSHOT_CHANNELS_ALL"] = "全部"
     L["LABEL_SNAPSHOT_CHANNELS_NONE"] = "無"
     L["MSG_RESET_ALL_CONFIRM"] = "確定要將所有設置重置為默認值嗎？此操作不可撤銷。"

@@ -269,7 +269,6 @@ if GetLocale() == "koKR" then
     L["FONT_CHAT"] = "채팅"
     L["FONT_DAMAGE"] = "피해"
     L["LABEL_CUSTOM"] = "사용자 정의"
-    L["LABEL_PROFILE_DESC"] = "구성 프로필 관리"
     L["LABEL_SNAPSHOT_CHANNELS_ALL"] = "전체"
     L["LABEL_SNAPSHOT_CHANNELS_NONE"] = "없음"
     L["MSG_RESET_ALL_CONFIRM"] = "모든 설정을 기본값으로 재설정하시겠습니까? 이 작업은 취소할 수 없습니다."

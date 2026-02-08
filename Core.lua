@@ -201,7 +201,169 @@ local function RecursiveSync(target, source, isReset, isPruning)
     end
 end
 
+-- ============================================
+-- Profile Management
+-- ============================================
+function addon:GetCharacterKey()
+    local name = UnitName("player")
+    local realm = GetRealmName()
+    return string.format("%s-%s", name, realm)
+end
+
+function addon:GetCurrentProfile()
+    if not TinyChatonDB.profileKeys then return addon.CONSTANTS.PROFILE_DEFAULT_NAME end
+    local charKey = self:GetCharacterKey()
+    return TinyChatonDB.profileKeys[charKey] or addon.CONSTANTS.PROFILE_DEFAULT_NAME
+end
+
+function addon:SetProfile(profileName)
+    if not TinyChatonDB.profiles or not TinyChatonDB.profiles[profileName] then 
+        return false 
+    end
+    
+    local charKey = self:GetCharacterKey()
+    TinyChatonDB.profileKeys[charKey] = profileName
+    
+    -- Reload profile
+    self:LoadProfile(profileName)
+    self:ApplyAllSettings()
+    
+    return true
+end
+
+function addon:LoadProfile(profileName)
+    local profile = TinyChatonDB.profiles[profileName]
+    if not profile then return end
+    
+    -- Point addon.db to current profile
+    addon.db.enabled = profile.enabled
+    addon.db.plugin = profile.plugin
+    addon.db.system = profile.system
+    addon.db.global = TinyChatonDB.global
+end
+
+function addon:CreateProfile(profileName, copyFrom)
+    if not profileName or profileName == "" then return false, "Invalid profile name" end
+    if #profileName > addon.CONSTANTS.PROFILE_NAME_MAX_LENGTH then 
+        return false, "Profile name too long" 
+    end
+    if TinyChatonDB.profiles[profileName] then 
+        return false, "Profile already exists" 
+    end
+    
+    local sourceProfile = copyFrom and TinyChatonDB.profiles[copyFrom] or TinyChatonDB.profiles[addon.CONSTANTS.PROFILE_DEFAULT_NAME]
+    if not sourceProfile then 
+        return false, "Source profile not found" 
+    end
+    
+    -- Deep copy source profile
+    TinyChatonDB.profiles[profileName] = {
+        enabled = sourceProfile.enabled,
+        plugin = addon.Utils.DeepCopy(sourceProfile.plugin),
+        system = addon.Utils.DeepCopy(sourceProfile.system)
+    }
+    
+    return true
+end
+
+function addon:DeleteProfile(profileName)
+    if profileName == addon.CONSTANTS.PROFILE_DEFAULT_NAME then 
+        return false, "Cannot delete default profile" 
+    end
+    if not TinyChatonDB.profiles[profileName] then 
+        return false, "Profile not found" 
+    end
+    
+    -- Check if any character is using this profile
+    local charKey = self:GetCharacterKey()
+    local isCurrentProfile = (self:GetCurrentProfile() == profileName)
+    
+    -- Delete profile
+    TinyChatonDB.profiles[profileName] = nil
+    
+    -- Update profileKeys (switch affected characters to Default)
+    for key, prof in pairs(TinyChatonDB.profileKeys) do
+        if prof == profileName then
+            TinyChatonDB.profileKeys[key] = addon.CONSTANTS.PROFILE_DEFAULT_NAME
+        end
+    end
+    
+    -- If current character was using this profile, reload Default
+    if isCurrentProfile then
+        self:LoadProfile(addon.CONSTANTS.PROFILE_DEFAULT_NAME)
+        self:ApplyAllSettings()
+    end
+    
+    return true
+end
+
+function addon:RenameProfile(oldName, newName)
+    if oldName == addon.CONSTANTS.PROFILE_DEFAULT_NAME then 
+        return false, "Cannot rename default profile" 
+    end
+    if not TinyChatonDB.profiles[oldName] then 
+        return false, "Profile not found" 
+    end
+    if TinyChatonDB.profiles[newName] then 
+        return false, "New name already exists" 
+    end
+    if not newName or newName == "" then 
+        return false, "Invalid new name" 
+    end
+    if #newName > addon.CONSTANTS.PROFILE_NAME_MAX_LENGTH then 
+        return false, "Profile name too long" 
+    end
+    
+    -- Rename profile
+    TinyChatonDB.profiles[newName] = TinyChatonDB.profiles[oldName]
+    TinyChatonDB.profiles[oldName] = nil
+    
+    -- Update profileKeys
+    for key, prof in pairs(TinyChatonDB.profileKeys) do
+        if prof == oldName then
+            TinyChatonDB.profileKeys[key] = newName
+        end
+    end
+    
+    return true
+end
+
+function addon:GetProfileList()
+    local profiles = {}
+    for name in pairs(TinyChatonDB.profiles or {}) do
+        table.insert(profiles, name)
+    end
+    table.sort(profiles)
+    return profiles
+end
+
+function addon:CopyFromProfile(sourceProfileName)
+    local currentProfileName = self:GetCurrentProfile()
+    
+    if not TinyChatonDB.profiles[sourceProfileName] then 
+        return false, "Source profile not found" 
+    end
+    if sourceProfileName == currentProfileName then
+        return false, "Cannot copy from current profile"
+    end
+    
+    local sourceProfile = TinyChatonDB.profiles[sourceProfileName]
+    local currentProfile = TinyChatonDB.profiles[currentProfileName]
+    
+    -- Deep copy settings from source to current profile
+    currentProfile.plugin = addon.Utils.DeepCopy(sourceProfile.plugin)
+    currentProfile.system = addon.Utils.DeepCopy(sourceProfile.system)
+    
+    -- Reload current profile to apply changes
+    self:LoadProfile(currentProfileName)
+    self:ApplyAllSettings()
+    
+    return true
+end
+
+
 function addon:SynchronizeConfig(isReset)
+
     if not addon.db.plugin then addon.db.plugin = {} end
     if not addon.db.system then addon.db.system = {} end
     if not addon.db.global then addon.db.global = {} end
@@ -233,34 +395,61 @@ function addon:SynchronizeConfig(isReset)
 end
 
 function addon:InitConfig()
-    -- Ensure Config module is fully loaded before proceeding
+    -- Ensure Config module is fully loaded
     if not addon.DEFAULTS then
-        -- Load Config.lua explicitly if not already loaded
         local configLoaded, configErr = pcall(function()
             dofile("Interface\\AddOns\\TinyChaton\\Config.lua")
         end)
         if not configLoaded then
             print("|cFFFF0000TinyChaton Error:|r Failed to load Config: " .. tostring(configErr))
-            -- Still set up basic db even if Config fails
             addon.db = TinyChatonDB or { enabled = false }
             return
         end
     end
     
-    -- Double-check DEFAULTS is available after loading
     if not addon.DEFAULTS then
         print("|cFFFF0000TinyChaton Error:|r Config loaded but DEFAULTS is nil")
-        -- Still set up basic db even if DEFAULTS is missing
         addon.db = TinyChatonDB or { enabled = false }
         return
     end
     
-    -- Storage mode switching removed - always use global database
+    -- Initialize database structure
     TinyChatonDB = TinyChatonDB or {}
-    if not TinyChatonDB.plugin then TinyChatonDB.plugin = {} end
+    
+    -- Initialize global node
     if not TinyChatonDB.global then TinyChatonDB.global = {} end
-    addon.db = TinyChatonDB
-
+    
+    -- Initialize profiles structure
+    if not TinyChatonDB.profiles then
+        TinyChatonDB.profiles = {}
+    end
+    
+    -- Initialize profileKeys
+    if not TinyChatonDB.profileKeys then 
+        TinyChatonDB.profileKeys = {} 
+    end
+    
+    -- Ensure Default profile exists
+    if not TinyChatonDB.profiles[addon.CONSTANTS.PROFILE_DEFAULT_NAME] then
+        TinyChatonDB.profiles[addon.CONSTANTS.PROFILE_DEFAULT_NAME] = {
+            enabled = true,
+            plugin = {},
+            system = {}
+        }
+    end
+    
+    -- Load current character's profile
+    local currentProfile = self:GetCurrentProfile()
+    local profile = TinyChatonDB.profiles[currentProfile]
+    
+    -- Setup addon.db (points to current profile + global)
+    addon.db = {
+        enabled = profile.enabled,
+        plugin = profile.plugin,
+        system = profile.system,
+        global = TinyChatonDB.global
+    }
+    
     self:SynchronizeConfig(false)
 end
 

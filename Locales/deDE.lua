@@ -269,7 +269,6 @@ if GetLocale() == "deDE" then
     L["FONT_CHAT"] = "Chat"
     L["FONT_DAMAGE"] = "Schaden"
     L["LABEL_CUSTOM"] = "Benutzerdefiniert"
-    L["LABEL_PROFILE_DESC"] = "Konfigurationsprofile verwalten"
     L["LABEL_SNAPSHOT_CHANNELS_ALL"] = "Alle"
     L["LABEL_SNAPSHOT_CHANNELS_NONE"] = "Keine"
     L["MSG_RESET_ALL_CONFIRM"] = "Sind Sie sicher, dass Sie alle Einstellungen zurücksetzen möchten? Dies kann nicht rückgängig gemacht werden."

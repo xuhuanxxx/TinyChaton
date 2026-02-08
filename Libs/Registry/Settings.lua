@@ -133,12 +133,12 @@ addon.SETTING_REGISTRY = {
             options = function()
                 local c = Settings.CreateControlTextContainer()
                 local formats = {
-                    { fmt = "%H:%M ",      label = "20:00 (24h)" },
-                    { fmt = "%H:%M:%S ",   label = "20:00:00 (24h)" },
-                    { fmt = "%I:%M ",      label = "08:00 (12h)" },
-                    { fmt = "%I:%M:%S ",   label = "08:00:00 (12h)" },
-                    { fmt = "%I:%M %p ",   label = "08:00 PM" },
-                    { fmt = "%I:%M:%S %p ",label = "08:00:00 PM" },
+                    { fmt = "%I:%M ",       label = "03:27" },
+                    { fmt = "%I:%M:%S ",    label = "03:27:32" },
+                    { fmt = "%I:%M %p ",    label = "03:27 PM" },
+                    { fmt = "%I:%M:%S %p ", label = "03:27:32 PM" },
+                    { fmt = "%H:%M ",       label = "15:27" },
+                    { fmt = "%H:%M:%S ",    label = "15:27:32" },
                 }
                 for _, info in ipairs(formats) do c:Add(info.fmt, info.label) end
                 return c:GetData()

@@ -1,6 +1,20 @@
 local addonName, addon = ...
 local L = addon.L
 
+-- Helper function to get localized welcome templates
+local function GetDefaultWelcomeTemplates(scene)
+    local templates = {}
+    for i = 1, 5 do
+        local key = "WELCOME_TEMPLATE_" .. scene:upper() .. "_" .. i
+        local text = L[key]
+        if text and text ~= key then
+            table.insert(templates, text)
+        end
+    end
+    -- Fallback to empty table if no translations found
+    return #templates > 0 and templates or {}
+end
+
 -- NOTE: Registries moved to Libs/Registry/ directory:
 --   - CHANNEL_REGISTRY -> Libs/Registry/Channels.lua
 --   - KIT_REGISTRY -> Libs/Registry/Kits.lua
@@ -160,9 +174,9 @@ addon.DEFAULTS = {
             autoWelcome = false,
             welcomeCooldownMinutes = 5,
             currentSocialTab = "guild",
-            welcomeGuild  = { enabled = false, sendMode = "channel", templates = {} },
-            welcomeParty  = { enabled = false, sendMode = "channel", templates = {} },
-            welcomeRaid   = { enabled = false, sendMode = "channel", templates = {} },
+            welcomeGuild  = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("guild") end },
+            welcomeParty  = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("party") end },
+            welcomeRaid   = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("raid") end },
             autoJoinChannels = BuildAutoJoinChannels(),
         },
     },

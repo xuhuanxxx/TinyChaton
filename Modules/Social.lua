@@ -37,7 +37,14 @@ local function trySendWelcome(playerName, scene)
     if not addon.db or not addon.db.enabled then return end
     local c = addon.db.plugin.automation
     local cfg = scene == "guild" and c.welcomeGuild or scene == "party" and c.welcomeParty or c.welcomeRaid
-    if not cfg or not cfg.enabled or not cfg.templates or type(cfg.templates) ~= "table" then return end
+    if not cfg or not cfg.enabled then return end
+    
+    -- Handle templates as function or table
+    local templates = cfg.templates
+    if type(templates) == "function" then
+        templates = templates()
+    end
+    if not templates or type(templates) ~= "table" then return end
     
     -- Check permissions: party/raid requires leader, guild does not
     if scene == "party" or scene == "raid" then
@@ -45,14 +52,14 @@ local function trySendWelcome(playerName, scene)
             return
         end
     end
-    local n = #cfg.templates
+    local n = #templates
     if n == 0 then return end
     local cooldownMin = c.welcomeCooldownMinutes or 0
     if cooldownMin > 0 then
         local last = lastWelcome[playerName] or 0
         if (time() - last) < cooldownMin * 60 then return end
     end
-    local line = cfg.templates[math.random(n)]
+    local line = templates[math.random(n)]
     local text = (line or ""):gsub("%%s", playerName)
     if text == "" then return end
     local useWhisper = (cfg.sendMode == "whisper")

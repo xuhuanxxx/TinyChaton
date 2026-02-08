@@ -302,3 +302,22 @@ L["LABEL_COPY_FROM_PROFILE"] = "Copy from Profile"
 L["LABEL_SELECT_PROFILE"] = "-- Select Profile --"
 L["MSG_PROFILE_COPIED"] = "Copied settings from profile '%s'"
 L["TOOLTIP_COPY_FROM_PROFILE"] = "Copy all settings from another profile to the current profile"
+
+-- Default welcome message templates
+L["WELCOME_TEMPLATE_GUILD_1"] = "Welcome %s to the guild!"
+L["WELCOME_TEMPLATE_GUILD_2"] = "Hey %s, welcome!"
+L["WELCOME_TEMPLATE_GUILD_3"] = "%s has arrived, everyone welcome!"
+L["WELCOME_TEMPLATE_GUILD_4"] = "Welcome %s, enjoy your stay!"
+L["WELCOME_TEMPLATE_GUILD_5"] = "Yo %s, finally here!"
+
+L["WELCOME_TEMPLATE_PARTY_1"] = "Welcome %s to the party!"
+L["WELCOME_TEMPLATE_PARTY_2"] = "Hey %s, welcome!"
+L["WELCOME_TEMPLATE_PARTY_3"] = "%s has joined, let's go!"
+L["WELCOME_TEMPLATE_PARTY_4"] = "Welcome %s, good luck!"
+L["WELCOME_TEMPLATE_PARTY_5"] = "Yo %s, glad you're here!"
+
+L["WELCOME_TEMPLATE_RAID_1"] = "Welcome %s to the raid!"
+L["WELCOME_TEMPLATE_RAID_2"] = "Hey %s, welcome!"
+L["WELCOME_TEMPLATE_RAID_3"] = "%s has joined the team!"
+L["WELCOME_TEMPLATE_RAID_4"] = "Welcome %s, let's defeat the boss!"
+L["WELCOME_TEMPLATE_RAID_5"] = "Yo %s, raid starts soon!"

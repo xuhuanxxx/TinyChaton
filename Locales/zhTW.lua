@@ -275,4 +275,23 @@ if GetLocale() == "zhTW" then
     L["SECTION_CHAT_FONT"] = "字體設置"
     L["SECTION_CHAT_INTERACTION"] = "互動"
     L["SECTION_RESET"] = "重置設置"
+
+    -- 默認歡迎語模板
+    L["WELCOME_TEMPLATE_GUILD_1"] = "歡迎 %s 加入我們！"
+    L["WELCOME_TEMPLATE_GUILD_2"] = "嘿，%s，歡迎歡迎！"
+    L["WELCOME_TEMPLATE_GUILD_3"] = "%s 來了，大家熱烈歡迎！"
+    L["WELCOME_TEMPLATE_GUILD_4"] = "歡迎 %s，祝你遊戲愉快！"
+    L["WELCOME_TEMPLATE_GUILD_5"] = "喲，%s，終於等到你了！"
+    
+    L["WELCOME_TEMPLATE_PARTY_1"] = "歡迎 %s 加入小隊！"
+    L["WELCOME_TEMPLATE_PARTY_2"] = "嘿，%s，歡迎歡迎！"
+    L["WELCOME_TEMPLATE_PARTY_3"] = "%s 來了，大家熱烈歡迎！"
+    L["WELCOME_TEMPLATE_PARTY_4"] = "歡迎 %s，祝你遊戲愉快！"
+    L["WELCOME_TEMPLATE_PARTY_5"] = "喲，%s，終於等到你了！"
+    
+    L["WELCOME_TEMPLATE_RAID_1"] = "歡迎 %s 加入團隊！"
+    L["WELCOME_TEMPLATE_RAID_2"] = "嘿，%s，歡迎歡迎！"
+    L["WELCOME_TEMPLATE_RAID_3"] = "%s 來了，大家熱烈歡迎！"
+    L["WELCOME_TEMPLATE_RAID_4"] = "歡迎 %s，祝你遊戲愉快！"
+    L["WELCOME_TEMPLATE_RAID_5"] = "喲，%s，終於等到你了！"
 end

@@ -469,6 +469,10 @@ function addon.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
     EditorFrame.validateFunc = validateFunc
     
     local t = dbTable[dbKey]
+    -- Handle function-type templates (returns default values)
+    if type(t) == "function" then
+        t = t()
+    end
     if type(t) == "table" then
         local lines = {}
         for _, v in ipairs(t) do if v and v ~= "" then table.insert(lines, v) end end

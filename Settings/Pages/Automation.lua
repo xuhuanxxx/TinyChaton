@@ -60,6 +60,19 @@ CategoryBuilders.automation = function(rootCat)
         if not db then return end
         local cfg = (db.currentSocialTab == "guild" and db.welcomeGuild) or 
                     (db.currentSocialTab == "party" and db.welcomeParty) or db.welcomeRaid
+        -- Initialize templates with defaults if empty/nil
+        if cfg then
+            local templates = cfg.templates
+            if type(templates) == "function" then
+                cfg.templates = templates()
+            elseif type(templates) ~= "table" or #templates == 0 then
+                -- Get defaults from DEFAULTS
+                local defaultTemplates = addon.DEFAULTS.plugin.automation["welcome" .. (db.currentSocialTab:gsub("^%l", string.upper))].templates
+                if type(defaultTemplates) == "function" then
+                    cfg.templates = defaultTemplates()
+                end
+            end
+        end
         local label = db.currentSocialTab == "guild" and L["LABEL_WELCOME_GUILD"] or 
                       db.currentSocialTab == "party" and L["LABEL_WELCOME_PARTY"] or L["LABEL_WELCOME_RAID"]
         addon.ShowEditor(label, cfg, "templates", L["LABEL_WELCOME_TEMPLATE_HINT"])

@@ -280,4 +280,23 @@ if GetLocale() == "deDE" then
     L["SECTION_CHAT_INTERACTION"] = "Interaktion"
     L["LABEL_TIMESTAMP_ENABLED"] = "Zeitstempel anzeigen"
     L["SECTION_RESET"] = "Einstellungen zurücksetzen"
+
+    -- Standard-Willkommensnachrichten-Vorlagen
+    L["WELCOME_TEMPLATE_GUILD_1"] = "Willkommen in der Gilde, %s!"
+    L["WELCOME_TEMPLATE_GUILD_2"] = "Hey %s, willkommen!"
+    L["WELCOME_TEMPLATE_GUILD_3"] = "%s ist angekommen, alle begrüßen!"
+    L["WELCOME_TEMPLATE_GUILD_4"] = "Willkommen %s, viel Spaß!"
+    L["WELCOME_TEMPLATE_GUILD_5"] = "Yo %s, endlich da!"
+    
+    L["WELCOME_TEMPLATE_PARTY_1"] = "Willkommen in der Gruppe, %s!"
+    L["WELCOME_TEMPLATE_PARTY_2"] = "Hey %s, willkommen!"
+    L["WELCOME_TEMPLATE_PARTY_3"] = "%s ist beigetreten, los geht's!"
+    L["WELCOME_TEMPLATE_PARTY_4"] = "Willkommen %s, viel Glück!"
+    L["WELCOME_TEMPLATE_PARTY_5"] = "Yo %s, schön dass du da bist!"
+    
+    L["WELCOME_TEMPLATE_RAID_1"] = "Willkommen im Schlachtzug, %s!"
+    L["WELCOME_TEMPLATE_RAID_2"] = "Hey %s, willkommen!"
+    L["WELCOME_TEMPLATE_RAID_3"] = "%s ist dem Team beigetreten!"
+    L["WELCOME_TEMPLATE_RAID_4"] = "Willkommen %s, besiegen wir den Boss!"
+    L["WELCOME_TEMPLATE_RAID_5"] = "Yo %s, Raid beginnt bald!"
 end

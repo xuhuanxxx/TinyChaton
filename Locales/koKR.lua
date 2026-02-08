@@ -280,4 +280,23 @@ if GetLocale() == "koKR" then
     L["SECTION_CHAT_INTERACTION"] = "상호작용"
     L["LABEL_TIMESTAMP_ENABLED"] = "Show Timestamps"
     L["SECTION_RESET"] = "설정 재설정"
+
+    -- 기본 환영 메시지 템플릿
+    L["WELCOME_TEMPLATE_GUILD_1"] = "%s 님, 길드에 오신 것을 환영합니다!"
+    L["WELCOME_TEMPLATE_GUILD_2"] = "안녕하세요 %s 님, 환영합니다!"
+    L["WELCOME_TEMPLATE_GUILD_3"] = "%s 님이 도착했습니다, 모두 환영해주세요!"
+    L["WELCOME_TEMPLATE_GUILD_4"] = "%s 님, 즐거운 시간 되세요!"
+    L["WELCOME_TEMPLATE_GUILD_5"] = "%s 님, 기다렸어요!"
+    
+    L["WELCOME_TEMPLATE_PARTY_1"] = "%s 님, 파티에 오신 것을 환영합니다!"
+    L["WELCOME_TEMPLATE_PARTY_2"] = "안녕하세요 %s 님, 환영합니다!"
+    L["WELCOME_TEMPLATE_PARTY_3"] = "%s 님이 합류했습니다, 출발합시다!"
+    L["WELCOME_TEMPLATE_PARTY_4"] = "%s 님, 행운을 빌어요!"
+    L["WELCOME_TEMPLATE_PARTY_5"] = "%s 님, 와주셔서 감사합니다!"
+    
+    L["WELCOME_TEMPLATE_RAID_1"] = "%s 님, 공격대에 오신 것을 환영합니다!"
+    L["WELCOME_TEMPLATE_RAID_2"] = "안녕하세요 %s 님, 환영합니다!"
+    L["WELCOME_TEMPLATE_RAID_3"] = "%s 님이 팀에 합류했습니다!"
+    L["WELCOME_TEMPLATE_RAID_4"] = "%s 님, 보스를 물리칩시다!"
+    L["WELCOME_TEMPLATE_RAID_5"] = "%s 님, 곧 시작합니다!"
 end

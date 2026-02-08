@@ -300,4 +300,23 @@ if GetLocale() == "zhCN" then
     L["LABEL_SELECT_PROFILE"] = "-- 选择配置 --"
     L["MSG_PROFILE_COPIED"] = "已从配置 '%s' 复制设置"
     L["TOOLTIP_COPY_FROM_PROFILE"] = "从其他配置复制所有设置到当前配置"
+
+    -- 默认欢迎语模板
+    L["WELCOME_TEMPLATE_GUILD_1"] = "欢迎 %s 加入我们！"
+    L["WELCOME_TEMPLATE_GUILD_2"] = "嘿，%s，欢迎欢迎！"
+    L["WELCOME_TEMPLATE_GUILD_3"] = "%s 来了，大家热烈欢迎！"
+    L["WELCOME_TEMPLATE_GUILD_4"] = "欢迎 %s，祝你游戏愉快！"
+    L["WELCOME_TEMPLATE_GUILD_5"] = "哟，%s，终于等到你了！"
+    
+    L["WELCOME_TEMPLATE_PARTY_1"] = "欢迎 %s 加入小队！"
+    L["WELCOME_TEMPLATE_PARTY_2"] = "嘿，%s，欢迎欢迎！"
+    L["WELCOME_TEMPLATE_PARTY_3"] = "%s 来了，大家热烈欢迎！"
+    L["WELCOME_TEMPLATE_PARTY_4"] = "欢迎 %s，祝你游戏愉快！"
+    L["WELCOME_TEMPLATE_PARTY_5"] = "哟，%s，终于等到你了！"
+    
+    L["WELCOME_TEMPLATE_RAID_1"] = "欢迎 %s 加入团队！"
+    L["WELCOME_TEMPLATE_RAID_2"] = "嘿，%s，欢迎欢迎！"
+    L["WELCOME_TEMPLATE_RAID_3"] = "%s 来了，大家热烈欢迎！"
+    L["WELCOME_TEMPLATE_RAID_4"] = "欢迎 %s，祝你游戏愉快！"
+    L["WELCOME_TEMPLATE_RAID_5"] = "哟，%s，终于等到你了！"
 end

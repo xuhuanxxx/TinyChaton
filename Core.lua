@@ -109,10 +109,8 @@ function addon:OnInitialize()
 
     if not addon.db.enabled then
         print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_DISABLED"])
-        if addon.RegisterSettings then 
-            pcall(addon.RegisterSettings, addon)
-        end
-        return
+    else
+        print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_LOADED"])
     end
 
     addon:SetupChatFrameHooks()
@@ -123,6 +121,7 @@ function addon:OnInitialize()
     end
     
     -- Register modules in load order
+    -- Note: Modules should check addon.db.enabled internally
     addon.MODULES = { "Filters", "Highlight", "Snapshot", "Copy", "Emotes", "Social", "Tweaks", "Shelf" }
     for _, module in ipairs(addon.MODULES) do
         local fn = addon["Init" .. module]
@@ -135,8 +134,6 @@ function addon:OnInitialize()
     end
 
     addon:ApplyAllSettings()
-
-    print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_LOADED"])
 end
 
 -- Resolve channel display name based on format setting
@@ -191,6 +188,9 @@ end
 local function RecursiveSync(target, source, isReset, isPruning)
     if not target or not source then return end
 
+    -- Determine if the source is an empty table (likely a user-defined container)
+    local sourceIsEmpty = (next(source) == nil)
+
     for k, v in pairs(source) do
         if type(v) == "table" then
             if type(target[k]) ~= "table" then
@@ -204,9 +204,11 @@ local function RecursiveSync(target, source, isReset, isPruning)
         end
     end
 
-    if isPruning then
+    -- Pruning: Remove keys in target that are not in source
+    -- Skip pruning for empty source tables (containers) or for numeric indices (lists)
+    if isPruning and not sourceIsEmpty then
         for k, v in pairs(target) do
-            if source[k] == nil then
+            if source[k] == nil and type(k) == "string" then
                 target[k] = nil
             end
         end

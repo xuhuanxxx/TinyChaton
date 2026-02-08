@@ -19,6 +19,7 @@ CategoryBuilders.filters = function(rootCat)
     -- Blocklist Section
     addon.AddSectionHeader(cat, L["SECTION_BLOCKLIST"])
     addon.AddAddOnCheckbox(cat, P .. "block_enabled", "plugin.filter.block", "enabled", L["LABEL_ENABLED"], false, nil)
+    addon.AddAddOnCheckbox(cat, P .. "block_inverse", "plugin.filter.block", "inverse", L["LABEL_BLOCK_INVERSE"], false, L["LABEL_BLOCK_INVERSE_DESC"])
     
     addon.AddNativeButton(cat, L["LABEL_BLOCK_NAMES"], L["ACTION_EDIT"], function()
         local db = addon.GetTableFromPath("plugin.filter.block")

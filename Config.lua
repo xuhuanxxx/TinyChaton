@@ -208,14 +208,12 @@ local function BuildChatEvents()
     
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
         for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
-            for subKey, subCategory in pairs(category) do
-                for _, stream in ipairs(subCategory) do
-                    if stream.events then
-                        for _, event in ipairs(stream.events) do
-                            if not eventSet[event] then
-                                eventSet[event] = true
-                                table.insert(events, event)
-                            end
+            for _, stream in ipairs(category) do
+                if stream.events then
+                    for _, event in ipairs(stream.events) do
+                        if not eventSet[event] then
+                            eventSet[event] = true
+                            table.insert(events, event)
                         end
                     end
                 end
@@ -234,10 +232,8 @@ local function BuildChannelPins()
     
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
         for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
-            for subKey, subCategory in pairs(category) do
-                for _, stream in ipairs(subCategory) do
-                    pins[stream.key] = addon:GetStreamProperty(stream, "defaultPinned", false)
-                end
+            for _, stream in ipairs(category) do
+                pins[stream.key] = addon:GetStreamProperty(stream, "defaultPinned", false)
             end
         end
     end
@@ -258,10 +254,8 @@ local function BuildSnapshotChannels()
     
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
         for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
-            for subKey, subCategory in pairs(category) do
-                for _, stream in ipairs(subCategory) do
-                    channels[stream.key] = addon:GetStreamProperty(stream, "defaultSnapshotted", false)
-                end
+            for _, stream in ipairs(category) do
+                channels[stream.key] = addon:GetStreamProperty(stream, "defaultSnapshotted", false)
             end
         end
     end
@@ -335,6 +329,7 @@ addon.DEFAULTS = {
             repeatFilter = true,
             block = {
                 enabled = false,
+                inverse = false,
                 names = {},
                 keywords = {},
             },

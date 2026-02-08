@@ -10,9 +10,13 @@ local ruleCache = {
     version = 0,
 }
 
--- Check if a pattern is valid regex
-local function IsValidRegex(pattern)
+-- Check if a pattern is actually a Lüa pattern (contains special characters)
+local function IsLuaPattern(pattern)
     if not pattern or pattern == "" then return false end
+    -- If it doesn't contain any magic characters, it's not a pattern we need string.match for
+    if not string.find(pattern, "[%^%$%(%)%%%.%[%]%*%+%-%?]") then
+        return false
+    end
     local success = pcall(function() return string.match("", pattern) end)
     return success
 end
@@ -23,7 +27,7 @@ local function PreprocessRules(ruleList)
     local processed = {}
     for _, rule in pairs(ruleList) do
         if rule and rule ~= "" then
-            local isRegex = IsValidRegex(rule)
+            local isRegex = IsLuaPattern(rule)
             table.insert(processed, {
                 pattern = rule,
                 patternLower = string.lower(rule),
@@ -40,8 +44,9 @@ local function GetRuleCache()
     if not blockConfig then return nil end
     
     -- Simple version check: rebuild if config tables changed
-    local currentVersion = (blockConfig.names and #blockConfig.names or 0) + 
-                          (blockConfig.keywords and #blockConfig.keywords or 0)
+    -- Use a combined string hash or just the concat of all words as version?
+    -- Actually, simpler: just use a unique counter that increments on ApplyFilterSettings
+    local currentVersion = addon.FilterVersion or 0
     
     if ruleCache.version ~= currentVersion or not ruleCache.blockNames then
         ruleCache.blockNames = PreprocessRules(blockConfig.names)
@@ -54,9 +59,10 @@ end
 
 -- Invalidate cache (call when config changes)
 function addon:InvalidateFilterCache()
-    ruleCache.version = 0
+    ruleCache.version = -1
     ruleCache.blockNames = nil
     ruleCache.blockKeywords = nil
+    addon.FilterVersion = (addon.FilterVersion or 0) + 1
 end
 
 -- Match a single preprocessed rule against text
@@ -133,12 +139,9 @@ local function ShouldBlock(captureResult, blockConfig)
         shouldBlock = true
     end
     
-    -- Inverse logic: Block if not matched
+    -- Inverse logic: Block if not matched (Whitelist Mode)
     if blockConfig.inverse then
-        shouldBlock = captureResult.matched and shouldBlock
-        if not captureResult.matched then
-            shouldBlock = true
-        end
+        return not captureResult.matched
     end
     
     return shouldBlock
@@ -157,7 +160,7 @@ local function StripRedundantSenderPrefix(self, event, msg, author, ...)
 end
 
 local function FilterFunc(self, event, msg, author, ...)
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.filter.enabled then
+    if not addon.db or not addon.db.enabled then
         return false, msg, author, ...
     end
     
@@ -205,6 +208,19 @@ end
 
 function addon:InitFilters()
     local events = addon.CHAT_EVENTS or {}
+    -- Fallback if CHAT_EVENTS is empty
+    if #events == 0 and addon.STREAM_REGISTRY then
+        for _, category in pairs(addon.STREAM_REGISTRY.CHANNEL or {}) do
+            for _, stream in ipairs(category) do
+                if stream.events then
+                    for _, ev in ipairs(stream.events) do
+                        table.insert(events, ev)
+                    end
+                end
+            end
+        end
+    end
+    
     for _, event in ipairs(events) do
         ChatFrame_AddMessageEventFilter(event, StripRedundantSenderPrefix)
         ChatFrame_AddMessageEventFilter(event, FilterFunc)

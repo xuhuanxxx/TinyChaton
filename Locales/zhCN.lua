@@ -80,6 +80,8 @@ if GetLocale() == "zhCN" then
     L["LABEL_BINDING_RIGHT"] = "右键"
     L["LABEL_BLOCK_KEYWORDS"] = "关键词"
     L["LABEL_BLOCK_KEYWORDS_HINT"] = "每行一个关键词"
+    L["LABEL_BLOCK_INVERSE"] = "反向过滤 (白名单模式)"
+    L["LABEL_BLOCK_INVERSE_DESC"] = "启用后，仅允许匹配以上规则的消息通过，拦截其他所有消息。"
     L["LABEL_BLOCK_NAMES"] = "名称"
     L["LABEL_BLOCK_NAMES_HINT"] = "每行一个姓名"
     L["LABEL_STREAM_FORMAT_FULL_LABEL"] = "全称"

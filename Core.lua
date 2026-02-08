@@ -68,6 +68,7 @@ function addon:SetupChatFrameHooks()
     end
 end
 
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, ...)
@@ -80,7 +81,13 @@ f:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
+-- =========================================================================
+-- Stream Registry Helper Functions
+-- 通过层级位置推导能力，而非依赖布尔标志
+-- =========================================================================
 
+-- 获取指定 key 在 STREAM_REGISTRY 中的完整路径
+-- 返回格式: "CHANNEL.SYSTEM", "CHANNEL.DYNAMIC", "NOTICE.ALERT" 等
 
 function addon:OnInitialize()
     if addon.InitConfig then addon:InitConfig() end
@@ -109,6 +116,11 @@ function addon:OnInitialize()
     end
 
     addon:SetupChatFrameHooks()
+    
+    -- 初始化事件分发器（基于 STREAM_REGISTRY 自动注册过滤器）
+    if addon.InitializeEventDispatcher then
+        addon:InitializeEventDispatcher()
+    end
     
     -- Register modules in load order
     addon.MODULES = { "Filters", "Highlight", "Snapshot", "Copy", "Emotes", "Social", "Tweaks", "Shelf" }

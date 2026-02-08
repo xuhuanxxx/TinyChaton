@@ -91,14 +91,14 @@ local function GetJoinedChannelNameById(id)
 end
 
 local CHAT_TYPE_TO_LKEY = {
-    CHAT_GUILD_GET = "CHANNEL_GUILD_SHORT", CHAT_OFFICER_GET = "CHANNEL_OFFICER_SHORT",
-    CHAT_PARTY_GET = "CHANNEL_PARTY_SHORT", CHAT_PARTY_LEADER_GET = "CHANNEL_PARTY_SHORT", CHAT_MONSTER_PARTY_GET = "CHANNEL_PARTY_SHORT", CHAT_PARTY_GUIDE_GET = "CHANNEL_INSTANCE_SHORT",
-    CHAT_RAID_GET = "CHANNEL_RAID_SHORT", CHAT_RAID_LEADER_GET = "CHANNEL_RAID_SHORT", CHAT_RAID_WARNING_GET = "CHANNEL_RAID_SHORT",
-    CHAT_INSTANCE_CHAT_GET = "CHANNEL_INSTANCE_SHORT", CHAT_INSTANCE_CHAT_LEADER_GET = "CHANNEL_INSTANCE_SHORT",
-    CHAT_SAY_GET = "CHANNEL_SAY_SHORT", CHAT_MONSTER_SAY_GET = "CHANNEL_SAY_SHORT",
-    CHAT_YELL_GET = "CHANNEL_YELL_SHORT", CHAT_MONSTER_YELL_GET = "CHANNEL_YELL_SHORT",
-    CHAT_WHISPER_GET = "CHANNEL_WHISPER_SHORT", CHAT_WHISPER_INFORM_GET = "CHANNEL_WHISPER_SHORT", CHAT_MONSTER_WHISPER_GET = "CHANNEL_WHISPER_SHORT",
-    CHAT_BN_WHISPER_GET = "CHANNEL_WHISPER_SHORT", CHAT_BN_WHISPER_INFORM_GET = "CHANNEL_WHISPER_SHORT",
+    CHAT_GUILD_GET = "STREAM_GUILD_SHORT", CHAT_OFFICER_GET = "STREAM_OFFICER_SHORT",
+    CHAT_PARTY_GET = "STREAM_PARTY_SHORT", CHAT_PARTY_LEADER_GET = "STREAM_PARTY_SHORT", CHAT_MONSTER_PARTY_GET = "STREAM_PARTY_SHORT", CHAT_PARTY_GUIDE_GET = "STREAM_INSTANCE_SHORT",
+    CHAT_RAID_GET = "STREAM_RAID_SHORT", CHAT_RAID_LEADER_GET = "STREAM_RAID_SHORT", CHAT_RAID_WARNING_GET = "STREAM_RAID_SHORT",
+    CHAT_INSTANCE_CHAT_GET = "STREAM_INSTANCE_SHORT", CHAT_INSTANCE_CHAT_LEADER_GET = "STREAM_INSTANCE_SHORT",
+    CHAT_SAY_GET = "STREAM_SAY_SHORT", CHAT_MONSTER_SAY_GET = "STREAM_SAY_SHORT",
+    CHAT_YELL_GET = "STREAM_YELL_SHORT", CHAT_MONSTER_YELL_GET = "STREAM_YELL_SHORT",
+    CHAT_WHISPER_GET = "STREAM_WHISPER_SHORT", CHAT_WHISPER_INFORM_GET = "STREAM_WHISPER_SHORT", CHAT_MONSTER_WHISPER_GET = "STREAM_WHISPER_SHORT",
+    CHAT_BN_WHISPER_GET = "STREAM_WHISPER_SHORT", CHAT_BN_WHISPER_INFORM_GET = "STREAM_WHISPER_SHORT",
 }
 
 local function ApplyShortChannelGlobals()
@@ -158,13 +158,13 @@ local function ShortenChannelString(str, fmt)
     -- This is the most reliable method when we only have a number
     local item
     if id then
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY or {}) do
-            if reg.mappingKey and reg.isDynamic then
-                local realName = L[reg.mappingKey]
+        for _, stream, catKey, subKey in addon:IterateAllStreams() do
+            if subKey == "DYNAMIC" and stream.mappingKey then
+                local realName = L[stream.mappingKey]
                 if realName then
                     local chanId = GetChannelName(realName)
                     if chanId == id then
-                        item = reg
+                        item = stream
                         break
                     end
                 end
@@ -175,26 +175,26 @@ local function ShortenChannelString(str, fmt)
     -- If reverse lookup failed and we have a name, try name matching
     if not item and name and name ~= "" then
         local normalizedName = addon.Utils.NormalizeChannelBaseName(name)
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY or {}) do
+        for _, stream, catKey, subKey in addon:IterateAllStreams() do
             -- Match by label
-            if reg.label == normalizedName then
-                item = reg
+            if stream.label == normalizedName then
+                item = stream
                 break
             end
             -- Match by real channel name (for dynamic channels)
-            if reg.mappingKey then
-                local realName = L[reg.mappingKey]
+            if stream.mappingKey then
+                local realName = L[stream.mappingKey]
                 if realName == normalizedName then
-                    item = reg
+                    item = stream
                     break
                 end
                 -- Also try partial match
                 if realName and normalizedName:find(realName, 1, true) == 1 then
-                    item = reg
+                    item = stream
                     break
                 end
                 if realName and realName:find(normalizedName, 1, true) == 1 then
-                    item = reg
+                    item = stream
                     break
                 end
             end
@@ -308,20 +308,14 @@ function addon:ApplyChannelNameHooks()
         ChatFrame_ResolveChannelName = function(name)
             local fmt = addon.db and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat or "SHORT"
             if fmt ~= "NONE" and name then
-                for _, reg in ipairs(addon.CHANNEL_REGISTRY or {}) do
-                    if reg.label == name then
-                        return addon:GetChannelLabel(reg, nil)
+                for _, stream, catKey, subKey in addon:IterateAllStreams() do
+                    if stream.label == name then
+                        return addon:GetChannelLabel(stream, nil)
                     end
-                    if reg.mappingKey then
-                        local realName = L[reg.mappingKey]
-                        if realName == name then
-                            return addon:GetChannelLabel(reg, nil)
-                        end
-                        if realName and name:find(realName, 1, true) == 1 then
-                            return addon:GetChannelLabel(reg, nil)
-                        end
-                        if realName and realName:find(name, 1, true) == 1 then
-                            return addon:GetChannelLabel(reg, nil)
+                    if stream.mappingKey then
+                        local realName = L[stream.mappingKey]
+                        if realName == name or (realName and (name:find(realName, 1, true) == 1 or realName:find(name, 1, true) == 1)) then
+                            return addon:GetChannelLabel(stream, nil)
                         end
                     end
                 end
@@ -385,13 +379,13 @@ function addon:ResolveShortPrefixed(communityChannel)
                         return short
                     end
                 end
-                for _, reg in ipairs(addon.CHANNEL_REGISTRY or {}) do
-                    if reg.mappingKey and reg.isDynamic then
-                        local realName = L[reg.mappingKey]
+                for _, stream, catKey, subKey in addon:IterateAllStreams() do
+                    if subKey == "DYNAMIC" and stream.mappingKey then
+                        local realName = L[stream.mappingKey]
                         if realName then
                             local chanId = GetChannelName(realName)
                             if chanId == id then
-                                return addon:GetChannelLabel(reg, nil)
+                                return addon:GetChannelLabel(stream, nil)
                             end
                         end
                     end

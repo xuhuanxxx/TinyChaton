@@ -68,15 +68,22 @@ function addon.Shelf:GetOrder()
     local items = {}
     
     -- Ensure registries are loaded
-    if not addon.CHANNEL_REGISTRY or not addon.KIT_REGISTRY then
+    local hasStreamRegistry = addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL
+    local hasKitRegistry = addon.KIT_REGISTRY
+    
+    if not hasStreamRegistry or not hasKitRegistry then
         return {}
     end
     
-    -- Get all channels
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if reg.isSystem or reg.isDynamic then
-            table.insert(items, { key = reg.key, order = reg.order or 0, type = "channel" })
-        end
+    -- Get all channels from STREAM_REGISTRY
+    -- Get CHANNEL.SYSTEM streams
+    for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.SYSTEM or {}) do
+        table.insert(items, { key = stream.key, order = stream.order or 0, type = "channel" })
+    end
+    
+    -- Get CHANNEL.DYNAMIC streams
+    for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.DYNAMIC or {}) do
+        table.insert(items, { key = stream.key, order = stream.order or 0, type = "channel" })
     end
     
     -- Get all kits
@@ -96,69 +103,134 @@ function addon.Shelf:GetOrder()
 end
 
 function addon.Shelf:GetItemConfig(key)
-    -- Ensure registries are loaded
-    if not addon.CHANNEL_REGISTRY or not addon.KIT_REGISTRY then
-        return nil
-    end
-    
     local bindings = (addon.db and addon.db.plugin and addon.db.plugin.shelf and addon.db.plugin.shelf.bindings) or {}
     local customBind = bindings[key]
     
-    -- Check CHANNEL_REGISTRY
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if reg.key == key and (reg.isSystem or reg.isDynamic) then
-            local defBindings = reg.defaultBindings or {}
+    -- Try to find Stream first (new architecture)
+    local stream = addon:GetStreamByKey(key)
+    if stream and addon:IsChannelStream(key) then
+        local defBindings = stream.defaultBindings or {}
+        
+        -- Resolve Actions
+        local leftAction, rightAction
+        
+        -- Helper to map shorthand to full action key
+        local function MapAction(actionKey, itemKey)
+            if not actionKey then return nil end
+            if actionKey == false then return false end -- Explicit Unbind
             
-            -- Resolve Actions
-            local leftAction, rightAction
+            -- Check if it's already a full key (from custom binding)
+            if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
+                return actionKey
+            end
             
-            -- Helper to map shorthand to full action key
-            local function MapAction(actionKey, typePrefix, itemKey)
-                if not actionKey then return nil end
-                if actionKey == false then return false end -- Explicit Unbind
-                
-                -- Check if it's already a full key (from custom binding)
-                if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
-                    return actionKey
-                end
-                
-                -- Otherwise map short key
-                if typePrefix == "channel" then
-                    if actionKey == "send" then return "sendTo_" .. itemKey
-                    elseif actionKey == "join" then return "join_" .. itemKey
-                    elseif actionKey == "leave" then return "leave_" .. itemKey
-                    else return "channel_" .. itemKey .. "_" .. actionKey end
+            -- Map short key to full ACTION key
+            if actionKey == "send" then 
+                -- Check if this is a special stream (whisper, emote)
+                if itemKey == "whisper" or itemKey == "bn_whisper" then
+                    return "whisper_send_" .. itemKey
+                elseif itemKey == "emote" then
+                    return "emote_send_" .. itemKey
                 else
-                     return "kit_" .. itemKey .. "_" .. actionKey
+                    return "send_" .. itemKey
                 end
+            elseif actionKey == "join" then 
+                return "join_" .. itemKey
+            elseif actionKey == "leave" then 
+                return "leave_" .. itemKey
+            else 
+                return "channel_" .. itemKey .. "_" .. actionKey 
             end
-            
-            -- 1. Left Click
-            if customBind and customBind.left ~= nil then
-                leftAction = customBind.left -- Can be false or string
-            else
-                leftAction = MapAction(defBindings.left, "channel", key)
+        end
+        
+        -- 1. Left Click
+        if customBind and customBind.left ~= nil then
+            leftAction = customBind.left
+        else
+            leftAction = MapAction(defBindings.left, key)
+        end
+        
+        -- 2. Right Click
+        if customBind and customBind.right ~= nil then
+            rightAction = customBind.right
+        else
+            rightAction = MapAction(defBindings.right, key)
+        end
+        
+        -- Determine if dynamic
+        local path = addon:GetStreamPath(key)
+        local isDynamic = path and path:match("%.DYNAMIC$") ~= nil
+        
+        return {
+            type = "channel",
+            key = stream.key,
+            label = stream.label,
+            shortKey = stream.shortKey,
+            colors = stream.colors,
+            isDynamic = isDynamic,
+            mappingKey = stream.mappingKey,
+            leftClick = leftAction,
+            rightClick = rightAction,
+        }
+    end
+    
+    -- Fallback to old CHANNEL_REGISTRY
+    if addon.CHANNEL_REGISTRY then
+        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
+            if reg.key == key and (reg.isSystem or reg.isDynamic) then
+                local defBindings = reg.defaultBindings or {}
+                
+                -- Resolve Actions
+                local leftAction, rightAction
+                
+                -- Helper to map shorthand to full action key
+                local function MapAction(actionKey, typePrefix, itemKey)
+                    if not actionKey then return nil end
+                    if actionKey == false then return false end -- Explicit Unbind
+                    
+                    -- Check if it's already a full key (from custom binding)
+                    if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
+                        return actionKey
+                    end
+                    
+                    -- Otherwise map short key
+                    if typePrefix == "channel" then
+                        if actionKey == "send" then return "sendTo_" .. itemKey
+                        elseif actionKey == "join" then return "join_" .. itemKey
+                        elseif actionKey == "leave" then return "leave_" .. itemKey
+                        else return "channel_" .. itemKey .. "_" .. actionKey end
+                    else
+                         return "kit_" .. itemKey .. "_" .. actionKey
+                    end
+                end
+                
+                -- 1. Left Click
+                if customBind and customBind.left ~= nil then
+                    leftAction = customBind.left -- Can be false or string
+                else
+                    leftAction = MapAction(defBindings.left, "channel", key)
+                end
+                
+                -- 2. Right Click
+                if customBind and customBind.right ~= nil then
+                    rightAction = customBind.right
+                else
+                    rightAction = MapAction(defBindings.right, "channel", key)
+                end
+                
+                return {
+                    type = "channel",
+                    key = reg.key,
+                    label = reg.label,
+                    shortKey = reg.shortKey,
+                    colors = reg.colors,
+                    isDynamic = reg.isDynamic,
+                    mappingKey = reg.mappingKey,
+                    leftClick = leftAction,
+                    rightClick = rightAction,
+                    actions = reg.actions,
+                }
             end
-            
-            -- 2. Right Click
-            if customBind and customBind.right ~= nil then
-                rightAction = customBind.right
-            else
-                rightAction = MapAction(defBindings.right, "channel", key)
-            end
-            
-            return {
-                type = "channel",
-                key = reg.key,
-                label = reg.label,
-                shortKey = reg.shortKey,
-                colors = reg.colors,
-                isDynamic = reg.isDynamic,
-                mappingKey = reg.mappingKey,
-                leftClick = leftAction,
-                rightClick = rightAction,
-                actions = reg.actions,
-            }
         end
     end
     
@@ -318,6 +390,22 @@ end
 function addon.Shelf:BuildActionRegistry()
     local actions = {}
     
+    -- =====================================================================
+    -- NEW: Use ACTION_DEFINITIONS if available (preferred)
+    -- =====================================================================
+    if addon.BuildActionRegistryFromDefinitions then
+        local newActions = addon:BuildActionRegistryFromDefinitions()
+        if newActions and next(newActions) then
+            -- Merge with existing actions
+            for k, v in pairs(newActions) do
+                actions[k] = v
+            end
+        end
+    end
+    
+    -- =====================================================================
+    -- LEGACY: Process old CHANNEL_REGISTRY and KIT_REGISTRY
+    -- =====================================================================
     local function ProcessRegistry(registry, prefix, typePrefix)
         if not registry then return end
         for _, item in ipairs(registry) do
@@ -347,15 +435,18 @@ function addon.Shelf:BuildActionRegistry()
                         category = "kit"
                     end
 
-                    actions[fullKey] = {
-                        key = fullKey,
-                        label = label,
-                        tooltip = actionSpec.tooltip,
-                        kitKey = (typePrefix == "kit") and item.key or nil,
-                        channelKey = (typePrefix == "channel") and item.key or nil,
-                        execute = actionSpec.execute,
-                        category = category
-                    }
+                    -- Only add if not already defined by ACTION_DEFINITIONS
+                    if not actions[fullKey] then
+                        actions[fullKey] = {
+                            key = fullKey,
+                            label = label,
+                            tooltip = actionSpec.tooltip,
+                            kitKey = (typePrefix == "kit") and item.key or nil,
+                            channelKey = (typePrefix == "channel") and item.key or nil,
+                            execute = actionSpec.execute,
+                            category = category
+                        }
+                    end
                 end
             end
         end

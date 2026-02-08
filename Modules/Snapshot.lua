@@ -37,7 +37,7 @@ end
 local channelNameCache = {}
 
 local function FindRegistryKeyByChannelBaseName(baseName)
-    if not baseName or not addon.CHANNEL_REGISTRY then return nil end
+    if not baseName then return nil end
     
     -- Check cache first
     if channelNameCache[baseName] ~= nil then
@@ -46,21 +46,14 @@ local function FindRegistryKeyByChannelBaseName(baseName)
     
     local L = addon.L
     local normalized = addon.Utils.NormalizeChannelBaseName(baseName)
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if reg.isDynamic and reg.mappingKey then
-            local realName = L[reg.mappingKey]
+    
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        if subKey == "DYNAMIC" and stream.mappingKey then
+            local realName = L[stream.mappingKey]
             if realName then
-                if realName == normalized then
-                    channelNameCache[baseName] = reg.key
-                    return reg.key
-                end
-                if normalized:find(realName, 1, true) == 1 then
-                    channelNameCache[baseName] = reg.key
-                    return reg.key
-                end
-                if realName:find(normalized, 1, true) == 1 then
-                    channelNameCache[baseName] = reg.key
-                    return reg.key
+                if realName == normalized or normalized:find(realName, 1, true) == 1 or realName:find(normalized, 1, true) == 1 then
+                    channelNameCache[baseName] = stream.key
+                    return stream.key
                 end
             end
         end
@@ -429,14 +422,18 @@ end
 function addon:GetSnapshotChannelsItems(filter)
     -- filter: "private" | "system" | "dynamic" | nil(全部)
     local items = {}
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if not reg.isSystemMsg and not reg.isNotStorable then
+    
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        -- Skip items that shouldn't be snapshotted (e.g. non-storable)
+        if not stream.isNotStorable then
             local match = false
-            if filter == "private" and reg.isPrivate then 
+            local isPrivate = (stream.chatType == "WHISPER" or stream.chatType == "BN_WHISPER")
+            
+            if filter == "private" and isPrivate then 
                 match = true
-            elseif filter == "system" and reg.isSystem then 
+            elseif filter == "system" and subKey == "SYSTEM" then 
                 match = true
-            elseif filter == "dynamic" and reg.isDynamic then 
+            elseif filter == "dynamic" and subKey == "DYNAMIC" then 
                 match = true
             elseif not filter then 
                 match = true
@@ -444,10 +441,10 @@ function addon:GetSnapshotChannelsItems(filter)
             
             if match then
                 table.insert(items, { 
-                    key = reg.key, 
-                    label = reg.label or reg.key,
-                    value = reg.key,  -- for MultiDropdown compatibility
-                    text = reg.label or reg.key,
+                    key = stream.key, 
+                    label = stream.label or stream.key,
+                    value = stream.key,  -- for MultiDropdown compatibility
+                    text = stream.label or stream.key,
                 })
             end
         end

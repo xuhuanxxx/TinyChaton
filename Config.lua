@@ -40,6 +40,10 @@ addon.CONSTANTS = {
     SNAPSHOT_MAX_TOTAL_MIN = 1000, -- Added from instruction
     SNAPSHOT_MAX_TOTAL_MAX = 20000, -- Added from instruction
     SNAPSHOT_MAX_TOTAL_STEP = 500, -- Added from instruction
+    
+    -- Profile Defaults
+    PROFILE_DEFAULT_NAME = "Default",
+    PROFILE_NAME_MAX_LENGTH = 32,
 }
 
 addon.CHAT_EVENTS = {

@@ -269,7 +269,6 @@ if GetLocale() == "ruRU" then
     L["FONT_CHAT"] = "Chat"
     L["FONT_DAMAGE"] = "Damage"
     L["LABEL_CUSTOM"] = "Custom"
-    L["LABEL_PROFILE_DESC"] = "Управление профилями конфигурации"
     L["LABEL_SNAPSHOT_CHANNELS_ALL"] = "All"
     L["LABEL_SNAPSHOT_CHANNELS_NONE"] = "None"
     L["MSG_RESET_ALL_CONFIRM"] = "Вы уверены, что хотите сбросить все настройки? Это нельзя отменить."

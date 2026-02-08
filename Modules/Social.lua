@@ -142,13 +142,13 @@ end
 
 function addon:GetAutoJoinChannelsItems()
     local items = {}
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if reg.isDynamic then
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        if subKey == "DYNAMIC" then
             table.insert(items, { 
-                key = reg.key, 
-                label = reg.label or reg.key,
-                value = reg.key,
-                text = reg.label or reg.key,
+                key = stream.key, 
+                label = stream.label or stream.key,
+                value = stream.key,
+                text = stream.label or stream.key,
             })
         end
     end

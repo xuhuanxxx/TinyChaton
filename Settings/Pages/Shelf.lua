@@ -19,10 +19,14 @@ CategoryBuilders.shelf = function(rootCat)
     local function GetKP() return shelfDB.kitPins or {} end
 
     local registryMap = {}
-    for _, item in ipairs(addon.CHANNEL_REGISTRY) do registryMap[item.key] = item end
-
     local kitRegistryMap = {}
-    for _, spec in ipairs(addon.KIT_REGISTRY) do kitRegistryMap[spec.key] = spec end
+    
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        registryMap[stream.key] = stream
+    end
+    for _, spec in ipairs(addon.KIT_REGISTRY or {}) do 
+        kitRegistryMap[spec.key] = spec 
+    end
 
     local function IsKeyEnabled(key)
         local item = registryMap[key]
@@ -285,8 +289,17 @@ CategoryBuilders.shelf = function(rootCat)
             local function SetupPage(idx, filterFunc, typeKey)
                 local page = ribbon:CreateContentPage(idx, container, { top = 60, bottom = 20, left = 0, right = 20 })
                 page.items = {}
-                for _, reg in ipairs(typeKey == "kit" and addon.KIT_REGISTRY or addon.CHANNEL_REGISTRY) do
-                    if filterFunc(reg) then table.insert(page.items, reg) end
+                
+                if typeKey == "kit" then
+                    for _, reg in ipairs(addon.KIT_REGISTRY or {}) do
+                        if filterFunc(reg) then table.insert(page.items, reg) end
+                    end
+                else
+                    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+                        if filterFunc(stream, catKey, subKey) then 
+                            table.insert(page.items, stream) 
+                        end
+                    end
                 end
                 table.sort(page.items, function(a, b) return (a.order or 0) < (b.order or 0) end)
                 
@@ -301,8 +314,12 @@ CategoryBuilders.shelf = function(rootCat)
                 return page
             end
 
-            local p1 = SetupPage(1, function(r) return r.isSystem and not r.isSystemMsg and not r.isNotStorable end, "channel")
-            local p2 = SetupPage(2, function(r) return r.isDynamic end, "channel")
+            local p1 = SetupPage(1, function(stream, catKey, subKey) 
+                return catKey == "CHANNEL" and subKey == "SYSTEM" and not stream.isSystemMsg and not stream.isNotStorable 
+            end, "channel")
+            local p2 = SetupPage(2, function(stream, catKey, subKey) 
+                return catKey == "CHANNEL" and subKey == "DYNAMIC" 
+            end, "channel")
             local p3 = SetupPage(3, function(r) return true end, "kit")
 
             addon.RefreshShelfList = function() 

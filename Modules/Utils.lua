@@ -104,69 +104,51 @@ end
 
 -- Find registry item by various inputs
 local function FindRegistryItem(input)
-    if not input or not addon.CHANNEL_REGISTRY then return nil end
+    if not input then return nil end
     local L = addon.L
     
     -- input can be: { chatType, channelId, channelName, registryKey }
-    local chatType = input.chatType
-    local channelId = input.channelId
-    local channelName = input.channelName
     local registryKey = input.registryKey
     
     -- 1. Try by registryKey (most reliable)
     if registryKey then
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-            if reg.key == registryKey then
-                return reg
-            end
-        end
+        local stream = addon:GetStreamByKey(registryKey)
+        if stream then return stream end
     end
     
-    -- 2. Try by chatType for system channels
-    if chatType and chatType ~= "CHANNEL" then
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-            if reg.chatType == chatType then
-                return reg
+    -- Fallback: Iterate all streams for more complex matching
+    local chatType = input.chatType
+    local channelId = input.channelId
+    local channelName = input.channelName
+    local normalizedName = channelName and addon.Utils.NormalizeChannelBaseName(channelName) or nil
+
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        -- 2. Try by chatType for system channels
+        if chatType and chatType ~= "CHANNEL" and stream.chatType == chatType then
+            return stream
+        end
+        
+        -- 3. Try by channelId for dynamic channels (reverse lookup)
+        if chatType == "CHANNEL" and channelId and subKey == "DYNAMIC" and stream.mappingKey then
+            local realName = L[stream.mappingKey]
+            if realName and GetChannelName(realName) == channelId then
+                return stream
             end
         end
-    end
-    
-    -- 3. Try by channelId for dynamic channels (reverse lookup)
-    if chatType == "CHANNEL" and channelId then
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-            if reg.isDynamic and reg.mappingKey then
-                local realName = L[reg.mappingKey]
+        
+        -- 4. Try by channelName for dynamic channels
+        if normalizedName then
+            if subKey == "DYNAMIC" and stream.mappingKey then
+                local realName = L[stream.mappingKey]
                 if realName then
-                    local id = GetChannelName(realName)
-                    if id == channelId then
-                        return reg
-                    end
-                end
-            end
-        end
-    end
-    
-    -- 4. Try by channelName for dynamic channels
-    if channelName and channelName ~= "" then
-        local normalized = addon.Utils.NormalizeChannelBaseName(channelName)
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-            if reg.isDynamic and reg.mappingKey then
-                local realName = L[reg.mappingKey]
-                if realName then
-                    if realName == normalized then
-                        return reg
-                    end
-                    if normalized:find(realName, 1, true) == 1 then
-                        return reg
-                    end
-                    if realName:find(normalized, 1, true) == 1 then
-                        return reg
+                    if realName == normalizedName or normalizedName:find(realName, 1, true) == 1 or realName:find(normalizedName, 1, true) == 1 then
+                        return stream
                     end
                 end
             end
             -- Also match by label
-            if reg.label == normalized then
-                return reg
+            if stream.label == normalizedName then
+                return stream
             end
         end
     end

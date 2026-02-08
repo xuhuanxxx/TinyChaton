@@ -27,7 +27,9 @@ Locales\deDE.lua
 
 
 Libs\Ribbon.lua
-Libs\Registry\Channels.lua
+Libs\Registry\Stream.lua
+Libs\Registry\Actions.lua
+Libs\Registry\ColorSchemes.lua
 Libs\Registry\Anchors.lua
 Libs\Registry\Kits.lua
 Libs\Registry\Themes.lua
@@ -40,6 +42,7 @@ Libs\TinyReactor\TinyReactor.xml
 
 Config.lua
 Core.lua
+Core\EventDispatcher.lua
 Events.lua
 
 Modules\Utils.lua

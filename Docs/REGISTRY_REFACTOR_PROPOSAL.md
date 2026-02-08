@@ -1,113 +1,182 @@
 # 注册表重构提案 (Registry Refactor Proposal)
 
 **状态**: 待定 (Planned Future Work)
-**优先级**: 低 (代码洁癖/架构优化)
-**主要目标**: 将 `CHANNEL_REGISTRY` 从扁平布尔标志结构迁移到强类型/枚举结构。
+**优先级**: 中 (架构稳健性 & 12.0 兼容性)
+**主要目标**: 建立以 **STREAM (信息流)** 为核心的声明式架构，将消息逻辑划分为 **CHANNEL (频道)** 与 **NOTICE (通知)**。
 
-## 1. 背景与动机
-目前的 `CHANNEL_REGISTRY` 使用多个布尔标志来定义频道特性：
-- `isSystem = true` (如 Say, Yell, Guild)
-- `isDynamic = true` (如 General, Trade)
-- `isPrivate = true` (如 Whisper, BN)
-- `isSystemMsg` (隐式，未在注册表中显式定义，但在逻辑中使用)
+## 1. 背景与背景 (数据现状)
 
-**存在的问题**:
-- **互斥性不明确**: 理论上一个频道不应同时是 `isSystem` 和 `isDynamic`，但代码结构允许这种非法状态。
-- **扩展性一般**: 每增加一种新类型，就需要增加一个新的布尔字段，并在所有消费该数据的逻辑中添加 `if/else`。
-- **语义模糊**: 某些行为（如“是否可快照”、“是否可钉选”）与“频道类型”绑定过紧，缺乏明确的行为定义。
+目前的 `CHANNEL_REGISTRY` 逻辑模糊:
+- 强行将所有信息源都称为“频道”，导致系统提示、经验获取等非交互内容也必须适配频道的布尔标志（如 `isSystem`）。
+- **存在的问题**: 命名泛化导致代码中出现大量“为了适配而适配”的逻辑，难以区分哪些是玩家参与的对话，哪些是系统的单向通知。
 
-## 2. 建议架构
+## 2. 深度分析：WoW 12.0 的新 API 环境
 
-引入 `ChannelType` 枚举和明确的行为标志。
+### 2.1 核心挑战
+- **沙盒化数据 (Secret Value)**：主要集中在特定的 `NOTICE` 类信息流（如 Boss 喊话）。
+- **防御策略**：通过顶层的 `Stream` 属性来决定是否在该路径上启用插件逻辑，实现 100% 的安全性。
 
-### 2.1 新的枚举定义
+## 3. 建议架构：STREAM > CHANNEL / NOTICE
+
+### 3.1 结构化定义：层级嵌套
+我们将放弃扁平的列表结构，改为由 `Stream` 顶层分类驱动的嵌套表。结构本身即代表了类型和能力。
+
 ```lua
-addon.Enum = addon.Enum or {}
-addon.Enum.ChannelType = {
-    SYSTEM  = "SYSTEM",   -- 系统内置 (Say, Yell, Guild, Raid...)
-    DYNAMIC = "DYNAMIC",  -- 动态加入 (General, Trade...)
-    PRIVATE = "PRIVATE",  -- 私聊类 (Whisper, BN)
-    VIRTUAL = "VIRTUAL",  -- 虚拟频道 (如有需扩展)
+addon.STREAM_REGISTRY = {
+    -- [CHANNEL] 子集：具备发送、粘滞、编号等交互能力的流
+    CHANNEL = {
+        SYSTEM = {
+            { key = "say", chatType = "SAY", events = { "CHAT_MSG_SAY" } },
+            { key = "guild", chatType = "GUILD", events = { "CHAT_MSG_GUILD" } },
+            -- ... 所有 isSystem 的频道
+        },
+        DYNAMIC = {
+            { key = "general", chatType = "CHANNEL", events = { "CHAT_MSG_CHANNEL" }, mappingKey = "CHANNEL_GENERAL" },
+            -- ... 所有 isDynamic 的频道
+        },
+        PRIVATE = {
+            { key = "whisper", chatType = "WHISPER", events = { "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM" } },
+            -- ... 私聊类
+        }
+    },
+    
+    -- [NOTICE] 子集：由系统生成的单向通知流
+    NOTICE = {
+        LOG = {
+            { key = "experience", events = { "CHAT_MSG_COMBAT_XP_GAIN" } },
+            -- ...
+        },
+        SYSTEM = {
+            { key = "system_info", events = { "CHAT_MSG_SYSTEM" } },
+            -- ...
+        },
+        ALERT = {
+            { key = "boss_emote", events = { "RAID_BOSS_EMOTE" }, isCombatProtected = true },
+            -- ...
+        }
+    }
+}
+
+-- [KIT] 独立表：工具按钮（不属于 Stream 体系）
+addon.KIT_REGISTRY = {
+    { key = "readyCheck", ... },
+    { key = "countdown", ... },
+    -- ...
 }
 ```
 
-### 2.2 注册表项结构变更
+### 3.2 能力推导逻辑 (Inference)
 
-**System Channel (Before)**:
-```lua
-{ 
-    key = "say", 
-    isSystem = true, 
-    defaultPinned = true 
-}
-```
+**核心原则：从位置推导能力，而非依赖布尔标志**
 
-**System Channel (After)**:
+#### 隐式能力表（默认均为 `true`）
+- **如果是 `CHANNEL.*` 下的项目**：
+  - `defaultPinned = true`（默认钉选到 Shelf）
+  - `defaultSnapshotted = true`（支持快照）
+  - 自动具备交互 UI、编号显示、粘滞记忆
+  
+- **如果是 `NOTICE.*` 下的项目**：
+  - `defaultPinned = false`
+  - `defaultSnapshotted = false`（大部分 NOTICE 不需要快照）
+  - 自动剥离交互 UI
+
+- **KIT 项目**（独立于 Stream）：
+  - `defaultPinned = true`（默认展示）
+
+#### Shelf UI 筛选规则（代码行 77-80 的逻辑）
+工具架只允许以下三类显示：
+1. `CHANNEL.SYSTEM`
+2. `CHANNEL.DYNAMIC`
+3. `KIT`
+
+### 3.3 ACTION 反向绑定机制
+
+**当前问题**：ACTION 当前绑定在频道/KIT 的 `actions` 字段中，导致：
+- 如果同一 ACTION 需要服务多个频道，必须在每个频道中重复定义
+- ACTION 逻辑与频道逻辑耦合
+
+**重构方案**：让 ACTION 反过来声明自己服务哪些频道/KIT
+
 ```lua
-{ 
-    key = "say", 
-    type = addon.Enum.ChannelType.SYSTEM,
-    -- 明确的行为标志 (Capabilities)
-    flags = {
-        canPin = true,
-        canSnapshot = true,
-        autoJoin = false,
+-- 新的 ACTION_REGISTRY 结构（独立文件）
+addon.ACTION_DEFINITIONS = {
+    {
+        key = "send",
+        label = L["ACTION_SEND"],
+        category = "channel",
+        -- ACTION 声明自己适用于哪些流
+        appliesTo = { 
+            streamTypes = { "CHANNEL.SYSTEM", "CHANNEL.DYNAMIC" }  -- 通配所有 CHANNEL.SYSTEM 和 DYNAMIC
+        },
+        execute = function(streamKey)
+            local stream = addon:GetStreamByKey(streamKey)
+            if stream then
+                addon:ActionSend(stream.chatType)
+            end
+        end
+    },
+    {
+        key = "readycheck",
+        label = L["ACTION_READYCHECK"],
+        category = "kit",
+        appliesTo = { kits = { "readyCheck" } },
+        execute = function() DoReadyCheck() end
     }
 }
 ```
 
-**Dynamic Channel (Before)**:
+### 3.4 事件驱动的自动化监听 (Event Binding)
+
+**核心层统一分发**：
+- 在 `Core.lua` 初始化时，遍历 `STREAM_REGISTRY` 收集所有 `events`
+- 为每个唯一事件注册一个全局过滤器
+- 当事件触发时，核心分发器：
+  1. 识别该事件属于哪个 Stream（通过 `chatType` 或其他参数）
+  2. 应用黑名单/高亮逻辑
+  3. 将处理后的数据传递给对应模块
+
 ```lua
-{ 
-    key = "general", 
-    isDynamic = true, 
-    requiresAvailabilityCheck = true,
-    defaultAutoJoin = true
-}
+-- 示例：事件统一捕获
+function addon:InitEventDispatcher()
+    local eventToStreams = {}
+    
+    -- 遍历 STREAM_REGISTRY 建立映射
+    for categoryKey, category in pairs(addon.STREAM_REGISTRY) do
+        for subKey, subCategory in pairs(category) do
+            for _, stream in ipairs(subCategory) do
+                for _, event in ipairs(stream.events or {}) do
+                    if not eventToStreams[event] then
+                        eventToStreams[event] = {}
+                    end
+                    table.insert(eventToStreams[event], stream)
+                end
+            end
+        end
+    end
+    
+    -- 注册核心过滤器
+    for event, streams in pairs(eventToStreams) do
+        ChatFrame_AddMessageEventFilter(event, function(self, evt, msg, ...)
+            -- 统一处理：黑名单、高亮、Taint 检测
+            -- 分发到各个 stream 的处理器
+            return false  -- 不拦截
+        end)
+    end
+end
 ```
 
-**Dynamic Channel (After)**:
-```lua
-{ 
-    key = "general", 
-    type = addon.Enum.ChannelType.DYNAMIC,
-    flags = {
-        canPin = true,
-        canSnapshot = true,
-        autoJoin = true,
-        checkAvailability = true -- 替代 requiresAvailabilityCheck
-    }
-}
-```
+## 4. 核心收益
 
-## 3. 影响范围与迁移指南
+### 3.1 零接触防御 (Zero-Touch Defense)
+通过注册表的 `isCombatProtected` 标志，核心钩子（如 `AddMessage`）可以实现声明式拦截。只要该标志为 `true`，插件逻辑立即短路，杜绝一切 Taint 风险。
 
-此重构将影响以下核心文件：
+### 3.2 逻辑解耦
+- **配置解耦**：UI 遍历注册表时只需关心 `canPin`，无需知道它是 Guild 还是 Whisper。
+- **扩展解耦**：如果暴雪未来保护了新的事件，只需更新一处注册表定义，全工程自动适配。
 
-### A. 核心定义
-- **[MODIFY] `Libs/Registry/Channels.lua`**: 全面重写注册表数据结构。
-- **[MODIFY] `Core.lua`**: 定义 `addon.Enum`。
+## 5. 实施路线图
 
-### B. 配置生成 (`Config.lua`)
-- **现状**: 使用 `if reg.isSystem or reg.isDynamic then` 来生成默认钉选列表。
-- **变更**: 修改为检查 `if reg.flags.canPin then`。这将使逻辑更通用，不再依赖类型判断。
-
-### C. 库架筛选 (`Settings/Pages/Shelf.lua`)
-- **现状**: Ribbon 使用硬编码的筛选器 `function(r) return r.isSystem end`。
-- **变更**: 修改为 `function(r) return r.type == addon.Enum.ChannelType.SYSTEM end`。
-
-### D. 快照逻辑 (`Modules/Snapshot.lua`)
-- **现状**: 依赖 `isSystemMsg` 和 `isNotStorable`（这些标志目前甚至未在 Registry 中显式定义）。
-- **变更**: 在 `flags` 中明确定义 `canSnapshot`，彻底移除硬编码的排除逻辑。
-
-## 4. 实施步骤
-
-1.  **定义 Enum**: 在 `Core.lua` 头部添加枚举定义。
-2.  **转换 Registry**: 逐个修改 `Libs/Registry/Channels.lua` 中的条目，添加 `type` 和 `flags`。
-3.  **适配 Config**: 修改 `Config.lua` 中的 `BuildChannelPins`, `BuildSnapshotChannels` 等函数，改为基于 `flags` 遍历。
-4.  **适配 UI**: 全局搜索 `isSystem`, `isDynamic`，替换为新的类型检查或 Capability 检查。
-5.  **验证**: 使用现有的重置功能，确保新结构能正确生成默认配置。
-
-## 5. 收益总结
-- **代码整洁**: 逻辑更清晰，消除了通过组合布尔值来猜测频道类型的做法。
-- **配置解耦**: “频道是什么类型”和“频道能做什么”解耦。未来如果想让某个系统频道支持自动加入，只需修改 flag，无需修改类型逻辑。
+1. **基础建设**：在 `Core.lua` 定义 `addon.Enum.SourceType`。
+2. **结构迁移**：重写 `Libs/Registry/Channels.lua`，将扁平布尔值迁移至 `type` + `flags`。
+3. **安全加固**：重做 `IsMessageProtected` 函数，使其完全基于注册表 `flags` 运行。
+4. **功能适配**：分模块适配 `Snapshot`, `Visual`, `Shelf` 逻辑。

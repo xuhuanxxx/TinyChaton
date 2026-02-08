@@ -113,7 +113,9 @@ CategoryBuilders.chat = function(rootCat)
         function(sel) addon:SetSnapshotChannelSelection("dynamic", sel) end,
         L["TOOLTIP_SNAPSHOT_DYNAMIC"])
 
+
     addon.AddSectionHeader(subCat, L["SECTION_CHAT_INTERACTION"])
+
     CreateSettingFromRegistry(subCat, "timestampEnabled")
     CreateSettingFromRegistry(subCat, "timestampFormat")
     CreateSettingFromRegistry(subCat, "timestampColor")

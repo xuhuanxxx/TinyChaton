@@ -10,6 +10,35 @@ CategoryBuilders.profile = function(rootCat)
     
     addon.AddText(cat, L["LABEL_PROFILE_DESC"])
     
+    -- Chat History Management
+    addon.AddSectionHeader(cat, L["SECTION_HISTORY"])
+    
+    local P = "TinyChaton_Profile_"
+    local C = addon.CONSTANTS
+    addon.AddProxySlider(cat, P .. "snapshotMaxTotal",
+        L["LABEL_SNAPSHOT_MAX_TOTAL"],
+        C.SNAPSHOT_MAX_TOTAL_DEFAULT,
+        C.SNAPSHOT_MAX_TOTAL_MIN,
+        C.SNAPSHOT_MAX_TOTAL_MAX,
+        C.SNAPSHOT_MAX_TOTAL_STEP,
+        function() return addon.db.global.chatSnapshotMaxTotal or C.SNAPSHOT_MAX_TOTAL_DEFAULT end,
+        function(v) 
+            addon.db.global.chatSnapshotMaxTotal = v
+        end,
+        L["TOOLTIP_SNAPSHOT_MAX_TOTAL"])
+
+    addon.AddNativeButton(cat, L["LABEL_HISTORY_CLEAR"], L["ACTION_CLEAR_HISTORY"], function()
+        StaticPopupDialogs["TINYCHATON_CLEAR_HISTORY"] = {
+            text = L["ACTION_HISTORY_CLEAR_CONFIRM"],
+            button1 = YES,
+            button2 = NO,
+            OnAccept = function() addon:ClearHistory() end,
+            hideOnEscape = true,
+        }
+        StaticPopup_Show("TINYCHATON_CLEAR_HISTORY")
+    end, L["TOOLTIP_HISTORY_CLEAR"])
+    
+
     addon.AddSectionHeader(cat, L["SECTION_RESET"])
     
     local function ResetAllSettings()

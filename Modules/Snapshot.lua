@@ -87,9 +87,9 @@ local function GetChannelKey(event, ...)
 end
 
 local function CountTotalStoredLines()
-    if not addon.db or not addon.db.data or type(addon.db.data.chatSnapshot) ~= "table" then return 0 end
+    if not addon.db or not addon.db.global or type(addon.db.global.chatSnapshot) ~= "table" then return 0 end
     local total = 0
-    for _, perChannel in pairs(addon.db.data.chatSnapshot) do
+    for _, perChannel in pairs(addon.db.global.chatSnapshot) do
         if type(perChannel) == "table" then
             for _, lines in pairs(perChannel) do
                 if type(lines) == "table" then total = total + #lines end
@@ -100,18 +100,19 @@ local function CountTotalStoredLines()
 end
 
 local function GetLineCount()
-    if addon.db.data.chatSnapshotLineCount == nil then
-        addon.db.data.chatSnapshotLineCount = CountTotalStoredLines()
+    if addon.db.global.chatSnapshotLineCount == nil then
+        addon.db.global.chatSnapshotLineCount = CountTotalStoredLines()
     end
-    return addon.db.data.chatSnapshotLineCount
+    return addon.db.global.chatSnapshotLineCount
 end
 
 -- Eviction buffer: only trigger cleanup when exceeding maxTotal + buffer
 local EVICT_BUFFER = 100
 
 local function EvictOldestUntilUnderMax()
-    if not addon.db or not addon.db.data or not addon.db.data.chatSnapshot or addon.db.data.chatSnapshotMaxTotal == nil then return end
-    local maxTotal = addon.db.data.chatSnapshotMaxTotal
+    if not addon.db or not addon.db.global or not addon.db.global.chatSnapshot then return end
+    
+    local maxTotal = addon.db.global.chatSnapshotMaxTotal
     if type(maxTotal) ~= "number" or maxTotal <= 0 then return end
     
     local currentCount = GetLineCount()
@@ -119,7 +120,7 @@ local function EvictOldestUntilUnderMax()
     if currentCount <= maxTotal + EVICT_BUFFER then return end
     
     local currentChar = GetCharKey()
-    local content = addon.db.data.chatSnapshot
+    local content = addon.db.global.chatSnapshot
     local chars = {}
     for c in pairs(content) do chars[#chars + 1] = c end
     table.sort(chars, function(a, b)
@@ -152,7 +153,7 @@ local function EvictOldestUntilUnderMax()
         end
     end
     
-    addon.db.data.chatSnapshotLineCount = math.max(0, (addon.db.data.chatSnapshotLineCount or 0) - removed)
+    addon.db.global.chatSnapshotLineCount = math.max(0, (addon.db.global.chatSnapshotLineCount or 0) - removed)
 end
 
 
@@ -182,10 +183,10 @@ local function StoreChannelContentFilter(self, event, msg, author, ...)
         end
     end
 
-    if not addon.db.data.chatSnapshot[charKey] then
-        addon.db.data.chatSnapshot[charKey] = {}
+    if not addon.db.global.chatSnapshot[charKey] then
+        addon.db.global.chatSnapshot[charKey] = {}
     end
-    local perChannel = addon.db.data.chatSnapshot[charKey]
+    local perChannel = addon.db.global.chatSnapshot[charKey]
     if not perChannel[channelKey] then
         perChannel[channelKey] = {}
     end
@@ -237,11 +238,11 @@ local function StoreChannelContentFilter(self, event, msg, author, ...)
         frameName = self:GetName(),
         r = r, g = g, b = b,
     })
-    addon.db.data.chatSnapshotLineCount = (addon.db.data.chatSnapshotLineCount or 0) + 1
+    addon.db.global.chatSnapshotLineCount = (addon.db.global.chatSnapshotLineCount or 0) + 1
     local maxPerChannel = addon.db.plugin.chat.content.maxPerChannel or 500
     while #perChannel[channelKey] > maxPerChannel do
         table.remove(perChannel[channelKey], 1)
-        addon.db.data.chatSnapshotLineCount = (addon.db.data.chatSnapshotLineCount or 0) - 1
+        addon.db.global.chatSnapshotLineCount = (addon.db.global.chatSnapshotLineCount or 0) - 1
     end
     EvictOldestUntilUnderMax()
     return false, msg, author, ...
@@ -249,17 +250,17 @@ end
 
 function addon:ClearHistory()
     local L = addon.L
-    if not addon.db or not addon.db.data.chatSnapshot then return end
+    if not addon.db or not addon.db.global.chatSnapshot then return end
     local charKey = GetCharKey()
-    local perChannel = addon.db.data.chatSnapshot[charKey]
+    local perChannel = addon.db.global.chatSnapshot[charKey]
     if perChannel and type(perChannel) == "table" then
         local n = 0
         for _, lines in pairs(perChannel) do
             if type(lines) == "table" then n = n + #lines end
         end
-        addon.db.data.chatSnapshotLineCount = math.max(0, (addon.db.data.chatSnapshotLineCount or 0) - n)
+        addon.db.global.chatSnapshotLineCount = math.max(0, (addon.db.global.chatSnapshotLineCount or 0) - n)
     end
-    addon.db.data.chatSnapshot[charKey] = {}
+    addon.db.global.chatSnapshot[charKey] = {}
     print("|cff00ff00" .. L["LABEL_ADDON_NAME"] .. "|r: " .. L["MSG_HISTORY_CLEARED"])
 end
 
@@ -284,9 +285,9 @@ function addon:InitSnapshot()
             return
         end
         
-        if not addon.db.data or not addon.db.data.chatSnapshot or type(addon.db.data.chatSnapshot) ~= "table" then return end
+        if not addon.db.global or not addon.db.global.chatSnapshot or type(addon.db.global.chatSnapshot) ~= "table" then return end
         local charKey = GetCharKey()
-        local perChannel = addon.db.data.chatSnapshot[charKey]
+        local perChannel = addon.db.global.chatSnapshot[charKey]
         if not perChannel or type(perChannel) ~= "table" then return end
         
         local function addStoredLine(line)

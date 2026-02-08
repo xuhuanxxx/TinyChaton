@@ -33,6 +33,13 @@ addon.CONSTANTS = {
     
     -- Chat Defaults
     CHAT_DEFAULT_FONT = "STANDARD",
+    CHAT_DEFAULT_SIZE = 16, -- Added from instruction
+    
+    -- Snapshot Defaults
+    SNAPSHOT_MAX_TOTAL_DEFAULT = 5000, -- Added from instruction
+    SNAPSHOT_MAX_TOTAL_MIN = 1000, -- Added from instruction
+    SNAPSHOT_MAX_TOTAL_MAX = 20000, -- Added from instruction
+    SNAPSHOT_MAX_TOTAL_STEP = 500, -- Added from instruction
 }
 
 addon.CHAT_EVENTS = {
@@ -155,10 +162,10 @@ addon.DEFAULTS = {
             autoJoinChannels = BuildAutoJoinChannels(),
         },
     },
-    data = {
+    global = {
         chatSnapshot = {},
         chatSnapshotLineCount = 0,
-        chatSnapshotMaxTotal = 5000,
+        chatSnapshotMaxTotal = addon.CONSTANTS.SNAPSHOT_MAX_TOTAL_DEFAULT,
     },
 }
 

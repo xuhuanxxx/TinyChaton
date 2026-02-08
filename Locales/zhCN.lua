@@ -275,4 +275,8 @@ if GetLocale() == "zhCN" then
     L["SECTION_CHAT_INTERACTION"] = "交互"
     L["LABEL_TIMESTAMP_ENABLED"] = "显示时间戳"
     L["SECTION_RESET"] = "重置设置"
+    L["LABEL_SNAPSHOT_MAX_TOTAL"] = "快照总行数上限"
+    L["TOOLTIP_SNAPSHOT_MAX_TOTAL"] = "所有角色共享的聊天快照总行数上限（全局配置）"
+    L["ACTION_CLEAR_HISTORY"] = "清除历史"
+    L["TOOLTIP_HISTORY_CLEAR"] = "清除当前角色的所有聊天快照记录"
 end

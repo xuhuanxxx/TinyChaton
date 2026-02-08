@@ -204,14 +204,15 @@ end
 function addon:SynchronizeConfig(isReset)
     if not addon.db.plugin then addon.db.plugin = {} end
     if not addon.db.system then addon.db.system = {} end
-    if not addon.db.data then addon.db.data = {} end
+    if not addon.db.global then addon.db.global = {} end
 
     if isReset or addon.db.enabled == nil then
         addon.db.enabled = (addon.DEFAULTS.enabled ~= nil) and addon.DEFAULTS.enabled or true
     end
 
     RecursiveSync(addon.db.plugin, addon.DEFAULTS.plugin, isReset, true)
-    RecursiveSync(addon.db.data, addon.DEFAULTS.data, false, false)
+    -- global data should never be reset, only initialized if missing
+    RecursiveSync(addon.db.global, addon.DEFAULTS.global, false, false)
 
     for key, reg in pairs(addon.SETTING_REGISTRY or {}) do
         local defVal = addon:GetSettingDefault(key)
@@ -257,6 +258,7 @@ function addon:InitConfig()
     -- Storage mode switching removed - always use global database
     TinyChatonDB = TinyChatonDB or {}
     if not TinyChatonDB.plugin then TinyChatonDB.plugin = {} end
+    if not TinyChatonDB.global then TinyChatonDB.global = {} end
     addon.db = TinyChatonDB
 
     self:SynchronizeConfig(false)

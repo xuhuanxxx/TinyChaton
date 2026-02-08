@@ -122,7 +122,7 @@ function addon:OnInitialize()
     
     -- Register modules in load order
     -- Note: Modules should check addon.db.enabled internally
-    addon.MODULES = { "Filters", "Highlight", "Snapshot", "Copy", "Emotes", "Social", "Tweaks", "Shelf" }
+    addon.MODULES = { "Snapshot", "Copy", "Emotes", "Social", "Tweaks", "Shelf" }
     for _, module in ipairs(addon.MODULES) do
         local fn = addon["Init" .. module]
         if fn then

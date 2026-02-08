@@ -43,12 +43,22 @@ Libs\TinyReactor\TinyReactor.xml
 Config.lua
 Core.lua
 Core\EventDispatcher.lua
+Core\Pipeline\ChatData.lua
+
+Core\Middleware\StripPrefix.lua
+Core\Middleware\Blacklist.lua
+Core\Middleware\Whitelist.lua
+Core\Middleware\DuplicateFilter.lua
+Core\Middleware\Highlight.lua
+Core\Middleware\EmoteParser.lua
+Core\Middleware\ChannelShortener.lua
+Core\Middleware\SnapshotLogger.lua
+Core\Middleware\CopyCache.lua
+
 Events.lua
 
 Modules\Utils.lua
 Modules\Visual.lua
-Modules\Filters.lua
-Modules\Highlight.lua
 Modules\Snapshot.lua
 Modules\Copy.lua
 Modules\Emotes.lua

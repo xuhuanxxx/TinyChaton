@@ -12,6 +12,7 @@ local EVENT_TO_CHANNEL_KEY = {
     ["CHAT_MSG_INSTANCE_CHAT"] = "INSTANCE_CHAT",
     ["CHAT_MSG_INSTANCE_CHAT_LEADER"] = "INSTANCE_CHAT",
     ["CHAT_MSG_WHISPER"] = "WHISPER",
+    ["CHAT_MSG_WHISPER_INFORM"] = "WHISPER",
     ["CHAT_MSG_EMOTE"] = "EMOTE",
     ["CHAT_MSG_TEXT_EMOTE"] = "EMOTE",
     ["CHAT_MSG_SYSTEM"] = "SYSTEM",
@@ -150,97 +151,6 @@ local function EvictOldestUntilUnderMax()
 end
 
 
-local function StoreChannelContentFilter(self, event, msg, author, ...)
-    -- 1. Global & Module Switch Check
-    if not addon.db or not addon.db.enabled then return false, msg, author, ... end
-    
-    local chatSettings = addon.db.plugin and addon.db.plugin.chat
-    if not chatSettings or not chatSettings.content or chatSettings.content.snapshotEnabled == false then
-        return false, msg, author, ...
-    end
-    
-    if not msg or type(msg) ~= "string" or msg == "" then return false, msg, author, ... end
-
-    local charKey = GetCharKey()
-    -- If we are in "Default" state (no name/realm yet), don't store to avoid missing data later
-    if charKey == "Default" then return false, msg, author, ... end
-    
-    local channelKey = GetChannelKey(event, ...)
-    
-    -- Check if this specific channel should be stored
-    local sc = addon.db.plugin.chat.content.snapshotChannels
-    if sc then
-        local legacyKey = ({ instance = "INSTANCE_CHAT" })[channelKey] or channelKey:upper()
-        if sc[channelKey] == false or sc[legacyKey] == false then
-            return false, msg, author, ...
-        end
-    end
-
-    if not addon.db.global.chatSnapshot[charKey] then
-        addon.db.global.chatSnapshot[charKey] = {}
-    end
-    local perChannel = addon.db.global.chatSnapshot[charKey]
-    if not perChannel[channelKey] then
-        perChannel[channelKey] = {}
-    end
-    
-    -- Get chat type and channel ID for dynamic channels
-    local chatType = EVENT_TO_CHANNEL_KEY[event] or "CHANNEL"
-    local channelId = nil
-    local registryKey = nil  -- Store the registry key (e.g., "world", "lfg") for reliable lookup
-    local channelBaseName = nil
-    local channelBaseNameNormalized = nil
-    if event == "CHAT_MSG_CHANNEL" then
-        channelId = select(6, ...) -- channelIndex (numeric ID like 1, 2, 3)
-        channelBaseName = select(7, ...)
-        channelBaseNameNormalized = addon.Utils.NormalizeChannelBaseName(channelBaseName)
-        registryKey = FindRegistryKeyByChannelBaseName(channelBaseNameNormalized)
-    end
-    
-    -- Get player GUID for class color (arg12 in chat event)
-    local playerGUID = select(10, ...)
-    local classFilename = nil
-    if playerGUID then
-        local _, engClass = GetPlayerInfoByGUID(playerGUID)
-        classFilename = engClass
-    end
-    
-    -- Capture original message color (chat type color)
-    local r, g, b = nil, nil, nil
-    if ChatTypeInfo then
-        if chatType == "CHANNEL" and channelId then
-            local info = ChatTypeInfo["CHANNEL" .. channelId] or ChatTypeInfo["CHANNEL"]
-            if info then r, g, b = info.r, info.g, info.b end
-        else
-            local info = ChatTypeInfo[chatType]
-            if info then r, g, b = info.r, info.g, info.b end
-        end
-    end
-
-    table.insert(perChannel[channelKey], {
-        text = msg,
-        author = author and tostring(author) or "",
-        channelKey = channelKey,
-        chatType = chatType,
-        channelId = channelId,
-        channelBaseName = channelBaseName,
-        channelBaseNameNormalized = channelBaseNameNormalized,
-        registryKey = registryKey,
-        classFilename = classFilename,
-        time = time(),
-        frameName = self:GetName(),
-        r = r, g = g, b = b,
-    })
-    addon.db.global.chatSnapshotLineCount = (addon.db.global.chatSnapshotLineCount or 0) + 1
-    local maxPerChannel = addon.db.plugin.chat.content.maxPerChannel or 500
-    while #perChannel[channelKey] > maxPerChannel do
-        table.remove(perChannel[channelKey], 1)
-        addon.db.global.chatSnapshotLineCount = (addon.db.global.chatSnapshotLineCount or 0) - 1
-    end
-    EvictOldestUntilUnderMax()
-    return false, msg, author, ...
-end
-
 function addon:ClearHistory()
     local L = addon.L
     if not addon.db or not addon.db.global.chatSnapshot then return end
@@ -259,10 +169,6 @@ end
 
 function addon:InitSnapshot()
     local L = addon.L
-    local events = addon.CHAT_EVENTS or {}
-    for _, event in ipairs(events) do
-        ChatFrame_AddMessageEventFilter(event, StoreChannelContentFilter)
-    end
 
     local restored
     
@@ -294,17 +200,28 @@ function addon:InitSnapshot()
             if not frame or not frame.AddMessage then return end
             
             -- 2. Channel tag: use unified resolver
-            local channelNameDisplay = addon.Utils.ResolveChannelDisplay({
+            local channelNameDisplay, registryItem = addon.Utils.ResolveChannelDisplay({
                 chatType = line.chatType,
                 channelId = line.channelId,
                 channelName = line.channelBaseNameNormalized,
                 registryKey = line.registryKey,
             })
             
-            -- Wrap in |Hchannel:id|h...|h link if valid channel ID exists
+            -- Apply channel color based on theme
             local channelTag = channelNameDisplay
+            if registryItem then
+                -- Get current theme setting
+                local theme = addon.db and addon.db.plugin and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelColorTheme or "blizzard"
+                local colorTable = addon:GetChannelColor(registryItem.key, theme)
+                if colorTable then
+                    local r, g, b, a = colorTable[1] or 1, colorTable[2] or 1, colorTable[3] or 1, colorTable[4] or 1
+                    channelTag = string.format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, channelNameDisplay)
+                end
+            end
+            
+            -- Wrap in |Hchannel:id|h...|h link if valid channel ID exists
             if line.chatType == "CHANNEL" and line.channelId then
-                channelTag = string.format("|Hchannel:%s|h%s|h", line.channelId, channelNameDisplay)
+                channelTag = string.format("|Hchannel:%s|h%s|h", line.channelId, channelTag)
             end
             
             -- 3. Author with class color
@@ -372,8 +289,22 @@ function addon:InitSnapshot()
             
             -- 5. Add to frame using original AddMessage (bypass transformers to avoid double timestamp)
             local addMessageFn = frame._TinyChatonOrigAddMessage or frame.AddMessage
-            if line.r and line.g and line.b then
-                addMessageFn(frame, displayLine, line.r, line.g, line.b)
+            
+            -- Get message color: use stored values if available, otherwise get from theme
+            local r, g, b = line.r, line.g, line.b
+            if not r or not g or not b then
+                -- Colors not stored, retrieve from theme based on channel
+                if registryItem then
+                    local theme = addon.db and addon.db.plugin and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelColorTheme or "blizzard"
+                    local colorTable = addon:GetChannelColor(registryItem.key, theme)
+                    if colorTable then
+                        r, g, b = colorTable[1] or 1, colorTable[2] or 1, colorTable[3] or 1
+                    end
+                end
+            end
+            
+            if r and g and b then
+                addMessageFn(frame, displayLine, r, g, b)
             else
                 addMessageFn(frame, displayLine)
             end

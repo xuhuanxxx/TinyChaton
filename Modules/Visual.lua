@@ -263,18 +263,6 @@ local CHANNEL_EVENTS = {
 }
 
 function addon:InitVisual()
-    addon:RegisterChatFrameTransformer("visual", function(frame, msg, ...)
-        if type(msg) == "string" and msg ~= "" and addon.db and addon.db.enabled and addon.db.plugin.chat and addon.db.plugin.chat.visual then
-            local newMsg = ShortenChannelInLine(msg)
-            if newMsg then return newMsg end
-        end
-        return msg
-    end)
-
-    for _, event in ipairs(CHANNEL_EVENTS) do
-        ChatFrame_AddMessageEventFilter(event, ShortChannelFilter)
-    end
-
     addon:ApplyChatVisualSettings()
     addon:ApplyChatFontSettings()
 end

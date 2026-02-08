@@ -325,11 +325,13 @@ addon.DEFAULTS = {
             },
         },
         filter = {
-            enabled = false,
+            mode = "disabled", -- "blacklist", "whitelist", "disabled"
             repeatFilter = true,
-            block = {
-                enabled = false,
-                inverse = false,
+            blacklist = {
+                names = {},
+                keywords = {},
+            },
+            whitelist = {
                 names = {},
                 keywords = {},
             },

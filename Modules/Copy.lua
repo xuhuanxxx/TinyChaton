@@ -35,81 +35,12 @@ local function PruneMessageCache()
     end
 end
 
-local function GetTimestampPrefix()
-    if not addon.db or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction or not addon.db.plugin.chat.interaction.timestampEnabled then return nil end
-    local fmt = addon.db.plugin.chat.interaction.timestampFormat
-    if not fmt or fmt == "" then return nil end
-    local tsColor = addon.db.plugin.chat.interaction.timestampColor or "FF888888"
-    local ts = date(fmt)
-    
-    -- Check if click-to-copy is enabled (default true)
-    local clickEnabled = (addon.db.plugin.chat.interaction.clickToCopy ~= false)
-    
-    if clickEnabled then
-        local id = tostring(GetTime()) .. "_" .. tostring(math.random(10000, 99999))
-        PruneMessageCache()
-        return string.format("|c%s|Htinychat:%s|h[%s]|h|r ", tsColor, id, ts), id
-    else
-        return string.format("|c%s[%s]|r ", tsColor, ts), nil
-    end
-end
-
 
 function addon:InitCopy()
     -- [Phase 5] Seed the last known format for the settings proxy
     local currentFmt = C_CVar.GetCVar("showTimestamps")
     if currentFmt and currentFmt ~= "none" then
         addon.lastTimestampFormat = currentFmt
-    end
-
-    -- Transformer to linkify system-generated timestamps
-    addon:RegisterChatFrameTransformer("copy", function(frame, msg, ...)
-        if not addon.db or not addon.db.enabled then return msg end
-        if type(msg) ~= "string" or msg == "" then return msg end
-
-        -- Precise strategy: Match timestamp pattern but be careful with trailing characters.
-        -- We removed the trailing |?r? from the regex because it greedily matched the '|' 
-        -- of the NEXT link (e.g. |Hchannel...) breaking it.
-        local pattern = "^(%s*|?c?%x*|?r?%[?%d+:%d+:?%d*%]?)"
-        local start, finish, capture = msg:find(pattern)
-        
-        if start and capture then
-             if capture:find("%d+:%d+") then
-                -- Manually check for trailing |r (color reset) which wasn't in the safe regex
-                if msg:sub(finish + 1, finish + 2) == "|r" then
-                    capture = capture .. "|r"
-                    finish = finish + 2
-                end
-             
-                -- Generate a copy ID
-                local id = tostring(GetTime()) .. "_" .. tostring(math.random(10000, 99999))
-                PruneMessageCache()
-                
-                -- Smart Spacing:
-                local nextChar = msg:sub(finish + 1, finish + 1)
-                local needsSpace = (nextChar ~= "" and nextChar ~= " ")
-                
-                -- Construct the display link
-                local linkified = string.format("|Htinychat:copy:%s|h%s|h%s", id, capture, needsSpace and " " or "")
-                
-                -- Construct the COPY text (what goes into the editbox)
-                -- We want the copy text to also have the nice spacing
-                local cleanCopyMsg = capture .. (needsSpace and " " or "") .. msg:sub(finish + 1)
-                
-                addon.messageCache[id] = { msg = cleanCopyMsg, time = GetTime() }
-                
-                -- Reassemble the message
-                return linkified .. msg:sub(finish + 1)
-             end
-        end
-        
-        return msg
-    end)
-    
-    -- Cleanup Debug commands
-    if SLASH_TCTEST1 then
-        SlashCmdList["TCTEST"] = nil
-        SLASH_TCTEST1 = nil
     end
 
     hooksecurefunc("SetItemRef", function(link, text, button, chatFrame)

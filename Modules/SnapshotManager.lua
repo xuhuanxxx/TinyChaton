@@ -101,55 +101,91 @@ local function GetLineCount()
     return addon.db.global.chatSnapshotLineCount
 end
 
--- Eviction buffer: only trigger cleanup when exceeding maxTotal + buffer
-local EVICT_BUFFER = 100
+-- Incremental Eviction System (MC-002)
+local cleanupTicker
+local CLEANUP_BATCH_SIZE = 50
 
-local function EvictOldestUntilUnderMax()
-    if not addon.db or not addon.db.global or not addon.db.global.chatSnapshot then return end
+local function StopCleanup()
+    if cleanupTicker then
+        cleanupTicker:Cancel()
+        cleanupTicker = nil
+    end
+end
+
+local function PerformEvictionBatch()
+    if not addon.db or not addon.db.global or not addon.db.global.chatSnapshot then 
+        StopCleanup()
+        return 
+    end
     
     local maxTotal = addon.db.global.chatSnapshotMaxTotal
-    if type(maxTotal) ~= "number" or maxTotal <= 0 then return end
+    if type(maxTotal) ~= "number" or maxTotal <= 0 then 
+        StopCleanup()
+        return 
+    end
     
+    -- Recalculate count
     local currentCount = GetLineCount()
-    -- Only trigger cleanup when exceeding threshold (maxTotal + buffer)
-    if currentCount <= maxTotal + EVICT_BUFFER then return end
+    if currentCount <= maxTotal then
+        StopCleanup()
+        return
+    end
     
-    local currentChar = GetCharKey()
+    -- Eviction Logic
+    -- Heuristic: Remove from current character first (as in original logic), 
+    -- then others. Ideally we should find the oldest messages globally, 
+    -- but sorting everything is too expensive.
+    -- We'll just iterate and prune.
+    
     local content = addon.db.global.chatSnapshot
-    local chars = {}
-    for c in pairs(content) do chars[#chars + 1] = c end
-    table.sort(chars, function(a, b)
-        if a == currentChar then return true end
-        if b == currentChar then return false end
-        return a < b
-    end)
+    local removedCount = 0
     
-    -- Batch removal: remove multiple entries at once to reach target
-    local toRemove = currentCount - maxTotal
-    local removed = 0
-    
-    for _, charKey in ipairs(chars) do
-        if removed >= toRemove then break end
-        local perChannel = content[charKey]
+    for charKey, perChannel in pairs(content) do
+        if removedCount >= CLEANUP_BATCH_SIZE then break end
+        
         if type(perChannel) == "table" then
             for chKey, lines in pairs(perChannel) do
-                if removed >= toRemove then break end
-                if type(lines) == "table" then
-                    local canRemove = math.min(#lines, toRemove - removed)
-                    if canRemove > 0 then
-                        -- Batch remove from front
-                        for i = 1, canRemove do
-                            table.remove(lines, 1)
-                        end
-                        removed = removed + canRemove
+                if removedCount >= CLEANUP_BATCH_SIZE then break end
+                
+                if type(lines) == "table" and #lines > 0 then
+                    local canRemove = math.min(#lines, CLEANUP_BATCH_SIZE - removedCount)
+                    -- Don't empty the channel completely unless necessary? 
+                    -- Actually, we just want to reduce total count.
+                    
+                    for i = 1, canRemove do
+                        table.remove(lines, 1) -- Remove oldest in channel
                     end
+                    removedCount = removedCount + canRemove
                 end
             end
         end
     end
     
-    addon.db.global.chatSnapshotLineCount = math.max(0, (addon.db.global.chatSnapshotLineCount or 0) - removed)
+    -- Update count
+    addon.db.global.chatSnapshotLineCount = math.max(0, currentCount - removedCount)
+    
+    -- Validation checks
+    if removedCount == 0 then
+        -- Could not remove anything but count > maxTotal? 
+        -- This implies inconsistency or empty tables. Force stop to avoid infinite loop.
+        StopCleanup()
+        -- Force recalc next time
+        addon.db.global.chatSnapshotLineCount = CountTotalStoredLines()
+    end
 end
+
+-- Public trigger
+function addon:TriggerEviction()
+    if cleanupTicker then return end -- Already running
+    
+    local current = GetLineCount()
+    local max = addon.db.global.chatSnapshotMaxTotal or 5000
+    
+    if current > max then
+        cleanupTicker = C_Timer.NewTicker(0.05, PerformEvictionBatch) -- 20 times per second
+    end
+end
+
 
 
 function addon:ClearHistory()
@@ -441,6 +477,9 @@ function addon:SetSnapshotChannelSelection(filter, selection)
     end
     
     if addon.ApplyAllSettings then addon:ApplyAllSettings() end
+    
+    -- Trigger cleanup in case limits changed
+    addon:TriggerEviction()
 end
 
 function addon:GetSnapshotChannelsSummary()

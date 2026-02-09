@@ -119,10 +119,33 @@ local function OnSnapshotEvent(self, event, ...)
         frameName = nil 
     })
     
+    -- Update global line count if tracked
+    if addon.db.global.chatSnapshotLineCount then
+        addon.db.global.chatSnapshotLineCount = addon.db.global.chatSnapshotLineCount + 1
+    end
+    
     -- Maintenance (Trimming)
+    -- Optimized: Normally remove 1, but if limit changed drastically, remove a small batch per event
+    -- This avoids freezing when limit is lowered significantly (MC-002)
     local maxPerChannel = contentSettings.maxPerChannel or 500
-    while #perChannel[channelKey] > maxPerChannel do
-        table.remove(perChannel[channelKey], 1)
+    local excess = #perChannel[channelKey] - maxPerChannel
+    
+    if excess > 0 then
+        -- Remove at most 5 items per event to gradually reach the limit without stalling
+        local batch = (excess > 5) and 5 or excess
+        for i = 1, batch do
+            table.remove(perChannel[channelKey], 1)
+        end
+        
+        -- Update global count
+        if addon.db.global.chatSnapshotLineCount then
+            addon.db.global.chatSnapshotLineCount = math.max(0, addon.db.global.chatSnapshotLineCount - batch)
+        end
+    end
+    
+    -- Trigger global eviction if available and needed
+    if addon.TriggerEviction and (addon.db.global.chatSnapshotLineCount or 0) > (addon.db.global.chatSnapshotMaxTotal or 5000) then
+        addon:TriggerEviction()
     end
 end
 

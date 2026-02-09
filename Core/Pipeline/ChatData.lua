@@ -18,6 +18,10 @@ function addon.ChatData:New(frame, event, ...)
     -- Protect against secret values (Blizzard marks certain messages as inaccessible)
     -- Check both text and author as they can both be secret values during boss fights
     -- If either is not a string (e.g., secret value), return nil to skip this message
+    -- Also validate event type to prevent pipeline errors
+    if event ~= nil and type(event) ~= "string" then
+        return nil
+    end
     if text ~= nil and type(text) ~= "string" then
         return nil
     end

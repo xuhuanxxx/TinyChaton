@@ -1,5 +1,6 @@
 local addonName, addon = ...
 local L = addon.L
+local format = string.format
 
 addon.Emotes = {}
 
@@ -41,7 +42,7 @@ function addon.Emotes.Parse(msg)
     for _, e in ipairs(emotes) do
         -- Escape magic characters in key (e.g. { }) to treat them as literals
         local pattern = e.key:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", "%%%1")
-        msg = msg:gsub(pattern, "|T"..e.file..":0|t")
+        msg = msg:gsub(pattern, format("|T%s:0|t", e.file))
     end
     return msg
 end
@@ -59,8 +60,13 @@ end
 local function HookChatBubbles()
     if not C_ChatBubbles then return end
     
-    local function FindFontString(frame)
+    local function FindFontString(frame, depth)
         if not frame then return nil end
+        
+        -- Recursion guard
+        depth = depth or 0
+        if depth > 10 then return nil end
+        
         if frame:IsForbidden() then return nil end
         
         -- Check regions directly
@@ -78,7 +84,7 @@ local function HookChatBubbles()
         -- Check children recursively
         for i = 1, frame:GetNumChildren() do
             local child = select(i, frame:GetChildren())
-            local found = FindFontString(child)
+            local found = FindFontString(child, depth + 1)
             if found then return found end
         end
         
@@ -109,14 +115,31 @@ local function HookChatBubbles()
     end
 
     -- Update bubbles periodically (save ticker for cleanup)
-    addon._bubbleTicker = C_Timer.NewTicker(0.1, UpdateBubbles)
+    -- Reduced frequency to 0.2s for performance (HC-001)
+    if not addon._bubbleTicker and addon.db and addon.db.enabled and addon.db.plugin.chat and addon.db.plugin.chat.content.emoteRender then
+        addon._bubbleTicker = C_Timer.NewTicker(0.2, UpdateBubbles)
+    end
 end
 
--- Stop bubble ticker when disabled
+-- Stop bubble ticker
 function addon:StopBubbleTicker()
     if addon._bubbleTicker then
         addon._bubbleTicker:Cancel()
         addon._bubbleTicker = nil
+    end
+end
+
+-- Update ticker state based on settings
+function addon:UpdateEmoteTickerState()
+    local enabled = addon.db and addon.db.enabled and addon.db.plugin and addon.db.plugin.chat and addon.db.plugin.chat.content and addon.db.plugin.chat.content.emoteRender
+    
+    if enabled then
+        -- Delegate to HookChatBubbles which handles ticker creation and uses the correct local UpdateBubbles function
+        if not addon._bubbleTicker then
+            HookChatBubbles()
+        end
+    else
+        addon:StopBubbleTicker()
     end
 end
 
@@ -136,6 +159,13 @@ function addon:InitEmoteHelper()
     end
 
     HookChatBubbles()
+    
+    -- Hook into settings application to toggle ticker
+    local origApply = addon.ApplyAllSettings
+    addon.ApplyAllSettings = function(self)
+        if origApply then origApply(self) end
+        self:UpdateEmoteTickerState()
+    end
 end
 
 local panel

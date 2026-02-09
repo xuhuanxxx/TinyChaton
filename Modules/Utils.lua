@@ -102,6 +102,31 @@ function addon.Utils.NormalizeChannelBaseName(name)
     return name:match("^%s*(.-)%s*%-%s*.+$") or name
 end
 
+-- Helper: Match channel name against stream (LC-001)
+local function MatchChannelName(stream, normalizedName)
+    if not stream or not normalizedName then return false end
+    local L = addon.L
+    
+    -- 1. Match by label (highest priority?)
+    if stream.label == normalizedName then return true end
+    
+    -- 2. Match by real channel name (for dynamic channels)
+    if stream.mappingKey then
+        local realName = L[stream.mappingKey]
+        if realName then
+            -- Exact match
+            if realName == normalizedName then return true end
+            -- Partial match (start of string)
+            -- Check if normalizedName starts with realName (e.g. "General - City" starts with "General")
+            if normalizedName:find(realName, 1, true) == 1 then return true end
+            -- Check if realName starts with normalizedName (reverse case?)
+            if realName:find(normalizedName, 1, true) == 1 then return true end
+        end
+    end
+    
+    return false
+end
+
 -- Find registry item by various inputs
 local function FindRegistryItem(input)
     if not input then return nil end
@@ -137,19 +162,9 @@ local function FindRegistryItem(input)
         end
         
         -- 4. Try by channelName for dynamic channels
-        if normalizedName then
-            if subKey == "DYNAMIC" and stream.mappingKey then
-                local realName = L[stream.mappingKey]
-                if realName then
-                    if realName == normalizedName or normalizedName:find(realName, 1, true) == 1 or realName:find(normalizedName, 1, true) == 1 then
-                        return stream
-                    end
-                end
-            end
-            -- Also match by label
-            if stream.label == normalizedName then
-                return stream
-            end
+        -- Unified matching logic (LC-001)
+        if normalizedName and MatchChannelName(stream, normalizedName) then
+            return stream
         end
     end
     
@@ -258,27 +273,9 @@ function addon.Utils.ShortenChannelString(str, fmt)
     if not item and name and name ~= "" then
         local normalizedName = addon.Utils.NormalizeChannelBaseName(name)
         for _, stream, catKey, subKey in addon:IterateAllStreams() do
-            -- Match by label
-            if stream.label == normalizedName then
+            if MatchChannelName(stream, normalizedName) then
                 item = stream
                 break
-            end
-            -- Match by real channel name (for dynamic channels)
-            if stream.mappingKey then
-                local realName = L[stream.mappingKey]
-                if realName == normalizedName then
-                    item = stream
-                    break
-                end
-                -- Also try partial match
-                if realName and normalizedName:find(realName, 1, true) == 1 then
-                    item = stream
-                    break
-                end
-                if realName and realName:find(normalizedName, 1, true) == 1 then
-                    item = stream
-                    break
-                end
             end
         end
     end

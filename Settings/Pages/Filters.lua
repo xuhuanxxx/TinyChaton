@@ -102,14 +102,14 @@ CategoryBuilders.filters = function(rootCat)
     filterProxySettings["names"] = addon.AddNativeButton(cat, L["LABEL_BLOCK_NAMES"], L["ACTION_EDIT"], function()
         local db = addon.GetTableFromPath("plugin.filter")
         if not db or not db[currentMode] then return end
-        addon.ShowEditor(L["LABEL_BLOCK_NAMES"], db[currentMode], "names", L["LABEL_BLOCK_NAMES_HINT"])
+        addon.UI.ShowEditor(L["LABEL_BLOCK_NAMES"], db[currentMode], "names", L["LABEL_BLOCK_NAMES_HINT"])
     end, nil)
 
     -- Keywords Button (Dynamic)
     filterProxySettings["keywords"] = addon.AddNativeButton(cat, L["LABEL_BLOCK_KEYWORDS"], L["ACTION_EDIT"], function()
         local db = addon.GetTableFromPath("plugin.filter")
         if not db or not db[currentMode] then return end
-        addon.ShowEditor(L["LABEL_BLOCK_KEYWORDS"], db[currentMode], "keywords", L["LABEL_BLOCK_KEYWORDS_HINT"])
+        addon.UI.ShowEditor(L["LABEL_BLOCK_KEYWORDS"], db[currentMode], "keywords", L["LABEL_BLOCK_KEYWORDS_HINT"])
     end, nil)
 
     -- ========================================
@@ -121,12 +121,12 @@ CategoryBuilders.filters = function(rootCat)
 
     addon.AddNativeButton(cat, L["LABEL_HIGHLIGHT_NAMES"], L["ACTION_EDIT"], function()
         local db = addon.GetTableFromPath("plugin.filter.highlight")
-        if db then addon.ShowEditor(L["LABEL_HIGHLIGHT_NAMES"], db, "names", L["LABEL_HIGHLIGHT_NAMES_HINT"]) end
+        if db then addon.UI.ShowEditor(L["LABEL_HIGHLIGHT_NAMES"], db, "names", L["LABEL_HIGHLIGHT_NAMES_HINT"]) end
     end, nil)
 
     addon.AddNativeButton(cat, L["LABEL_HIGHLIGHT_KEYWORDS"], L["ACTION_EDIT"], function()
         local db = addon.GetTableFromPath("plugin.filter.highlight")
-        if db then addon.ShowEditor(L["LABEL_HIGHLIGHT_KEYWORDS"], db, "keywords", L["LABEL_HIGHLIGHT_KEYWORDS_HINT"]) end
+        if db then addon.UI.ShowEditor(L["LABEL_HIGHLIGHT_KEYWORDS"], db, "keywords", L["LABEL_HIGHLIGHT_KEYWORDS_HINT"]) end
     end, nil)
 
     addon.AddNativeButton(cat, L["LABEL_HIGHLIGHT_COLOR"], L["ACTION_COLOR"], function()

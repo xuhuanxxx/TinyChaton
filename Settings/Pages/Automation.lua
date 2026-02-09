@@ -75,7 +75,7 @@ CategoryBuilders.automation = function(rootCat)
         end
         local label = db.currentSocialTab == "guild" and L["LABEL_WELCOME_GUILD"] or
                       db.currentSocialTab == "party" and L["LABEL_WELCOME_PARTY"] or L["LABEL_WELCOME_RAID"]
-        addon.ShowEditor(label, cfg, "templates", L["LABEL_WELCOME_TEMPLATE_HINT"])
+        addon.UI.ShowEditor(label, cfg, "templates", L["LABEL_WELCOME_TEMPLATE_HINT"])
     end, nil)
 
     -- 2. Auto Join Channels

@@ -34,6 +34,7 @@ Libs\Registry\Anchors.lua
 Libs\Registry\Kits.lua
 Libs\Registry\Themes.lua
 Libs\Registry\Settings.lua
+Libs\UI\UI.lua
 Libs\MultiDropdown\MultiDropdown.xml
 Libs\MultiDropdown\Core.lua
 

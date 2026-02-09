@@ -220,54 +220,8 @@ end
 
 function addon:ToggleEmotePanel(anchorFrame)
     if not panel then
-        panel = CreateFrame("Frame", "TinyChatonEmotePanel", UIParent, "DialogBorderDarkTemplate")
-        panel:ClearAllPoints()
-        panel:SetFrameStrata("DIALOG")
-        panel:SetClampedToScreen(true)
-        panel:EnableMouse(true)
-
-        -- Right-click on background to close
-        panel:SetScript("OnMouseUp", function(self, button)
-            if button == "RightButton" then
-                self:Hide()
-            end
-        end)
-
-        -- Register for ESC key closing (Fixed typo)
-        table.insert(UISpecialFrames, "TinyChatonEmotePanel")
-
-        -- Header (Native Style)
-        panel.Header = CreateFrame("Frame", nil, panel, "DialogHeaderTemplate")
-        panel.Header:SetPoint("TOP", 0, 12)
-        -- DialogHeaderTemplate puts text in .Text
-        if panel.Header.Text then
-            panel.Header.Text:SetText(L["KIT_EMOTE"])
-        else
-             -- Fallback scan
-            for _, region in ipairs({panel.Header:GetRegions()}) do
-                if region:GetObjectType() == "FontString" then
-                    region:SetText(L["KIT_EMOTE"])
-                    break
-                end
-            end
-        end
-        panel.Header:SetFrameLevel(panel:GetFrameLevel() + 5)
-        -- Allow right-click on header to close
-        panel.Header:EnableMouse(true)
-        panel.Header:SetScript("OnMouseUp", function(self, button)
-            if button == "RightButton" then panel:Hide() end
-        end)
-
-        -- Close Button
-        panel.CloseButton = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
-        panel.CloseButton:SetSize(24, 24)
-        panel.CloseButton:SetPoint("TOPRIGHT", -5, -5)
-        -- Allow right-click on close button to "close" (same as left)
-        panel.CloseButton:RegisterForClicks("AnyUp")
-        panel.CloseButton:SetScript("OnClick", function(self, button)
-            panel:Hide()
-        end)
-
+        panel = addon.UI.CreateDialog("TinyChatonEmotePanel", L["KIT_EMOTE"])
+        
         local size = 24
         local padding = 6
         local cols = 8
@@ -291,6 +245,8 @@ function addon:ToggleEmotePanel(anchorFrame)
         -- We estimate header area takes ~40 space, Nav area ~30
         panel:SetSize(gridWidth + 40, gridHeight + 70)
 
+        -- Creating Buttons, Navigation, etc. remains similar but using panel directly
+        
         -- Create Buttons
         for i = 1, GetPageSize() do
             local btn = CreateFrame("Button", nil, panel.Content) -- Parent to Content

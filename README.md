@@ -82,3 +82,23 @@ TinyChaton is fully localized for:
 ## License
 
 MIT
+
+## TODO
+
+### Configuration Hot-Reloading
+- **Current State**: Changing certain settings (e.g., enabling/disabling modules, timer intervals) requires a `/reload` to take full effect.
+- **Goal**: Implement a system where configuration changes are applied immediately without reloading the UI.
+- **Details**:
+  - Implement `addon:RegisterConfigWatcher(path, callback)` to listen for DB changes.
+  - Refactor modules to support "soft disable" (unregister events/timers) and "soft enable" (re-register).
+  - Ensure resource cleanup (e.g., canceling tickers) when features are toggled off.
+
+### Full Channel Indexing
+- **Current State**: Channel name to ID mapping uses lazy caching (built on demand).
+- **Goal**: Implement complete reverse index building at addon initialization (TODO-006).
+- **Benefit**: Consistent O(1) lookup performance for all channel operations from the start.
+
+### Comprehensive API Annotations
+- **Current State**: Core modules (`ChatData`, `Utils`) have LuaCATS annotations.
+- **Goal**: Add annotations to remaining modules (e.g., `SnapshotManager`, `Ribbon`, `UI`) (TODO-010).
+- **Benefit**: Improved developer experience with better IDE autocompletion and type checking.

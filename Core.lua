@@ -1,6 +1,8 @@
 local addonName, addon = ...
 local L = addon.L
 
+_G.TinyChaton = addon
+
 addon.chatFrameTransformers = addon.chatFrameTransformers or {}
 
 function addon:RegisterChatFrameTransformer(name, fn)

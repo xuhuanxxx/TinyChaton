@@ -48,6 +48,7 @@ Core\Middleware\StripPrefix.lua
 Core\Middleware\Blacklist.lua
 Core\Middleware\Whitelist.lua
 Core\Middleware\DuplicateFilter.lua
+Core\Middleware\Timestamp.lua
 Core\Middleware\SnapshotLogger.lua
 
 Events.lua

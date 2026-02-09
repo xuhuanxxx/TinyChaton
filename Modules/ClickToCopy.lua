@@ -1,173 +1,111 @@
 local addonName, addon = ...
-local L = addon.L
 
 addon.messageCache = addon.messageCache or {}
 
-local function PruneMessageCache()
-    local cache = addon.messageCache
+local function PruneCache()
+    local now = GetTime()
     local maxAge = 600
     local maxCount = addon.COPY_MESSAGE_LIMIT or 200
-    local now = GetTime()
     local toRemove = {}
     local n = 0
     
-    -- Count and mark old entries
-    for id, entry in pairs(cache) do
+    for id, entry in pairs(addon.messageCache) do
         n = n + 1
-        local age = entry and type(entry) == "table" and entry.time and (now - entry.time) or 0
-        if age > maxAge then
+        if entry.time and (now - entry.time) > maxAge then
             toRemove[#toRemove + 1] = id
         end
     end
     
-    -- Remove old entries
     for _, id in ipairs(toRemove) do
-        cache[id] = nil
+        addon.messageCache[id] = nil
         n = n - 1
     end
     
-    -- Enforce count limit
     if n > maxCount then
         local ordered = {}
-        for id, entry in pairs(cache) do
-            local t = entry and type(entry) == "table" and entry.time or 0
-            ordered[#ordered + 1] = { id = id, time = t }
+        for id, entry in pairs(addon.messageCache) do
+            ordered[#ordered + 1] = { id = id, time = entry.time or 0 }
         end
         table.sort(ordered, function(a, b) return a.time < b.time end)
         for i = 1, n - maxCount do
-            local item = ordered[i]
-            if item then cache[item.id] = nil end
+            addon.messageCache[ordered[i].id] = nil
         end
     end
 end
 
--- Transformer Logic (Replaces old Middleware)
-local function CopyTimeStampTransformer(frame, text, r, g, b, ...)
-    if not text then return text, r, g, b, ... end
-    if not addon.db or not addon.db.enabled then return text, r, g, b, ... end
-
-    local interaction = addon.db.plugin and addon.db.plugin.chat and addon.db.plugin.chat.interaction
-    -- Check CVar directly
-    local cvarTimestamp = C_CVar.GetCVar("showTimestamps")
-    local cvarEnabled = (cvarTimestamp and cvarTimestamp ~= "none")
+function addon:CreateClickableTimestamp(tsText, copyMsg, tsColor)
+    local interaction = self.db and self.db.plugin and self.db.plugin.chat and self.db.plugin.chat.interaction
+    local clickEnabled = interaction and (interaction.clickToCopy ~= false) or false
     
-    if not cvarEnabled and (not interaction or not interaction.timestampEnabled) then 
-        return text, r, g, b, ... 
+    local color = tsColor or "FFFFFFFF"
+    
+    if not clickEnabled then
+        -- Static timestamp with color reset to let message keep original color
+        return string.format("|c%s%s|r ", color, tsText), nil
     end
     
-    local fmt = (interaction and interaction.timestampFormat) or cvarTimestamp or "%H:%M:%S"
-    if fmt == "none" then fmt = "%H:%M:%S" end
+    PruneCache()
+    local id = tostring(GetTime()) .. "_" .. tostring(math.random(10000, 99999))
     
-    local ts = date(fmt)
-    local tsColor
+    -- Format: |cTimestampColor|Timestamp|h|r 
+    -- The |r at the end resets color so message keeps original color
+    local linkified = string.format("|c%s|Htinychat:copy:%s|h%s|h|r ", color, id, tsText)
     
-    if interaction and interaction.timestampColor then
-        tsColor = interaction.timestampColor
-    else
-        -- Use message color (r,g,b) if available, otherwise default to white
-        if r and g and b then
-            tsColor = string.format("FF%02x%02x%02x", r * 255, g * 255, b * 255)
-        else
-            tsColor = "FFFFFFFF"
-        end
-    end
+    self.messageCache[id] = { msg = copyMsg or (tsText .. " "), time = GetTime() }
     
-    local clickEnabled = (interaction and interaction.clickToCopy ~= false)
-    
-    local timestamp = ""
-    
-    if clickEnabled then
-        local id = tostring(GetTime()) .. "_" .. tostring(math.random(10000, 99999))
-        
-        PruneMessageCache()
-        -- Cache the text AS RECEIVED
-        addon.messageCache[id] = { msg = text, time = GetTime() }
-        
-        -- Construct link: |cColor|Htinychat:copy:ID|h[Timestamp]|h|r
-        timestamp = string.format("|c%s|Htinychat:copy:%s|h[%s]|h|r", tsColor, id, ts)
-    else
-        -- Static timestamp
-        timestamp = string.format("|c%s[%s]|r", tsColor, ts)
-    end
-    
-    -- Prepend timestamp to text
-    return timestamp .. " " .. text, r, g, b, ...
-end
-
-local function SyncTimestampSettings(value)
-    local currentEnabled = (value ~= "none")
-    local currentFormat = currentEnabled and value or (addon.db.plugin.chat.interaction.timestampFormat or "%H:%M:%S")
-    
-    -- 1. Update live DB
-    if addon.db and addon.db.plugin.chat and addon.db.plugin.chat.interaction then
-        addon.db.plugin.chat.interaction.timestampEnabled = currentEnabled
-        addon.db.plugin.chat.interaction.timestampFormat = currentFormat
-    end
-    
-    -- 2. Update internal defaults
-    if addon.DEFAULTS and addon.DEFAULTS.plugin and addon.DEFAULTS.plugin.chat and addon.DEFAULTS.plugin.chat.interaction then
-        addon.DEFAULTS.plugin.chat.interaction.timestampEnabled = currentEnabled
-        addon.DEFAULTS.plugin.chat.interaction.timestampFormat = currentFormat
-    end
+    return linkified, id
 end
 
 function addon:InitClickToCopy()
-    -- Register Transformer
-    addon:RegisterChatFrameTransformer("copy_timestamp", CopyTimeStampTransformer)
-
-    -- Inject into TRANSFORMER_ORDER
-    if addon.TRANSFORMER_ORDER then
-        local found = false
-        for _, v in ipairs(addon.TRANSFORMER_ORDER) do
-            if v == "copy_timestamp" then found = true; break end
-        end
-        if not found then
-            table.insert(addon.TRANSFORMER_ORDER, "copy_timestamp")
-        end
-    end
-
-    -- [Phase 5 & 8] Sync Logic
-    local currentFmt = C_CVar.GetCVar("showTimestamps")
-    if currentFmt then
-        addon.lastTimestampFormat = currentFmt
-        -- Initial Sync
-        if addon.db then SyncTimestampSettings(currentFmt) end
-    end
-    
-    -- [Migration] Clear legacy default gray color so dynamic coloring works
-    if addon.db and addon.db.plugin and addon.db.plugin.chat and addon.db.plugin.chat.interaction then
-        if addon.db.plugin.chat.interaction.timestampColor == "FF888888" then
-            addon.db.plugin.chat.interaction.timestampColor = nil
-        end
-    end
-
-    hooksecurefunc("SetItemRef", function(link, text, button, chatFrame)
-        if not link or type(link) ~= "string" then return end
+    -- Transformer for real-time messages
+    self:RegisterChatFrameTransformer("copy", function(frame, text, r, g, b, ...)
+        if not self.db or not self.db.enabled then return text, r, g, b, ... end
+        if type(text) ~= "string" or text == "" then return text, r, g, b, ... end
         
-        local prefix, id = link:match("^(tinychat:copy):(.+)$")
-        if not prefix and link:sub(1, 9) == "tinychat:" then
-             prefix = "tinychat"
-             id = link:sub(10)
+        -- Skip if already processed
+        if text:find("|Htinychat:copy:") then return text, r, g, b, ... end
+        
+        -- Match timestamp at start: [HH:MM] or [HH:MM:SS]
+        local start, finish, ts = text:find("^(%[?%d+:%d+:?%d*%]?)")
+        
+        if not ts or not ts:find("%d+:%d+") then
+            return text, r, g, b, ...
         end
-
-        if prefix and id then
-            local entry = addon.messageCache and addon.messageCache[id]
-            local msg = entry and (type(entry) == "table" and entry.msg or entry) or nil
-            
-            if msg and type(msg) == "string" then
-                local editBox = ChatEdit_ChooseBoxForSend()
-                if not editBox:HasFocus() then
-                    ChatEdit_ActivateChat(editBox)
-                end
-                editBox:SetText(msg)
-            end
+        
+        -- Check for trailing |r (color reset)
+        if text:sub(finish + 1, finish + 2) == "|r" then
+            ts = ts .. "|r"
+            finish = finish + 2
         end
+        
+        -- Get the rest of the message
+        local rest = text:sub(finish + 1)
+        local needsSpace = rest:sub(1, 1) ~= " "
+        
+        -- Create clickable timestamp - copyMsg includes full message (timestamp + rest)
+        local copyMsg = ts .. (needsSpace and " " or "") .. rest
+        local linkified = self:CreateClickableTimestamp(ts, copyMsg, "FFFFFFFF")
+        
+        return linkified .. rest, r, g, b, ...
     end)
     
-    -- Real-time Mirror Sync
-    addon:RegisterEvent("CVAR_UPDATE", function(_, name, value)
-        if name == "showTimestamps" then
-            SyncTimestampSettings(value)
+    -- Handle clicks
+    hooksecurefunc("SetItemRef", function(link, text, button, chatFrame)
+        if InCombatLockdown() then return end
+        if not link or type(link) ~= "string" then return end
+        
+        local id = link:match("^tinychat:copy:(.+)$")
+        if not id and link:sub(1, 10) == "tinychat:" then
+            id = link:sub(11)
+        end
+        
+        if id then
+            local entry = self.messageCache[id]
+            if entry and entry.msg then
+                local editBox = ChatEdit_ChooseBoxForSend()
+                if not editBox:HasFocus() then ChatEdit_ActivateChat(editBox) end
+                editBox:SetText(entry.msg)
+            end
         end
     end)
 end

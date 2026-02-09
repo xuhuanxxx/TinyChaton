@@ -222,10 +222,36 @@ function addon:InitSnapshotManager()
                 channelTag = string.format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, channelNameDisplay)
             end
             
-            -- Wrap in |Hchannel:CHANNEL:id|h...|h link if valid channel ID exists
-            -- Format: |Hchannel:CHANNEL:channelId|h to ensure proper chatType resolution
+            -- Wrap in |Hchannel:channelKey|h[Name with color]|h link
+            -- For custom channels (1-9): |Hchannel:channelId|h[Name]|h
+            -- For system channels: |Hchannel:GUILD|h[公]|h, |Hchannel:RAID|h[团]|h, etc.
             if line.chatType == "CHANNEL" and line.channelId then
-                channelTag = string.format("|Hchannel:CHANNEL:%s|h%s|h", line.channelId, channelTag)
+                -- Custom channel: use channelId
+                channelTag = string.format("|Hchannel:%s|h%s|h", line.channelId, channelTag)
+            elseif line.chatType == "GUILD" then
+                -- Guild channel
+                channelTag = string.format("|Hchannel:GUILD|h%s|h", channelTag)
+            elseif line.chatType == "RAID" then
+                -- Raid channel
+                channelTag = string.format("|Hchannel:RAID|h%s|h", channelTag)
+            elseif line.chatType == "PARTY" then
+                -- Party channel
+                channelTag = string.format("|Hchannel:PARTY|h%s|h", channelTag)
+            elseif line.chatType == "BATTLEGROUND" then
+                -- Battleground channel
+                channelTag = string.format("|Hchannel:BATTLEGROUND|h%s|h", channelTag)
+            elseif line.chatType == "SAY" then
+                -- Say channel
+                channelTag = string.format("|Hchannel:SAY|h%s|h", channelTag)
+            elseif line.chatType == "OFFICER" then
+                -- Officer channel
+                channelTag = string.format("|Hchannel:OFFICER|h%s|h", channelTag)
+            elseif line.chatType == "INSTANCE_CHAT" then
+                -- Instance/BG channel
+                channelTag = string.format("|Hchannel:INSTANCE|h%s|h", channelTag)
+            elseif line.chatType == "YELL" then
+                -- Yell channel
+                channelTag = string.format("|Hchannel:YELL|h%s|h", channelTag)
             end
             
             -- 3. Author with class color
@@ -272,21 +298,24 @@ function addon:InitSnapshotManager()
                          -- If the formatted time 'ts' doesn't end with a space, add one.
                          local hNeedsSpace = (ts:sub(-1) ~= " ")
                          
-                         if clickEnabled then
-                              local copyId = tostring(line.time) .. "_" .. tostring(math.random(10000, 99999))
-                              
-                              -- Prepend timestamp to copyable message
-                              local fullCopyMsg = string.format("%s%s", ts, copyableMsg)
-                              
-                              if addon.messageCache then
-                                 addon.messageCache[copyId] = { msg = fullCopyMsg, time = GetTime() }
+                           -- Use unified function from ClickToCopy module
+                           local fullCopyMsg = string.format("%s%s", ts, copyableMsg)
+                           if addon.CreateClickableTimestamp then
+                               -- Pass timestamp color for history messages
+                               local linkified, copyId = addon:CreateClickableTimestamp(ts, fullCopyMsg, tsColor)
+                               timestamp = linkified
+                           else
+                              -- Fallback if ClickToCopy not loaded yet
+                              if clickEnabled then
+                                   local copyId = tostring(line.time) .. "_" .. tostring(math.random(10000, 99999))
+                                   if addon.messageCache then
+                                      addon.messageCache[copyId] = { msg = fullCopyMsg, time = GetTime() }
+                                   end
+                                   timestamp = string.format("|c%s|Htinychat:copy:%s|h%s|h|r ", tsColor, copyId, ts)
+                              else
+                                   timestamp = string.format("|c%s%s|r ", tsColor, ts)
                               end
-                              
-                              -- Format: Color -> Link -> Time -> Space
-                              timestamp = string.format("|c%s|Htinychat:copy:%s|h%s|h%s|r", tsColor, copyId, ts, hNeedsSpace and " " or "")
-                         else
-                              timestamp = string.format("|c%s%s%s|r", tsColor, ts, hNeedsSpace and " " or "")
-                         end
+                          end
                 end
             end
             local displayLine = timestamp .. channelTag .. authorTag .. finalText

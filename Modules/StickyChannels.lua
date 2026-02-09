@@ -45,7 +45,7 @@ end
 function addon:InitStickyChannels()
     UpdateSticky()
     HookEditBoxForSticky()
-    
+
     -- Delayed update to ensure settings persist
     -- P0: Config Access
     if addon:GetConfig("plugin.chat.interaction.sticky", true) and C_Timer and C_Timer.After then

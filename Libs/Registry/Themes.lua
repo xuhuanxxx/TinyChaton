@@ -8,22 +8,22 @@ local addonName, addon = ...
 addon.ThemeRegistry = {
     -- 主题预设表: [themeKey] = definition
     presets = {},
-    
+
     -- 组件绑定表: [componentKey] = { themes = {}, default = nil }
     componentBindings = {},
-    
+
     -- 属性类型定义
     propertyTypes = {
         color = {
-            validate = function(v) 
-                return type(v) == "table" and #v == 4 and 
+            validate = function(v)
+                return type(v) == "table" and #v == 4 and
                        type(v[1]) == "number" and v[1] >= 0 and v[1] <= 1
             end,
             default = {1, 1, 1, 1},
             description = "RGBA color {r, g, b, a}",
         },
         number = {
-            validate = function(v, min, max) 
+            validate = function(v, min, max)
                 if type(v) ~= "number" then return false end
                 if min and v < min then return false end
                 if max and v > max then return false end
@@ -43,7 +43,7 @@ addon.ThemeRegistry = {
             description = "Texture path",
         },
         size = {
-            validate = function(v) 
+            validate = function(v)
                 return type(v) == "table" and #v == 2 and
                        type(v[1]) == "number" and type(v[2]) == "number"
             end,
@@ -78,30 +78,30 @@ function TR:RegisterPreset(key, definition)
     if not key or type(key) ~= "string" then
         error("ThemeRegistry: key must be a string")
     end
-    
+
     if not definition or type(definition) ~= "table" then
         error("ThemeRegistry: definition must be a table")
     end
-    
+
     -- 检查是否已存在
     if self.presets[key] then
         print("|cFFFF0000ThemeRegistry:|r Warning - overwriting existing theme '" .. key .. "'")
     end
-    
+
     -- 处理继承
     local finalDefinition = self:MergeWithParent(definition)
-    
+
     -- 验证属性
     if finalDefinition.properties then
         self:ValidateProperties(finalDefinition.properties)
     end
-    
+
     self.presets[key] = finalDefinition
-    
+
     if addon.Debug and addon.Debug.themes then
         print("|cFF00FF00ThemeRegistry:|r Registered theme '" .. key .. "'")
     end
-    
+
     return true
 end
 
@@ -113,28 +113,28 @@ function TR:RegisterComponent(componentKey, themeKeys, defaultTheme)
     if not componentKey or type(componentKey) ~= "string" then
         error("ThemeRegistry: componentKey must be a string")
     end
-    
+
     if type(themeKeys) ~= "table" then
         error("ThemeRegistry: themeKeys must be a table")
     end
-    
+
     -- 验证主题是否存在
     for _, themeKey in ipairs(themeKeys) do
         if not self.presets[themeKey] then
             error("ThemeRegistry: theme '" .. themeKey .. "' not found when registering component '" .. componentKey .. "'")
         end
     end
-    
+
     -- 验证默认主题
     if defaultTheme and not self.presets[defaultTheme] then
         error("ThemeRegistry: default theme '" .. defaultTheme .. "' not found")
     end
-    
+
     self.componentBindings[componentKey] = {
         themes = themeKeys,
         default = defaultTheme or themeKeys[1],
     }
-    
+
     if addon.Debug and addon.Debug.themes then
         print("|cFF00FF00ThemeRegistry:|r Registered component '" .. componentKey .. "' with " .. #themeKeys .. " themes")
     end
@@ -172,16 +172,16 @@ end
 function TR:GetResolvedProperties(themeKey, componentKey)
     local preset = self.presets[themeKey]
     if not preset then return {} end
-    
+
     local props = {}
-    
+
     -- 复制属性
     if preset.properties then
         for k, v in pairs(preset.properties) do
             props[k] = v
         end
     end
-    
+
     return props
 end
 
@@ -204,23 +204,23 @@ function TR:MergeWithParent(definition)
     if not definition.extends then
         return definition
     end
-    
+
     local parent = self.presets[definition.extends]
     if not parent then
         error("ThemeRegistry: parent theme '" .. definition.extends .. "' not found")
     end
-    
+
     -- 递归合并
     local parentMerged = self:MergeWithParent(parent)
     local merged = {}
-    
+
     -- 复制父主题属性
     for k, v in pairs(parentMerged) do
         if k ~= "properties" then
             merged[k] = v
         end
     end
-    
+
     -- 复制父主题properties
     if parentMerged.properties then
         merged.properties = {}
@@ -228,7 +228,7 @@ function TR:MergeWithParent(definition)
             merged.properties[k] = v
         end
     end
-    
+
     -- 覆盖子主题定义
     for k, v in pairs(definition) do
         if k == "properties" and type(v) == "table" then
@@ -241,7 +241,7 @@ function TR:MergeWithParent(definition)
             merged[k] = v
         end
     end
-    
+
     return merged
 end
 
@@ -269,7 +269,7 @@ end
 function TR:GenerateThemeOptions(componentKey)
     local themes = self:GetComponentThemes(componentKey)
     local options = {}
-    
+
     for _, themeKey in ipairs(themes) do
         local preset = self.presets[themeKey]
         if preset then
@@ -279,7 +279,7 @@ function TR:GenerateThemeOptions(componentKey)
             })
         end
     end
-    
+
     return options
 end
 
@@ -289,7 +289,7 @@ end
 -- @return string 控件类型: "slider", "color", "dropdown", "text"
 function TR:GetPropertyControlType(propertyName, value)
     local valueType = type(value)
-    
+
     if valueType == "table" then
         if #value == 4 and type(value[1]) == "number" then
             return "color"
@@ -311,7 +311,7 @@ function TR:GetPropertyControlType(propertyName, value)
         end
         return "text"
     end
-    
+
     return "text"
 end
 

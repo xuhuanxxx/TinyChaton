@@ -41,14 +41,14 @@ local function trySendWelcome(playerName, scene)
     local c = addon.db.plugin.automation
     local cfg = scene == "guild" and c.welcomeGuild or scene == "party" and c.welcomeParty or c.welcomeRaid
     if not cfg or not cfg.enabled then return end
-    
+
     -- Handle templates as function or table
     local templates = cfg.templates
     if type(templates) == "function" then
         templates = templates()
     end
     if not templates or type(templates) ~= "table" then return end
-    
+
     -- Check permissions: party/raid requires leader, guild does not
     if scene == "party" or scene == "raid" then
         if not UnitIsGroupLeader("player") then
@@ -74,14 +74,14 @@ local function trySendWelcome(playerName, scene)
         if not addon.db or not addon.db.plugin.automation then return end
         local cfgNow = scene == "guild" and addon.db.plugin.automation.welcomeGuild or scene == "party" and addon.db.plugin.automation.welcomeParty or addon.db.plugin.automation.welcomeRaid
         if not cfgNow or not cfgNow.enabled then return end
-        
+
         -- Re-check permissions (may have lost leader status during delay)
         if scene == "party" or scene == "raid" then
             if not UnitIsGroupLeader("player") then
                 return
             end
         end
-        
+
         if chatType == "WHISPER" then
             SendChatMessage(text, "WHISPER", nil, playerName)
         elseif scene == "guild" and IsInGuild() then
@@ -118,20 +118,20 @@ local function OnSystemMessage(self, event, msg)
     -- P0: Config Access
     if not addon:GetConfig("plugin.automation", true) then return end
     if not msg then return end
-    
+
     -- Check each scene
     local player = getJoinedPlayer(msg, "guild")
     if player then
         trySendWelcome(player, "guild")
         return
     end
-    
+
     player = getJoinedPlayer(msg, "party")
     if player then
         trySendWelcome(player, "party")
         return
     end
-    
+
     player = getJoinedPlayer(msg, "raid")
     if player then
         trySendWelcome(player, "raid")
@@ -142,7 +142,7 @@ end
 listener:SetScript("OnEvent", OnSystemMessage)
 
 function addon:InitAutoWelcome()
-    -- Nothing to do here as frame is created automatically, 
+    -- Nothing to do here as frame is created automatically,
     -- but keeping function for consistency if needed later.
 end
 

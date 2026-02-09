@@ -41,8 +41,12 @@ Libs\TinyReactor\TinyReactor.xml
 
 Config.lua
 Core.lua
+Modules\Utils.lua
+Modules\Pool.lua
 Core\EventDispatcher.lua
 Core\Pipeline\ChatData.lua
+Core\Tests.lua
+Core\Profiler.lua
 
 Core\Middleware\StripPrefix.lua
 Core\Middleware\Blacklist.lua
@@ -53,7 +57,8 @@ Core\Middleware\SnapshotLogger.lua
 
 Events.lua
 
-Modules\Utils.lua
+
+
 Modules\ChannelAbbreviation.lua
 Modules\ChatFont.lua
 Modules\StickyChannels.lua

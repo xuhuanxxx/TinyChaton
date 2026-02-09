@@ -18,20 +18,20 @@ local function SavePosition()
     if not Shelf then return end
     local db = addon.db and addon.db.plugin and addon.db.plugin.shelf
     if not db then return end
-    
+
     local sl, sr, st, sb = Shelf:GetLeft(), Shelf:GetRight(), Shelf:GetTop(), Shelf:GetBottom()
     if not sl or not sr or not st or not sb then return end
-    
+
     local parL, parR, parT, parB = UIParent:GetLeft(), UIParent:GetRight(), UIParent:GetTop(), UIParent:GetBottom()
     if not parL or not parR or not parT or not parB then return end
-    
+
     local point, relPoint, snapX, snapY
-    
+
     local nearLeft = (sl - parL) < SNAP_THRESHOLD
     local nearRight = (parR - sr) < SNAP_THRESHOLD
     local nearTop = (parT - st) < SNAP_THRESHOLD
     local nearBottom = (sb - parB) < SNAP_THRESHOLD
-    
+
     if nearTop then
         if nearLeft then
             point, relPoint = "TOPLEFT", "TOPLEFT"
@@ -68,11 +68,11 @@ local function SavePosition()
 
     Shelf:ClearAllPoints()
     Shelf:SetPoint(point, UIParent, relPoint, snapX, snapY)
-    
+
     local p, _, rp, x, y = Shelf:GetPoint(1)
     db.savedPoint = { p, rp, x, y }
     db.anchor = "custom"
-    
+
     if SettingsPanel and SettingsPanel:IsShown() then
         addon:ApplyAllSettings()
     end
@@ -82,13 +82,13 @@ local function ApplyPosition(self)
     local db = addon.db and addon.db.plugin and addon.db.plugin.shelf
     if not db then return end
     self:ClearAllPoints()
-    
+
     -- Ensure onscreen (prevents disappearing into void)
     self:SetClampedToScreen(true)
-    
+
     local applied = false
     local anchors = addon.AnchorRegistry and addon.AnchorRegistry:GetAnchors()
-    
+
     -- 1. Custom Position
     if db.anchor == "custom" then
         if db.savedPoint and #db.savedPoint > 0 then
@@ -135,7 +135,7 @@ local function ApplyPosition(self)
             end
         end
     end
-    
+
     -- 4. Ultimate Fallback
     if not applied then
         self:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
@@ -146,12 +146,12 @@ local function UpdateEditModeShelf(self)
     if not self.selectionFrame then
         local f = CreateFrame("Frame", nil, self, "EditModeSystemSelectionTemplate")
         f:SetAllPoints()
-        
+
         f.system = {
             GetSystemName = function() return L["LABEL_EDIT_MODE"] end,
             IsSelected = function() return self.isSelected end,
         }
-        
+
         f:SetScript("OnMouseDown", function()
             if EditModeManagerFrame and EditModeManagerFrame.ClearSelectedSystem then
                 EditModeManagerFrame:ClearSelectedSystem()
@@ -160,16 +160,16 @@ local function UpdateEditModeShelf(self)
             f:ShowSelected(true)
             self:StartMoving()
         end)
-        
+
         f:SetScript("OnMouseUp", function()
             self:StopMovingOrSizing()
             -- Position saving will be handled by addon.Shelf
             SavePosition()
         end)
-        
+
         self.selectionFrame = f
     end
-    
+
     if self.isEditing then
         self.selectionFrame:Show()
         self.selectionFrame:ShowHighlighted()
@@ -195,29 +195,29 @@ addon.ShelfButton = ShelfButton
 
 function ShelfButton:Render(props)
     local theme = props.theme or addon:GetShelfThemeProperties(addon.CONSTANTS.SHELF_DEFAULT_THEME)
-    
+
     local textColor = addon:GetButtonColor(props.item)
-    
+
     -- Gray out if inactive
     -- Gray out if inactive? No, user requested "Cross out" (叉号)
     -- So we will use an overlay texture instead of dimming.
     if props.isActive == false then
-        -- Optional: slight dim to make the cross pop more? 
+        -- Optional: slight dim to make the cross pop more?
         -- textColor = { textColor[1], textColor[2], textColor[3], (textColor[4] or 1) * 0.6 }
     end
-    
+
     return TR:CreateElement("Button", {
         key = props.key,
         size = {props.size or 30, props.size or 30},
         point = props.point,
         text = props.text,
         textColor = textColor,
-        
+
         template = theme.template,
         backdrop = theme.backdrop,
         backdropColor = theme.bgColor,
         backdropBorderColor = theme.borderColor,
-        
+
         onClick = function(btnSelf, button)
              if button == "LeftButton" and props.onLeftClick then
                  props.onLeftClick(btnSelf)
@@ -225,7 +225,7 @@ function ShelfButton:Render(props)
                  props.onRightClick(btnSelf)
              end
         end,
-        
+
         onEnter = function(btnSelf)
             -- Ensure clicks are registered (fix for right-click issue)
             btnSelf:RegisterForClicks("AnyUp")
@@ -233,7 +233,7 @@ function ShelfButton:Render(props)
             if theme.hoverBorderColor then
                 btnSelf:SetBackdropBorderColor(unpack(theme.hoverBorderColor))
             end
-            
+
             if props.tooltip then
                 GameTooltip:SetOwner(btnSelf, "ANCHOR_RIGHT")
                 if type(props.tooltip) == "function" then
@@ -244,7 +244,7 @@ function ShelfButton:Render(props)
                 GameTooltip:Show()
             end
         end,
-        
+
         onLeave = function(btnSelf)
             if theme.borderColor then
                 btnSelf:SetBackdropBorderColor(unpack(theme.borderColor))
@@ -254,30 +254,30 @@ function ShelfButton:Render(props)
 
         onShow = function(btnSelf)
             btnSelf:RegisterForClicks("AnyUp")
-            
+
             if theme.fontSize then
                 local fs = btnSelf:GetFontString()
                 if fs then
                     local font, _, outline = fs:GetFont()
                     if not font then font = "Fonts\\FRIZQT__.TTF" end
-                    
+
                     local themeFont = theme.font
                     local fontToUse
-                    
+
                     if themeFont == "STANDARD" then fontToUse = STANDARD_TEXT_FONT
                     elseif themeFont == "CHAT" then fontToUse = UNIT_NAME_FONT
                     elseif themeFont == "DAMAGE" then fontToUse = DAMAGE_TEXT_FONT
                     elseif themeFont and themeFont ~= "" then fontToUse = themeFont
                     else fontToUse = font end
-                    
+
                     -- Ensure we don't accidentally use a number as font path (if database corruption)
                     if type(fontToUse) ~= "string" then fontToUse = "Fonts\\FRIZQT__.TTF" end
-                        
+
                     fs:SetFont(fontToUse, theme.fontSize, outline)
                 end
             end
         end,
-        
+
         -- Use ref to manage the "Cross" overlay for inactive state manually
         ref = function(btnSelf)
             if not btnSelf.DisabledOverlay then
@@ -286,11 +286,11 @@ function ShelfButton:Render(props)
                 btnSelf.DisabledOverlay:SetPoint("CENTER")
                 btnSelf.DisabledOverlay:SetAlpha(0.9)
             end
-            
+
             -- Update size based on current button size
             local s = (props.size or 30) * 0.8
             btnSelf.DisabledOverlay:SetSize(s, s)
-            
+
             if props.isActive == false then
                 btnSelf.DisabledOverlay:Show()
                 -- Also dim the text slightly
@@ -313,22 +313,22 @@ end
 
 function addon.Shelf:Render()
     if not Shelf then return end
-    
+
     if not addon.db or not addon.db.enabled or not addon.db.plugin or not addon.db.plugin.shelf or not addon.db.plugin.shelf.enabled then
         TR:DebugLog("reconciler", "Shelf:Render skipped - disabled or no db")
         Shelf:Hide()
         return
     end
-    
+
     TR:DebugLog("reconciler", "Shelf:Render START")
     Shelf:Show()
     local visibleItems = self:GetVisibleItems()
-    
-    
+
+
     -- Resolve Theme & Settings
     local themeKey = (addon.db.plugin.shelf.theme) or addon.CONSTANTS.SHELF_DEFAULT_THEME
     local currentTheme = addon:GetShelfThemeProperties(themeKey)
-    
+
     local btnSize = currentTheme.buttonSize or addon.CONSTANTS.SHELF_DEFAULT_BUTTON_SIZE
     local spacing = currentTheme.spacing or addon.CONSTANTS.SHELF_DEFAULT_SPACING
     local currentX = 0
@@ -338,24 +338,24 @@ function addon.Shelf:Render()
 
     -- Build children buttons for the stack
     local buttonElements = {}
-    
+
     local dbTheme = addon.db.plugin.shelf.themes and addon.db.plugin.shelf.themes[themeKey] or {}
     local themeAlpha = dbTheme.alpha or currentTheme.alpha or 1.0
     local themeScale = dbTheme.scale or currentTheme.scale or 1.0
-    
+
     Shelf:SetAlpha(themeAlpha)
     Shelf:SetScale(themeScale)
-    
+
     for _, info in ipairs(visibleItems) do
         local item = info.item
         local bindings = addon.db.plugin.shelf.bindings or {}
         local customBind = bindings[item.key]
-        
+
         local leftActionKey = (customBind and customBind.left) or item.leftClick
         local rightActionKey = (customBind and customBind.right) or item.rightClick
         local actionLeft = leftActionKey and addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[leftActionKey]
         local actionRight = rightActionKey and addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[rightActionKey]
-        
+
         -- Tooltip logic
         local tooltip = function(tt, btnSelf)
             local headerText = item.label
@@ -363,7 +363,7 @@ function addon.Shelf:Render()
                  headerText = L[item.mappingKey]
             end
             tt:SetText(headerText, 1, 0.82, 0)
-            
+
             if actionLeft or actionRight then
                 if actionLeft then
                     tt:AddLine(L["LABEL_BINDING_LEFT"] .. "  " .. actionLeft.label, 1, 1, 1, 1, true)
@@ -373,7 +373,7 @@ function addon.Shelf:Render()
                 end
             end
         end
-        
+
         table.insert(buttonElements, addon.ShelfButton:Create({
             key = info.key,
             text = info.text,
@@ -384,7 +384,7 @@ function addon.Shelf:Render()
             isActive = info.isActive, -- Pass active state
             size = btnSize,
             theme = currentTheme, -- Pass the theme!
-            
+
             tooltip = tooltip,
             onLeftClick = function(btnSelf)
                 addon.Shelf:ExecuteAction(leftActionKey, btnSelf, item)
@@ -398,7 +398,7 @@ function addon.Shelf:Render()
                 end
             end or nil,
         }))
-        
+
         currentX = currentX + btnSize + spacing
     end
 
@@ -406,7 +406,7 @@ function addon.Shelf:Render()
     local direction = addon.db.plugin.shelf.direction or "horizontal"
     local StackComponent = (direction == "vertical") and TR.VStack or TR.HStack
     local anchorPoint = (direction == "vertical") and {"TOP", Shelf, "TOP", 0, 0} or {"LEFT", Shelf, "LEFT", 0, 0}
-    
+
     table.insert(elements, StackComponent:Create({
         key = "MainStack",
         gap = spacing,
@@ -415,7 +415,7 @@ function addon.Shelf:Render()
 
     -- TinyReactor Magic!
     TR.Reconciler:Render(Shelf, elements)
-    
+
     -- Post-Render: Force apply font size to ensure update on existing frames
     if currentTheme.fontSize then
         local function ApplyFontRecursively(frame)
@@ -427,18 +427,18 @@ function addon.Shelf:Render()
                     if fs then
                         local font, _, outline = fs:GetFont()
                         if not font then font = "Fonts\\FRIZQT__.TTF" end
-                        
+
                         local themeFont = currentTheme.font
                         local fontToUse
-                        
+
                         if themeFont == "STANDARD" then fontToUse = STANDARD_TEXT_FONT
                         elseif themeFont == "CHAT" then fontToUse = UNIT_NAME_FONT
                         elseif themeFont == "DAMAGE" then fontToUse = DAMAGE_TEXT_FONT
                         elseif themeFont and themeFont ~= "" then fontToUse = themeFont
                         else fontToUse = font end
-                        
+
                         if type(fontToUse) ~= "string" then fontToUse = "Fonts\\FRIZQT__.TTF" end
-                        
+
                         fs:SetFont(fontToUse, currentTheme.fontSize, outline)
                     end
                 end
@@ -447,7 +447,7 @@ function addon.Shelf:Render()
         end
         ApplyFontRecursively(Shelf)
     end
-    
+
     -- Fix Edit Mode Sizing: Calculate size manually to avoid layout delays
     local count = #buttonElements
     if count > 0 then
@@ -481,23 +481,23 @@ function addon.Shelf:InitRender()
         Shelf = CreateFrame("Frame", "TinyChatonShelf", UIParent)
         Shelf:SetFrameStrata("MEDIUM") -- Changed from DIALOG to prevent covering settings
         Shelf:SetFrameLevel(100)
-        
+
         Shelf:Hide()  -- Hide initially, Render will show if enabled
-        
+
         -- Attach methods to Shelf instance
         Shelf.UpdateEditModeShelf = UpdateEditModeShelf
         Shelf.ToggleEditMode = ToggleEditMode
         Shelf.SavePosition = SavePosition
         Shelf.ApplyPosition = ApplyPosition
-        
+
         -- Store reference
         self.frame = Shelf
-        
+
         -- Expose methods to Module (so external calls work)
         self.SavePosition = SavePosition
         self.ApplyPosition = ApplyPosition
     end
-    
+
     -- Sync with Edit Mode
     local function SyncEditMode()
         if EditModeManagerFrame then
@@ -514,9 +514,9 @@ function addon.Shelf:InitRender()
         EditModeManagerFrame:HookScript("OnShow", function() ToggleEditMode(Shelf, true) end)
         EditModeManagerFrame:HookScript("OnHide", function() ToggleEditMode(Shelf, false) end)
     end
-    
+
     SyncEditMode()
-    
+
     -- Event listener for channel changes (reuse existing frame)
     if not shelfEventFrame then
         shelfEventFrame = CreateFrame("Frame")
@@ -525,7 +525,7 @@ function addon.Shelf:InitRender()
         shelfEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     end
     local f = shelfEventFrame
-    
+
     local channelRefreshTimer = nil
     local function DebouncedRefresh()
         if channelRefreshTimer then
@@ -536,7 +536,7 @@ function addon.Shelf:InitRender()
             addon.Shelf:Render()
         end)
     end
-    
+
     f:SetScript("OnEvent", function(self, event, ...)
         if event == "CHAT_MSG_CHANNEL_NOTICE" then
             local noticeType = ...
@@ -547,7 +547,7 @@ function addon.Shelf:InitRender()
             addon.Shelf:Render()
         end
     end)
-    
+
     self:Render()
 end
 
@@ -579,7 +579,7 @@ function addon:InitShelf()
     if addon.Shelf.InitActionRegistry then
         addon.Shelf:InitActionRegistry()
     end
-    
+
     -- Initialize Shelf Render (UI)
     if addon.Shelf.InitRender then
         addon.Shelf:InitRender()

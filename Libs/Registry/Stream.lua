@@ -15,255 +15,255 @@ addon.STREAM_REGISTRY = {
     CHANNEL = {
         -- [SYSTEM] 系统内置频道
         SYSTEM = {
-            { 
-                key = "say", 
-                chatType = "SAY", 
-                shortKey = "STREAM_SAY_SHORT", 
-                label = L["STREAM_SAY_LABEL"], 
+            {
+                key = "say",
+                chatType = "SAY",
+                shortKey = "STREAM_SAY_SHORT",
+                label = L["STREAM_SAY_LABEL"],
 
                 events = { "CHAT_MSG_SAY" },
-                order = 10, 
-                defaultBindings = { left = "send" }, 
+                order = 10,
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "yell", 
-                chatType = "YELL", 
-                shortKey = "STREAM_YELL_SHORT", 
-                label = L["STREAM_YELL_LABEL"], 
+            {
+                key = "yell",
+                chatType = "YELL",
+                shortKey = "STREAM_YELL_SHORT",
+                label = L["STREAM_YELL_LABEL"],
 
                 events = { "CHAT_MSG_YELL" },
-                order = 20, 
-                defaultBindings = { left = "send" }, 
+                order = 20,
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "party", 
-                chatType = "PARTY", 
-                shortKey = "STREAM_PARTY_SHORT", 
-                label = L["STREAM_PARTY_LABEL"], 
+            {
+                key = "party",
+                chatType = "PARTY",
+                shortKey = "STREAM_PARTY_SHORT",
+                label = L["STREAM_PARTY_LABEL"],
 
                 events = { "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" },
-                order = 40, 
-                defaultBindings = { left = "send" }, 
+                order = 40,
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "raid", 
-                chatType = "RAID", 
-                shortKey = "STREAM_RAID_SHORT", 
-                label = L["STREAM_RAID_LABEL"], 
+            {
+                key = "raid",
+                chatType = "RAID",
+                shortKey = "STREAM_RAID_SHORT",
+                label = L["STREAM_RAID_LABEL"],
 
                 events = { "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_RAID_WARNING" },
-                order = 50, 
-                defaultBindings = { left = "send" }, 
+                order = 50,
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "instance", 
-                chatType = "INSTANCE_CHAT", 
-                shortKey = "STREAM_INSTANCE_SHORT", 
-                label = L["STREAM_INSTANCE_LABEL"], 
+            {
+                key = "instance",
+                chatType = "INSTANCE_CHAT",
+                shortKey = "STREAM_INSTANCE_SHORT",
+                label = L["STREAM_INSTANCE_LABEL"],
 
                 events = { "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER" },
-                order = 60, 
-                defaultBindings = { left = "send" }, 
+                order = 60,
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "battleground", 
-                chatType = "BATTLEGROUND", 
-                shortKey = "STREAM_BATTLEGROUND_SHORT", 
-                label = L["STREAM_BATTLEGROUND_LABEL"], 
+            {
+                key = "battleground",
+                chatType = "BATTLEGROUND",
+                shortKey = "STREAM_BATTLEGROUND_SHORT",
+                label = L["STREAM_BATTLEGROUND_LABEL"],
 
                 events = { "CHAT_MSG_BATTLEGROUND", "CHAT_MSG_BATTLEGROUND_LEADER" },
-                order = 65, 
+                order = 65,
                 defaultPinned = false,  -- 明确override默认值
-                defaultBindings = { left = "send" }, 
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "guild", 
-                chatType = "GUILD", 
-                shortKey = "STREAM_GUILD_SHORT", 
-                label = L["STREAM_GUILD_LABEL"], 
+            {
+                key = "guild",
+                chatType = "GUILD",
+                shortKey = "STREAM_GUILD_SHORT",
+                label = L["STREAM_GUILD_LABEL"],
 
                 events = { "CHAT_MSG_GUILD" },
-                order = 70, 
-                defaultBindings = { left = "send" }, 
+                order = 70,
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "officer", 
-                chatType = "OFFICER", 
-                shortKey = "STREAM_OFFICER_SHORT", 
-                label = L["STREAM_OFFICER_LABEL"], 
+            {
+                key = "officer",
+                chatType = "OFFICER",
+                shortKey = "STREAM_OFFICER_SHORT",
+                label = L["STREAM_OFFICER_LABEL"],
 
                 events = { "CHAT_MSG_OFFICER" },
-                requiresAvailabilityCheck = true, 
-                order = 80, 
+                requiresAvailabilityCheck = true,
+                order = 80,
                 defaultPinned = false,
-                defaultBindings = { left = "send" }, 
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "emote", 
-                chatType = "EMOTE", 
-                shortKey = "STREAM_EMOTE_SHORT", 
-                label = L["STREAM_EMOTE_LABEL"], 
+            {
+                key = "emote",
+                chatType = "EMOTE",
+                shortKey = "STREAM_EMOTE_SHORT",
+                label = L["STREAM_EMOTE_LABEL"],
 
                 events = { "CHAT_MSG_EMOTE", "CHAT_MSG_TEXT_EMOTE" },
-                order = 85, 
+                order = 85,
                 defaultPinned = false,
-                defaultBindings = { left = "send" }, 
+                defaultBindings = { left = "send" },
             },
         },
-        
+
         -- [DYNAMIC] 动态加入频道（需要服务器ID）
         DYNAMIC = {
-            { 
-                key = "general", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_GENERAL_MAPPING", 
-                shortKey = "STREAM_GENERAL_SHORT", 
-                label = L["STREAM_GENERAL_LABEL"], 
+            {
+                key = "general",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_GENERAL_MAPPING",
+                shortKey = "STREAM_GENERAL_SHORT",
+                label = L["STREAM_GENERAL_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 90, 
+                requiresAvailabilityCheck = true,
+                order = 90,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
-            { 
-                key = "trade", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_TRADE_MAPPING", 
-                shortKey = "STREAM_TRADE_SHORT", 
-                label = L["STREAM_TRADE_LABEL"], 
+            {
+                key = "trade",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_TRADE_MAPPING",
+                shortKey = "STREAM_TRADE_SHORT",
+                label = L["STREAM_TRADE_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 91, 
+                requiresAvailabilityCheck = true,
+                order = 91,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
-            { 
-                key = "localdefense", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_LOCALDEFENSE_MAPPING", 
-                shortKey = "STREAM_LOCALDEFENSE_SHORT", 
-                label = L["STREAM_LOCALDEFENSE_LABEL"], 
+            {
+                key = "localdefense",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_LOCALDEFENSE_MAPPING",
+                shortKey = "STREAM_LOCALDEFENSE_SHORT",
+                label = L["STREAM_LOCALDEFENSE_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 92, 
+                requiresAvailabilityCheck = true,
+                order = 92,
                 defaultPinned = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
-            { 
-                key = "lfg", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_LFG_MAPPING", 
-                shortKey = "STREAM_LFG_SHORT", 
-                label = L["STREAM_LFG_LABEL"], 
+            {
+                key = "lfg",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_LFG_MAPPING",
+                shortKey = "STREAM_LFG_SHORT",
+                label = L["STREAM_LFG_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 93, 
+                requiresAvailabilityCheck = true,
+                order = 93,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
-            { 
-                key = "services", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_SERVICES_MAPPING", 
-                shortKey = "STREAM_SERVICES_SHORT", 
-                label = L["STREAM_SERVICES_LABEL"], 
+            {
+                key = "services",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_SERVICES_MAPPING",
+                shortKey = "STREAM_SERVICES_SHORT",
+                label = L["STREAM_SERVICES_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 94, 
+                requiresAvailabilityCheck = true,
+                order = 94,
                 defaultPinned = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
-            { 
-                key = "world", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_WORLD_MAPPING", 
-                shortKey = "STREAM_WORLD_SHORT", 
-                label = L["STREAM_WORLD_LABEL"], 
+            {
+                key = "world",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_WORLD_MAPPING",
+                shortKey = "STREAM_WORLD_SHORT",
+                label = L["STREAM_WORLD_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 100, 
-                defaultAutoJoin = true, 
-                defaultBindings = { left = "send", right = "leave" }, 
+                requiresAvailabilityCheck = true,
+                order = 100,
+                defaultAutoJoin = true,
+                defaultBindings = { left = "send", right = "leave" },
             },
-            { 
-                key = "worlddefense", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_WORLDDEFENSE_MAPPING", 
-                shortKey = "STREAM_WORLDDEFENSE_SHORT", 
-                label = L["STREAM_WORLDDEFENSE_LABEL"], 
+            {
+                key = "worlddefense",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_WORLDDEFENSE_MAPPING",
+                shortKey = "STREAM_WORLDDEFENSE_SHORT",
+                label = L["STREAM_WORLDDEFENSE_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 101, 
+                requiresAvailabilityCheck = true,
+                order = 101,
                 defaultPinned = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
-            { 
-                key = "beginner", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_BEGINNER_MAPPING", 
-                shortKey = "STREAM_BEGINNER_SHORT", 
-                label = L["STREAM_BEGINNER_LABEL"], 
+            {
+                key = "beginner",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_BEGINNER_MAPPING",
+                shortKey = "STREAM_BEGINNER_SHORT",
+                label = L["STREAM_BEGINNER_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 102, 
+                requiresAvailabilityCheck = true,
+                order = 102,
                 defaultPinned = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
-            { 
-                key = "guildrecruit", 
-                chatType = "CHANNEL", 
-                mappingKey = "STREAM_GUILDRECRUITMENT_MAPPING", 
-                shortKey = "STREAM_GUILDRECRUITMENT_SHORT", 
-                label = L["STREAM_GUILDRECRUITMENT_LABEL"], 
+            {
+                key = "guildrecruit",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_GUILDRECRUITMENT_MAPPING",
+                shortKey = "STREAM_GUILDRECRUITMENT_SHORT",
+                label = L["STREAM_GUILDRECRUITMENT_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true, 
-                order = 103, 
+                requiresAvailabilityCheck = true,
+                order = 103,
                 defaultPinned = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
         },
-        
+
         -- [PRIVATE] 私聊类频道
         PRIVATE = {
-            { 
-                key = "whisper", 
-                chatType = "WHISPER", 
-                shortKey = "STREAM_WHISPER_SHORT", 
-                label = L["STREAM_WHISPER_LABEL"], 
+            {
+                key = "whisper",
+                chatType = "WHISPER",
+                shortKey = "STREAM_WHISPER_SHORT",
+                label = L["STREAM_WHISPER_LABEL"],
 
                 events = { "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM" },
-                order = 30, 
-                defaultPinned = false, 
-                defaultBindings = { left = "send" }, 
+                order = 30,
+                defaultPinned = false,
+                defaultBindings = { left = "send" },
             },
-            { 
-                key = "bn_whisper", 
-                chatType = "BN_WHISPER", 
-                shortKey = "STREAM_BATTLENET_SHORT", 
-                label = L["STREAM_BATTLENET_LABEL"], 
+            {
+                key = "bn_whisper",
+                chatType = "BN_WHISPER",
+                shortKey = "STREAM_BATTLENET_SHORT",
+                label = L["STREAM_BATTLENET_LABEL"],
 
                 events = { "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM" },
-                order = 66, 
-                defaultPinned = false, 
-                defaultBindings = { left = "send" }, 
+                order = 66,
+                defaultPinned = false,
+                defaultBindings = { left = "send" },
             },
         }
     },
-    
+
     -- =====================================================================
     -- [NOTICE] 纯通知类消息流（系统生成、无发送行为）
     -- 默认能力：defaultPinned = false, defaultSnapshotted = false
@@ -272,11 +272,11 @@ addon.STREAM_REGISTRY = {
         -- [LOG] 日志类（经验、物品、货币）
         -- 保留结构供未来扩展
         LOG = {},
-        
+
         -- [SYSTEM] 系统提示
         -- 保留结构供未来扩展
         SYSTEM = {},
-        
+
         -- [ALERT] 警告类（Boss喊话、表情）
         -- 保留结构供未来扩展
         ALERT = {}

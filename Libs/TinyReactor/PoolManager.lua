@@ -21,20 +21,20 @@ setmetatable(frameToPoolMap, { __mode = "k" }) -- Weak keys to allow GC of frame
 --- @param template string|nil Template name (e.g., "BackdropTemplate")
 function PoolManager:GetPool(parentFrame, frameType, template)
     -- Pool key: type + template (Parent is usually constant for a renderer, but we handle it)
-    -- For simplicity in this micro-framework, we assume one global pool set per parent is overkill? 
-    -- Actually, pools are usually attached to a parent or global. 
+    -- For simplicity in this micro-framework, we assume one global pool set per parent is overkill?
+    -- Actually, pools are usually attached to a parent or global.
     -- Let's attach pools to the parent frame to ensure correct parenting/layering.
-    
+
     if not parentFrame.tinyReactorPools then
         parentFrame.tinyReactorPools = {}
     end
-    
+
     local key = frameType .. "_" .. (template or "nil")
     if not parentFrame.tinyReactorPools[key] then
         TR:DebugLog("pool", "Creating new pool: %s for parent=%s", key, parentFrame.GetName and parentFrame:GetName() or "unnamed")
         parentFrame.tinyReactorPools[key] = CreateFramePool(frameType, parentFrame, template)
     end
-    
+
     local pool = parentFrame.tinyReactorPools[key]
     -- WoW FramePool may not have GetNumActive/GetNumInactive methods
     local activeCount = pool.GetNumActive and pool:GetNumActive() or "?"
@@ -52,10 +52,10 @@ function PoolManager:Acquire(parentFrame, frameType, template)
     template = template or self.DEFAULT_TEMPLATE
     local pool = self:GetPool(parentFrame, frameType, template)
     local frame = pool:Acquire()
-    
+
     -- Auto-track: store in weak map for automatic release lookup
     frameToPoolMap[frame] = { pool = pool, parent = parentFrame }
-    
+
     TR:DebugLog("pool", "Acquired frame from pool: %s_%s", frameType, template)
     return frame
 end
@@ -71,7 +71,7 @@ function PoolManager:Release(frame)
         TR:DebugLog("pool", "Released frame to pool (auto-detected)")
         return true
     end
-    
+
     -- Fallback: frame not tracked (shouldn't happen with proper usage)
     TR:Warn("pool", "Attempted to release untracked frame: %s", tostring(frame))
     return false

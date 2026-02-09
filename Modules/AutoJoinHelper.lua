@@ -14,8 +14,8 @@ function addon:GetAutoJoinChannelsItems()
     local items = {}
     for _, stream, catKey, subKey in addon:IterateAllStreams() do
         if subKey == "DYNAMIC" then
-            table.insert(items, { 
-                key = stream.key, 
+            table.insert(items, {
+                key = stream.key,
                 label = stream.label or stream.key,
                 value = stream.key,
                 text = stream.label or stream.key,
@@ -27,7 +27,7 @@ end
 
 function addon:GetAutoJoinChannelSelection()
     local ajc = self:GetConfig("plugin.automation.autoJoinChannels")
-    if not ajc then 
+    if not ajc then
         return {}
     end
     local items = self:GetAutoJoinChannelsItems()
@@ -39,7 +39,7 @@ function addon:GetAutoJoinChannelSelection()
 end
 
 function addon:SetAutoJoinChannelSelection(selection)
-    if not self.db or not self.db.plugin.automation then 
+    if not self.db or not self.db.plugin.automation then
         return
     end
     if not self.db.plugin.automation.autoJoinChannels then
@@ -47,11 +47,11 @@ function addon:SetAutoJoinChannelSelection(selection)
     end
     local ajc = self.db.plugin.automation.autoJoinChannels
     local items = self:GetAutoJoinChannelsItems()
-    
+
     for _, item in ipairs(items) do
         ajc[item.key] = selection[item.key] and true or false
     end
-    
+
     if addon.ApplyAllSettings then addon:ApplyAllSettings() end
 end
 
@@ -70,7 +70,7 @@ end
 
 function addon:ApplyAutomationSettings()
     if not self.db or not self.db.plugin.automation then return end
-    
+
     -- Auto Join Channels
     local ajc = self.db.plugin.automation.autoJoinChannels
     if ajc then

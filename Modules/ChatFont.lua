@@ -14,17 +14,17 @@ addon.FONT_PATHS = {
 
 local function ApplyChatFontSettings()
     if not addon.db then return end
-    
+
     -- Use registry value for managed toggle
     if not addon:GetSettingValue("fontManaged") then return end
-    
+
     local font = addon.db.plugin.chat.font.font
     local size = addon:GetSettingValue("fontSize")
     local outline = addon:GetSettingValue("fontOutline")
-    
+
     if font == "Default" then font = nil end
     if font and addon.FONT_PATHS[font] then font = addon.FONT_PATHS[font] end
-    
+
     -- We should only apply if there's something to apply
     if not font and not size and not outline then return end
 

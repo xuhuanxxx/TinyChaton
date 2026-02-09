@@ -18,19 +18,19 @@ local emotes = {
 
 -- Custom Emotes (Media/Texture/Emote/*.tga)
 local customEmotes = {
-    "Innocent", "Titter", "angel", "angry", "biglaugh", "clap", "cool", "cry", "cutie", "despise", 
-    "dreamsmile", "embarrass", "evil", "excited", "faint", "fight", "flu", "freeze", "frown", "greet", 
-    "grimace", "growl", "happy", "heart", "horror", "ill", "kongfu", "love", "mail", "makeup", 
-    "mario", "meditate", "miserable", "okay", "pretty", "puke", "raiders", "shake", "shout", "shuuuu", 
-    "shy", "sleep", "smile", "suprise", "surrender", "sweat", "tear", "tears", "think", "ugly", 
+    "Innocent", "Titter", "angel", "angry", "biglaugh", "clap", "cool", "cry", "cutie", "despise",
+    "dreamsmile", "embarrass", "evil", "excited", "faint", "fight", "flu", "freeze", "frown", "greet",
+    "grimace", "growl", "happy", "heart", "horror", "ill", "kongfu", "love", "mail", "makeup",
+    "mario", "meditate", "miserable", "okay", "pretty", "puke", "raiders", "shake", "shout", "shuuuu",
+    "shy", "sleep", "smile", "suprise", "surrender", "sweat", "tear", "tears", "think", "ugly",
     "victory", "volunteer", "wronged"
 }
 
 for _, name in ipairs(customEmotes) do
     table.insert(emotes, {
-        key = "{" .. name .. "}",
+        key = format("{%s}", name),
         -- Use addonName to ensure correct path even if folder is renamed
-        file = "Interface\\AddOns\\" .. addonName .. "\\Media\\Texture\\Emote\\" .. name .. ".tga"
+        file = format("Interface\\AddOns\\%s\\Media\\Texture\\Emote\\%s.tga", addonName, name)
     })
 end
 
@@ -56,7 +56,7 @@ end
 local function EmoteTransformer(frame, text, ...)
     if not text or type(text) ~= "string" then return text, ... end
     if not addon:GetConfig("plugin.chat.content.emoteRender", true) then return text, ... end
-    
+
     local newText = addon.Emotes.Parse(text)
     return newText, ...
 end
@@ -64,16 +64,16 @@ end
 -- Chat Bubble Support
 local function HookChatBubbles()
     if not C_ChatBubbles then return end
-    
+
     local function FindFontString(frame, depth)
         if not frame then return nil end
-        
+
         -- Recursion guard
         depth = depth or 0
         if depth > 10 then return nil end
-        
+
         if frame:IsForbidden() then return nil end
-        
+
         -- Check regions directly
         for i = 1, frame:GetNumRegions() do
             local region = select(i, frame:GetRegions())
@@ -85,27 +85,27 @@ local function HookChatBubbles()
                 end
             end
         end
-        
+
         -- Check children recursively
         for i = 1, frame:GetNumChildren() do
             local child = select(i, frame:GetChildren())
             local found = FindFontString(child, depth + 1)
             if found then return found end
         end
-        
+
         return nil
     end
-    
+
     local function UpdateBubbles()
         if not addon:GetConfig("plugin.chat.content.emoteRender", true) then return end
-        
+
         local bubbles = C_ChatBubbles.GetAllChatBubbles()
         for _, bubble in ipairs(bubbles) do
             if not bubble:IsForbidden() then
                 if not bubble.fontString then
                     bubble.fontString = FindFontString(bubble)
                 end
-                
+
                 if bubble.fontString then
                     local text = bubble.fontString:GetText()
                     if text then
@@ -122,7 +122,7 @@ local function HookChatBubbles()
     -- Update bubbles periodically (save ticker for cleanup)
     -- P1: Config Constant
     local interval = addon.CONSTANTS.EMOTE_TICKER_INTERVAL or 0.2
-    
+
     if not addon._bubbleTicker and addon:GetConfig("plugin.chat.content.emoteRender", true) then
         addon._bubbleTicker = C_Timer.NewTicker(interval, UpdateBubbles)
     end
@@ -139,7 +139,7 @@ end
 -- Update ticker state based on settings
 function addon:UpdateEmoteTickerState()
     local enabled = addon:GetConfig("plugin.chat.content.emoteRender", true)
-    
+
     if enabled then
         -- Delegate to HookChatBubbles which handles ticker creation and uses the correct local UpdateBubbles function
         if not addon._bubbleTicker then
@@ -153,7 +153,7 @@ end
 function addon:InitEmoteHelper()
     -- Register as a Transformer (Visual Layer)
     addon:RegisterChatFrameTransformer("emote_render", EmoteTransformer)
-    
+
     -- Ensure it's in the execution order (lowest priority, run last)
     if addon.TRANSFORMER_ORDER then
         local found = false
@@ -166,7 +166,7 @@ function addon:InitEmoteHelper()
     end
 
     HookChatBubbles()
-    
+
     -- Hook into settings application to toggle ticker
     local origApply = addon.ApplyAllSettings
     addon.ApplyAllSettings = function(self)
@@ -189,20 +189,20 @@ end
 
 local function UpdateEmotePanel()
     if not panel then return end
-    
+
     local pageSize = GetPageSize()
     local total = #emotes
     maxPage = math.ceil(total / pageSize)
     if currentPage > maxPage then currentPage = maxPage end
     if currentPage < 1 then currentPage = 1 end
-    
+
     local startIndex = (currentPage - 1) * pageSize
-    
+
     for i = 1, GetPageSize() do
         local btn = buttons[i]
         local emoteIndex = startIndex + i
         local emote = emotes[emoteIndex]
-        
+
         if emote then
             btn:SetNormalTexture(emote.file)
             btn.emoteKey = emote.key
@@ -211,9 +211,9 @@ local function UpdateEmotePanel()
             btn:Hide()
         end
     end
-    
+
     panel.pageLabel:SetText(currentPage .. " / " .. maxPage)
-    
+
     panel.prevBtn:SetEnabled(currentPage > 1)
     panel.nextBtn:SetEnabled(currentPage < maxPage)
 end
@@ -225,14 +225,14 @@ function addon:ToggleEmotePanel(anchorFrame)
         panel:SetFrameStrata("DIALOG")
         panel:SetClampedToScreen(true)
         panel:EnableMouse(true)
-        
+
         -- Right-click on background to close
         panel:SetScript("OnMouseUp", function(self, button)
             if button == "RightButton" then
                 self:Hide()
             end
         end)
-        
+
         -- Register for ESC key closing (Fixed typo)
         table.insert(UISpecialFrames, "TinyChatonEmotePanel")
 
@@ -257,22 +257,22 @@ function addon:ToggleEmotePanel(anchorFrame)
         panel.Header:SetScript("OnMouseUp", function(self, button)
             if button == "RightButton" then panel:Hide() end
         end)
-        
+
         -- Close Button
         panel.CloseButton = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
         panel.CloseButton:SetSize(24, 24)
         panel.CloseButton:SetPoint("TOPRIGHT", -5, -5)
         -- Allow right-click on close button to "close" (same as left)
         panel.CloseButton:RegisterForClicks("AnyUp")
-        panel.CloseButton:SetScript("OnClick", function(self, button) 
-            panel:Hide() 
+        panel.CloseButton:SetScript("OnClick", function(self, button)
+            panel:Hide()
         end)
 
         local size = 24
         local padding = 6
-        local cols = 8 
+        local cols = 8
         local rows = 5
-        
+
         -- Adaptive Grid Container
         if not panel.Content then
             panel.Content = CreateFrame("Frame", nil, panel)
@@ -280,16 +280,16 @@ function addon:ToggleEmotePanel(anchorFrame)
         panel.Content:ClearAllPoints()
         -- Anchor content relative to the Header's bottom
         panel.Content:SetPoint("TOP", panel.Header, "BOTTOM", 0, -10)
-        
+
         local gridWidth = (cols * (size + padding)) - padding
         local gridHeight = (rows * (size + padding)) - padding
         panel.Content:SetSize(gridWidth, gridHeight)
-        
+
         -- Resize main panel to wrap content
         -- Width: Grid + Side Margins (approx 32 total)
         -- Height: Grid + Top Margin (Header area) + Bottom Margin (Nav area)
         -- We estimate header area takes ~40 space, Nav area ~30
-        panel:SetSize(gridWidth + 40, gridHeight + 70) 
+        panel:SetSize(gridWidth + 40, gridHeight + 70)
 
         -- Create Buttons
         for i = 1, GetPageSize() do
@@ -297,12 +297,12 @@ function addon:ToggleEmotePanel(anchorFrame)
             btn:SetSize(size, size)
             local row = math.floor((i-1) / cols)
             local col = (i-1) % cols
-            
+
             -- Relative to Content Frame (0,0 is TopLeft of content)
             btn:SetPoint("TOPLEFT", col * (size + padding), -(row * (size + padding)))
 
             btn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
-            
+
             -- Register right-click to close
             btn:RegisterForClicks("AnyUp")
             btn:SetScript("OnClick", function(self, button)
@@ -310,7 +310,7 @@ function addon:ToggleEmotePanel(anchorFrame)
                     panel:Hide()
                     return
                 end
-                
+
                 local editBox = ChatEdit_ChooseBoxForSend()
                 if editBox then
                     ChatEdit_ActivateChat(editBox)
@@ -328,10 +328,10 @@ function addon:ToggleEmotePanel(anchorFrame)
                 GameTooltip:Show()
             end)
             btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-            
+
             buttons[i] = btn
         end
-        
+
         -- Create Navigation
         local navHeight = 20
         local prevBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
@@ -347,7 +347,7 @@ function addon:ToggleEmotePanel(anchorFrame)
             end
         end)
         panel.prevBtn = prevBtn
-        
+
         local nextBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
         nextBtn:SetSize(20, navHeight)
         nextBtn:SetPoint("BOTTOMRIGHT", -16, 12)
@@ -361,21 +361,21 @@ function addon:ToggleEmotePanel(anchorFrame)
             end
         end)
         panel.nextBtn = nextBtn
-        
+
         local pageLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         pageLabel:SetPoint("CENTER", panel, "BOTTOM", 0, 18)
         panel.pageLabel = pageLabel
-        
+
         -- Explicitly update content on first creation
         UpdateEmotePanel()
-        
+
         -- Set initial point if anchor provided, otherwise center
         if anchorFrame then
             panel:SetPoint("BOTTOMLEFT", anchorFrame, "TOPLEFT", 0, 5)
         else
             panel:SetPoint("CENTER")
         end
-        
+
         -- Show it immediately on creation
         panel:Show()
         return

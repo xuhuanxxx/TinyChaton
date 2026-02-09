@@ -10,22 +10,22 @@ CategoryBuilders.shelf = function(rootCat)
     local cat, layout = Settings.RegisterVerticalLayoutSubcategory(rootCat, L["PAGE_SHELF"])
     Settings.RegisterAddOnCategory(cat)
     local P = "TinyChaton_Shelf_Content_"
-    
+
     local shelfOrder = addon.Shelf:GetOrder()
     local shelfDB = addon.db.plugin.shelf
     local shelfDef = def.shelf
-    
+
     local function GetCP() return shelfDB.channelPins or {} end
     local function GetKP() return shelfDB.kitPins or {} end
 
     local registryMap = {}
     local kitRegistryMap = {}
-    
+
     for _, stream, catKey, subKey in addon:IterateAllStreams() do
         registryMap[stream.key] = stream
     end
-    for _, spec in ipairs(addon.KIT_REGISTRY or {}) do 
-        kitRegistryMap[spec.key] = spec 
+    for _, spec in ipairs(addon.KIT_REGISTRY or {}) do
+        kitRegistryMap[spec.key] = spec
     end
 
     local function IsKeyEnabled(key)
@@ -96,20 +96,20 @@ CategoryBuilders.shelf = function(rootCat)
     addon.RefreshShelfPreview = function()
         local container = addon.shelfPreviewContainer
         if not container or not container:IsVisible() then return end
-        
+
         local TR = _G.TinyReactor
         if not TR or not TR.Reconciler then return end
-        
+
         local visibleItems = addon.Shelf and addon.Shelf:GetVisibleItems() or {}
         local currentTheme = addon:GetShelfThemeProperties(shelfDB.theme or "Modern")
-        
+
         local previewButtonSize = 30
         local previewSpacing = 2
-        
+
         local elements = {}
         local totalWidth = (#visibleItems * previewButtonSize) + ((#visibleItems - 1) * previewSpacing)
         local startX = (container:GetWidth() - totalWidth) / 2
-        
+
         for i, info in ipairs(visibleItems) do
             table.insert(elements, addon.ShelfButton:Create({
                 key = info.key, text = info.text, item = info.item, size = previewButtonSize, theme = currentTheme,
@@ -124,18 +124,18 @@ CategoryBuilders.shelf = function(rootCat)
     local function OpenBindingDialog(channelKey, buttonType)
         local bindings = shelfDB.bindings
         if not bindings[channelKey] then bindings[channelKey] = {} end
-        
+
         local currentAction = bindings[channelKey][buttonType]
 
         -- Build items list for dialog
         local items = {}
-        
+
         -- table.insert(items, { key = nil, label = L["LABEL_DEFAULT"] or "Default", category = "other" })
         -- table.insert(items, { key = false, label = L["LABEL_NONE"] or "None", category = "other" })
-        
+
         local sortedActions = {}
         for key, action in pairs(addon.ACTION_REGISTRY or {}) do table.insert(sortedActions, action) end
-        
+
         for _, action in ipairs(sortedActions) do
             table.insert(items, {
                 key = action.key,
@@ -144,21 +144,21 @@ CategoryBuilders.shelf = function(rootCat)
                 category = action.category
             })
         end
-        
+
         if not bindingDialog then
             bindingDialog = addon.CreateSelectionRibbon(addonName .. "BindingSelectionDialog", UIParent)
         end
-        
+
         -- Resolve Title
         local item = registryMap[channelKey] or kitRegistryMap[channelKey]
         local title = item and (item.label or item.key) or channelKey
         if item and item.mappingKey and L[item.mappingKey] then
              title = L[item.mappingKey]
         end
-        
+
         bindingDialog:Open(items, currentAction, title, function(selectedKey)
             bindings[channelKey][buttonType] = selectedKey
-            
+
             addon:ApplyAllSettings()
             if addon.RefreshShelf then addon:RefreshShelf() end
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
@@ -195,10 +195,10 @@ CategoryBuilders.shelf = function(rootCat)
             local function CreateRow(parent, i, item, typeKey)
                 local row = CreateFrame("Frame", nil, parent)
                 row:SetSize(520, 32)
-                
+
                 row.cb = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
                 row.cb:SetSize(24, 24); row.cb:SetPoint("LEFT", 0, 0)
-                
+
                 local isEnabled = typeKey == "kit" and (GetKP()[item.key] ~= false) or (GetCP()[item.key] ~= false)
                 row.cb:SetChecked(isEnabled)
                 row.cb:SetScript("OnClick", function(self)
@@ -216,46 +216,46 @@ CategoryBuilders.shelf = function(rootCat)
                 local RIGHT_MARGIN = -5
                 local BTN_SPACING = 4
                 local MOVE_BTN_WIDTH = 24
-                
+
                 -- Move Buttons (Right Side)
                 local downBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
                 downBtn:SetSize(MOVE_BTN_WIDTH, 22)
                 downBtn:SetPoint("RIGHT", RIGHT_MARGIN, 0)
                 downBtn:SetText("▼")
                 downBtn:SetScript("OnClick", function() MoveInShelfOrder(item.key, 1); addon.RefreshShelfList() end)
-                
+
                 local upBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
                 upBtn:SetSize(MOVE_BTN_WIDTH, 22)
                 upBtn:SetPoint("RIGHT", downBtn, "LEFT", -BTN_SPACING, 0)
                 upBtn:SetText("▲")
                 upBtn:SetScript("OnClick", function() MoveInShelfOrder(item.key, -1); addon.RefreshShelfList() end)
-                
+
                 -- Action Buttons & Labels
                 -- Layout: [Left Btn]  [Right Btn] ... [Up] [Down]
-                
+
                 local ACTION_BTN_WIDTH = 150
                 local BTN_GAP = 4
-                
+
                 -- Right Action
                 local rightBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
                 rightBtn:SetSize(ACTION_BTN_WIDTH, 22)
                 rightBtn:SetPoint("RIGHT", upBtn, "LEFT", -15, 0) -- Gap after move buttons
                 rightBtn:SetScript("OnClick", function(self) OpenBindingDialog(item.key, "right") end)
-                
+
                 -- Left Action
                 local leftBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
                 leftBtn:SetSize(ACTION_BTN_WIDTH, 22)
                 leftBtn:SetPoint("RIGHT", rightBtn, "LEFT", -BTN_GAP, 0) -- Gap between Right Btn and Left Btn
                 leftBtn:SetScript("OnClick", function(self) OpenBindingDialog(item.key, "left") end)
-                
+
                 -- Update Text Logic
                 local function UpdateButtonText(btn, btnType)
                     -- Use Shelf:GetItemConfig to resolve the EFFECTIVE action (handling defaults)
                     local config = addon.Shelf:GetItemConfig(item.key)
                     local actionKey = config and ((btnType == "left" and config.leftClick) or (btnType == "right" and config.rightClick))
-                    
+
                     local text = L["LABEL_NONE"]
-                    
+
                     if actionKey then
                         if actionKey == false then
                             text = L["LABEL_NONE"]
@@ -264,7 +264,7 @@ CategoryBuilders.shelf = function(rootCat)
                             text = action and action.label or actionKey
                         end
                     end
-                    
+
                     -- Truncate removed to avoid UTF-8 issues.
                     -- if #text > 16 then text = string.sub(text, 1, 14) .. "..." end
                     btn:SetText(text)
@@ -278,31 +278,31 @@ CategoryBuilders.shelf = function(rootCat)
                     local idx = GetKeyIndex(item.key)
                     upBtn:SetEnabled(idx > 1 and GetPrevEnabledIndex(idx) ~= nil)
                     downBtn:SetEnabled(idx > 0 and idx < #shelfOrder and GetNextEnabledIndex(idx) ~= nil)
-                    
+
                     UpdateButtonText(leftBtn, "left")
                     UpdateButtonText(rightBtn, "right")
                 end
-                
+
                 return row
             end
 
             local function SetupPage(idx, filterFunc, typeKey)
                 local page = ribbon:CreateContentPage(idx, container, { top = 60, bottom = 20, left = 0, right = 20 })
                 page.items = {}
-                
+
                 if typeKey == "kit" then
                     for _, reg in ipairs(addon.KIT_REGISTRY or {}) do
                         if filterFunc(reg) then table.insert(page.items, reg) end
                     end
                 else
                     for _, stream, catKey, subKey in addon:IterateAllStreams() do
-                        if filterFunc(stream, catKey, subKey) then 
-                            table.insert(page.items, stream) 
+                        if filterFunc(stream, catKey, subKey) then
+                            table.insert(page.items, stream)
                         end
                     end
                 end
                 table.sort(page.items, function(a, b) return (a.order or 0) < (b.order or 0) end)
-                
+
                 page.rows = {}
                 page.Refresh = function()
                     for i, item in ipairs(page.items) do
@@ -314,16 +314,16 @@ CategoryBuilders.shelf = function(rootCat)
                 return page
             end
 
-            local p1 = SetupPage(1, function(stream, catKey, subKey) 
-                return catKey == "CHANNEL" and subKey == "SYSTEM" and not stream.isSystemMsg and not stream.isNotStorable 
+            local p1 = SetupPage(1, function(stream, catKey, subKey)
+                return catKey == "CHANNEL" and subKey == "SYSTEM" and not stream.isSystemMsg and not stream.isNotStorable
             end, "channel")
-            local p2 = SetupPage(2, function(stream, catKey, subKey) 
-                return catKey == "CHANNEL" and subKey == "DYNAMIC" 
+            local p2 = SetupPage(2, function(stream, catKey, subKey)
+                return catKey == "CHANNEL" and subKey == "DYNAMIC"
             end, "channel")
             local p3 = SetupPage(3, function(r) return true end, "kit")
 
-            addon.RefreshShelfList = function() 
-                p1.Refresh(); p2.Refresh(); p3.Refresh() 
+            addon.RefreshShelfList = function()
+                p1.Refresh(); p2.Refresh(); p3.Refresh()
                 if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
             end
             container.RestoreState = function() ribbon:SetActiveTab(addon.shelfTabState.activeTab or 1); addon.RefreshShelfList() end
@@ -356,7 +356,7 @@ CategoryBuilders.shelf = function(rootCat)
 
         if addon.RefreshShelfList then addon.RefreshShelfList() end
     end
-    
+
     addon.RegisterPageReset(cat, ResetShelfData)
 
     return cat

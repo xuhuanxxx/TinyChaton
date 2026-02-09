@@ -39,19 +39,19 @@ end
 local function GetRuleCache()
     -- Check if we are in whitelist mode
     if not addon.db or not addon.db.plugin.filter or addon.db.plugin.filter.mode ~= "whitelist" then
-        return nil 
+        return nil
     end
-    
+
     local config = addon.db.plugin.filter.whitelist
     if not config then return nil end
-    
+
     local currentVersion = addon.FilterVersion or 0
     if ruleCache.version ~= currentVersion or not ruleCache.names then
         ruleCache.names = PreprocessRules(config.names)
         ruleCache.keywords = PreprocessRules(config.keywords)
         ruleCache.version = currentVersion
     end
-    
+
     return ruleCache
 end
 
@@ -72,23 +72,23 @@ local function WhitelistMiddleware(chatData)
     if not addon.db or not addon.db.enabled then return end
     local filterSettings = addon.db.plugin and addon.db.plugin.filter
     if not filterSettings or filterSettings.mode ~= "whitelist" then return end
-    
+
     local cache = GetRuleCache()
     if not cache then return end
-    
+
     local matched = false
-    
+
     -- 1. Check Names
     if cache.names then
         for _, rule in ipairs(cache.names) do
-            if MatchRule(chatData.author, chatData.authorLower, rule) or 
+            if MatchRule(chatData.author, chatData.authorLower, rule) or
                MatchRule(chatData.name, string.lower(chatData.name), rule) then
                 matched = true
                 break
             end
         end
     end
-    
+
     -- 2. Check Keywords (if not already matched)
     if not matched and cache.keywords then
         for _, rule in ipairs(cache.keywords) do
@@ -98,12 +98,12 @@ local function WhitelistMiddleware(chatData)
             end
         end
     end
-    
+
     -- Whitelist logic: Block if NOT matched
     if not matched then
         return true -- Block
     end
-    
+
     return false
 end
 

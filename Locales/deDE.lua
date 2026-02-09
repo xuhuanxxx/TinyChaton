@@ -288,13 +288,13 @@ if GetLocale() == "deDE" then
     L["WELCOME_TEMPLATE_GUILD_3"] = "%s ist angekommen, alle begrüßen!"
     L["WELCOME_TEMPLATE_GUILD_4"] = "Willkommen %s, viel Spaß!"
     L["WELCOME_TEMPLATE_GUILD_5"] = "Yo %s, endlich da!"
-    
+
     L["WELCOME_TEMPLATE_PARTY_1"] = "Willkommen in der Gruppe, %s!"
     L["WELCOME_TEMPLATE_PARTY_2"] = "Hey %s, willkommen!"
     L["WELCOME_TEMPLATE_PARTY_3"] = "%s ist beigetreten, los geht's!"
     L["WELCOME_TEMPLATE_PARTY_4"] = "Willkommen %s, viel Glück!"
     L["WELCOME_TEMPLATE_PARTY_5"] = "Yo %s, schön dass du da bist!"
-    
+
     L["WELCOME_TEMPLATE_RAID_1"] = "Willkommen im Schlachtzug, %s!"
     L["WELCOME_TEMPLATE_RAID_2"] = "Hey %s, willkommen!"
     L["WELCOME_TEMPLATE_RAID_3"] = "%s ist dem Team beigetreten!"

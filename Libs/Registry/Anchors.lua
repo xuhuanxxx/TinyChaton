@@ -25,7 +25,7 @@ AR.anchors = {
             local chatTab = _G.ChatFrame1Tab
             local chatFrame = _G.ChatFrame1
             -- STRICT: Must be visible AND have dimensions
-            return chatTab and chatTab:IsVisible() and (chatTab:GetWidth() or 0) > 0 
+            return chatTab and chatTab:IsVisible() and (chatTab:GetWidth() or 0) > 0
                and chatFrame and chatFrame:IsVisible()
         end,
         apply = function(self)

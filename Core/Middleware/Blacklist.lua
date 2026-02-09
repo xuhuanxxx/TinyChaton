@@ -30,7 +30,7 @@ end
 local function IsLuaPattern(pattern)
     if not pattern or pattern == "" then return false end
     if not IsPatternSafe(pattern) then return false end
-    
+
     if not string.find(pattern, "[%^%$%(%)%%%.%[%]%*%+%-%?]") then return false end
     local success = pcall(function() return string.match("", pattern) end)
     return success
@@ -54,19 +54,19 @@ end
 local function GetRuleCache()
     -- Check if we are in blacklist mode
     if not addon.db or not addon.db.plugin.filter or addon.db.plugin.filter.mode ~= "blacklist" then
-        return nil 
+        return nil
     end
-    
+
     local config = addon.db.plugin.filter.blacklist
     if not config then return nil end
-    
+
     local currentVersion = addon.FilterVersion or 0
     if ruleCache.version ~= currentVersion or not ruleCache.names then
         ruleCache.names = PreprocessRules(config.names)
         ruleCache.keywords = PreprocessRules(config.keywords)
         ruleCache.version = currentVersion
     end
-    
+
     return ruleCache
 end
 
@@ -87,21 +87,21 @@ local function BlacklistMiddleware(chatData)
     if not addon.db or not addon.db.enabled then return end
     local filterSettings = addon.db.plugin and addon.db.plugin.filter
     if not filterSettings or filterSettings.mode ~= "blacklist" then return end
-    
+
     local cache = GetRuleCache()
     if not cache then return end
-    
+
     -- 1. Check Names
     if cache.names then
         for _, rule in ipairs(cache.names) do
             -- Match against raw author or pure name
-            if MatchRule(chatData.author, chatData.authorLower, rule) or 
+            if MatchRule(chatData.author, chatData.authorLower, rule) or
                MatchRule(chatData.name, string.lower(chatData.name), rule) then
                 return true -- Block
             end
         end
     end
-    
+
     -- 2. Check Keywords
     if cache.keywords then
         for _, rule in ipairs(cache.keywords) do
@@ -110,7 +110,7 @@ local function BlacklistMiddleware(chatData)
             end
         end
     end
-    
+
     return false
 end
 

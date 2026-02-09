@@ -28,10 +28,10 @@ function addon:RegisterSettings()
         return
     end
     addon._settingsVersion = SETTINGS_VERSION
-    
+
     -- Use Standard Vertical Layout for Root Category
     local rootCat, layout = Settings.RegisterVerticalLayoutCategory(L["LABEL_ADDON_NAME"])
-    
+
     -- Populate Root Page
     addon.AddText(rootCat, L["LABEL_ADDON_DESC"])
     addon.AddText(rootCat, L["LABEL_VERSION"] .. ": " .. (C_AddOns.GetAddOnMetadata(addonName, "Version") or "Dev"))

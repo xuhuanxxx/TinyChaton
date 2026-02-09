@@ -288,13 +288,13 @@ if GetLocale() == "ruRU" then
     L["WELCOME_TEMPLATE_GUILD_3"] = "%s прибыл, все приветствуем!"
     L["WELCOME_TEMPLATE_GUILD_4"] = "Добро пожаловать, %s, приятной игры!"
     L["WELCOME_TEMPLATE_GUILD_5"] = "Йоу, %s, наконец-то ты здесь!"
-    
+
     L["WELCOME_TEMPLATE_PARTY_1"] = "Добро пожаловать в группу, %s!"
     L["WELCOME_TEMPLATE_PARTY_2"] = "Привет, %s, добро пожаловать!"
     L["WELCOME_TEMPLATE_PARTY_3"] = "%s присоединился, вперед!"
     L["WELCOME_TEMPLATE_PARTY_4"] = "Добро пожаловать, %s, удачи!"
     L["WELCOME_TEMPLATE_PARTY_5"] = "Йоу, %s, рад тебя видеть!"
-    
+
     L["WELCOME_TEMPLATE_RAID_1"] = "Добро пожаловать в рейд, %s!"
     L["WELCOME_TEMPLATE_RAID_2"] = "Привет, %s, добро пожаловать!"
     L["WELCOME_TEMPLATE_RAID_3"] = "%s присоединился к команде!"

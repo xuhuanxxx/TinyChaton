@@ -9,23 +9,23 @@ local L = addon.L
 addon.Colors = {
     -- 1. 主题定义 (原 ColorSets)
     themes = {
-        white = { 
+        white = {
             order = 10,
-            name = L["COLORSET_WHITE"], 
-            desc = "Uniform white text for all buttons" 
+            name = L["COLORSET_WHITE"],
+            desc = "Uniform white text for all buttons"
         },
-        blizzard = { 
+        blizzard = {
             order = 20,
-            name = L["COLORSET_BLIZZARD"], 
-            desc = "Classic Blizzard gold/yellow text" 
+            name = L["COLORSET_BLIZZARD"],
+            desc = "Classic Blizzard gold/yellow text"
         },
-        rainbow = { 
+        rainbow = {
             order = 30,
-            name = L["COLORSET_RAINBOW"], 
-            desc = "Distinct colors for each channel and tool" 
+            name = L["COLORSET_RAINBOW"],
+            desc = "Distinct colors for each channel and tool"
         },
     },
-    
+
     -- 2. 颜色数据 (原 ColorSchemes)
     -- 按 [Category][Key][Theme] 组织
     data = {
@@ -137,7 +137,7 @@ addon.Colors = {
                 rainbow = {0, 1, 0.96, 1}, -- 蓝绿色
             },
         },
-        
+
         -- =====================================================================
         -- KIT 颜色主题
         -- =====================================================================
@@ -204,10 +204,10 @@ local Colors = addon.Colors
 --- @return table 颜色数组 {r, g, b, a}
 function addon:GetColor(category, key, theme)
     local default = {1, 1, 1, 1}
-    
+
     if not Colors.data[category] then return default end
     if not Colors.data[category][key] then return default end
-    
+
     local entry = Colors.data[category][key]
     return entry[theme] or entry.white or default
 end
@@ -239,7 +239,7 @@ function addon:GetColorSetOptions()
             table.insert(list, { key = key, name = def.name, order = def.order })
         end
         table.sort(list, function(a, b) return (a.order or 0) < (b.order or 0) end)
-        
+
         for _, item in ipairs(list) do
             c:Add(item.key, item.name)
         end
@@ -263,13 +263,13 @@ function addon:GetButtonColor(element)
     if addon.Shelf and addon.Shelf.GetThemeProperty then
         theme = addon.Shelf:GetThemeProperty("colorSet") or "rainbow"
     end
-    
+
     -- No more forced override here. Theme data handles it cleanly.
-    
+
     -- 推断 Category
     -- 如果是 stream (有 chatType 或 events)，则是 CHANNEL
     -- 如果是 kit (有 kitKey? 或者是 KIT_REGISTRY 中的项)，则是 KIT
-    
+
     local category = "CHANNEL"
     if element.actions or element.execute then
         -- 这是一个复杂的推断，因为 Shelf 传递的 element 可能是 Stream 也可能是 Kit
@@ -279,12 +279,12 @@ function addon:GetButtonColor(element)
             category = "KIT"
         end
     end
-    
+
     -- 如果 element 明确有 category 字段，使用它
     if element.category then
         category = element.category == "kit" and "KIT" or "CHANNEL"
     end
-    
+
     return addon:GetColor(category, element.key, theme)
 end
 

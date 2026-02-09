@@ -27,12 +27,12 @@ function addon.CreateRibbon(parent, tabsConfig, options)
     local tabSpacing = options.tabSpacing or 12
     local startX = options.startX or 20
     local startY = options.startY or -10
-    
+
     local container = CreateFrame("Frame", nil, parent)
     container:SetPoint("TOPLEFT", parent, "TOPLEFT", startX, startY)
     container:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -startX, startY)
     container:SetHeight(tabHeight + 3)
-    
+
     container.activeTabIndex = 1
     container.tabButtons = {}
     container.contentPages = {}
@@ -44,7 +44,7 @@ function addon.CreateRibbon(parent, tabsConfig, options)
     local COLOR_BORDER = {0.25, 0.25, 0.25, 1}
     local COLOR_DIVIDER = {0.2, 0.2, 0.2, 1}
     local COLOR_INDICATOR = {1, 0.843, 0, 1}
-    
+
     container.baseHeight = tabHeight
     container.activeHeight = tabHeight + 3
     container.inactiveHeight = tabHeight * 0.95
@@ -135,7 +135,7 @@ function addon.CreateRibbon(parent, tabsConfig, options)
 
     container.SetActiveTab = function(self, index)
         self.activeTabIndex = index
-        
+
         for i, btn in ipairs(self.tabButtons) do
             if i == index then
                 btn:SetAlpha(1.0)
@@ -155,34 +155,34 @@ function addon.CreateRibbon(parent, tabsConfig, options)
                 btn.Text:SetFontObject("GameFontNormalSmall")
             end
         end
-        
+
         for i, page in ipairs(self.contentPages) do
             if page then
                 page:SetShown(i == index)
             end
         end
-        
+
         if self.onTabChanged then
             self.onTabChanged(index, tabsConfig[index])
         end
     end
-    
+
     container.GetActiveTab = function(self)
         return self.activeTabIndex
     end
 
     container.CreateContentPage = function(self, index, parentFrame, inset)
         inset = inset or { top = 50, bottom = 20, left = 20, right = 20 }
-        
+
         local page = CreateFrame("Frame", nil, parentFrame)
         page:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", inset.left, -inset.top)
         page:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", -inset.right, inset.bottom)
         page:Hide()
-        
+
         self.contentPages[index] = page
         return page
     end
-    
+
     container:SetActiveTab(1)
     return container
 end
@@ -208,7 +208,7 @@ function addon.CreateSelectionRibbon(name, parent)
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:Hide()
-    
+
     table.insert(UISpecialFrames, f:GetName())
 
     -- Title Header (Native Style)
@@ -221,7 +221,7 @@ function addon.CreateSelectionRibbon(name, parent)
     -- Alias for compatibility so existing code can change text
     -- DialogHeaderTemplate puts the fontstring in .Text (Capitalized)
     f.Title = f.Header.Text
-    
+
     -- Safe fallback if .Text isn't directly accessible (varies by version sometimes?)
     if not f.Title then
         for _, region in ipairs({f.Header:GetRegions()}) do
@@ -231,13 +231,13 @@ function addon.CreateSelectionRibbon(name, parent)
             end
         end
     end
-    
+
     -- Sync initial text
     if f.Title then f.Title:SetText("Selection") end
 
     -- Clean up old TitleContainer if it existed (from previous attempts)
     if f.TitleContainer then f.TitleContainer:Hide() end
-    
+
     -- Close Button
     if not f.CloseButton then
         f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
@@ -247,10 +247,10 @@ function addon.CreateSelectionRibbon(name, parent)
         f.CloseButton:SetPoint("TOPRIGHT", -5, -5)
         f.CloseButton:SetFrameLevel(f:GetFrameLevel() + 10)
     end
-        
+
     -- Fixed Categories for now
     local CATEGORY_ORDER = { "channel", "join", "leave", "kit" }
-    
+
     -- Compact Labels
     local L = addon.L
     local COMPACT_LABELS = {
@@ -267,7 +267,7 @@ function addon.CreateSelectionRibbon(name, parent)
             kit = "Tools",
         }
     end
-    
+
     local ribbonTabs = {}
     for i, cat in ipairs(CATEGORY_ORDER) do
         table.insert(ribbonTabs, { label = COMPACT_LABELS[cat] or cat, key = cat })
@@ -282,7 +282,7 @@ function addon.CreateSelectionRibbon(name, parent)
         startY = 0, -- Overridden below
         onTabChanged = function() end
     })
-    
+
     -- Manually re-anchor ribbon to be relative to Header
     f.ribbon:ClearAllPoints()
     f.ribbon:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -40) -- Fallback if no header
@@ -290,29 +290,29 @@ function addon.CreateSelectionRibbon(name, parent)
         f.ribbon:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -32) -- Adjust based on header visual
     end
     f.ribbon:SetPoint("TOPRIGHT", f, "TOPRIGHT", -10, -32)
-    
+
     -- Pre-create pages with ScrollFrames
     f.pages = {}
     for i, cat in ipairs(CATEGORY_ORDER) do
         -- Dynamic Layout: Anchor Content below Ribbon
         -- We ignore the 'top' inset from CreateContentPage and re-anchor manually
         local pageContainer = f.ribbon:CreateContentPage(i, f, { top = 0, bottom = 40, left = 10, right = 10 })
-        
+
         pageContainer:ClearAllPoints()
         pageContainer:SetPoint("TOPLEFT", f.ribbon, "BOTTOMLEFT", 0, -5) -- 5px gap below tabs
         pageContainer:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 40) -- 40px bottom for buttons
-        
+
         local scroll = CreateFrame("ScrollFrame", nil, pageContainer, "UIPanelScrollFrameTemplate")
         scroll:SetPoint("TOPLEFT", 0, 0)
         scroll:SetPoint("BOTTOMRIGHT", -26, 0)
-        
+
         local child = CreateFrame("Frame")
         child:SetSize(460, 1) -- Estimated width
         scroll:SetScrollChild(child)
-        
+
         f.pages[cat] = { container = pageContainer, scroll = scroll, child = child, buttons = {} }
     end
-    
+
     -- Bottom Buttons
     -- Bottom Buttons
     f.DefaultButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
@@ -332,7 +332,7 @@ function addon.CreateSelectionRibbon(name, parent)
         if f.callback then f.callback(false) end
         f:Hide()
     end)
-    
+
     -- ESC Handling
     f:EnableKeyboard(true)
     f:SetScript("OnKeyDown", function(self, key)
@@ -343,46 +343,46 @@ function addon.CreateSelectionRibbon(name, parent)
             self:SetPropagateKeyboardInput(true)
         end
     end)
-    
-    
+
+
     function f:Open(items, selectedKey, title, callback)
         f.callback = callback
         f.selectedKey = selectedKey
         f.Title:SetText(title or addon.L["LABEL_SELECT_ACTION"])
-        
+
         -- Distribute items
         local categorized = {}
         for _, cat in ipairs(CATEGORY_ORDER) do categorized[cat] = {} end
-        
+
         local defaultCat = "channel"
         local selectedCat = "channel"
-        
+
         for _, item in ipairs(items) do
             -- Filter out special items (nil/false) as they are now handled by buttons
             if item.key ~= nil and item.key ~= false then
                 local c = item.category or "other"
                 if not categorized[c] then c = "other" end -- Fallback
                 table.insert(categorized[c], item)
-                
+
                 if item.key == selectedKey then selectedCat = c end
             end
         end
-        
+
         -- Render each page
         for cat, list in pairs(categorized) do
             local page = f.pages[cat]
             if page then
                 -- Sort
                 table.sort(list, function(a, b) return (a.label or "") < (b.label or "") end)
-                
+
                 -- Grid Layout
                 local COLS = 3
                 local ROW_HEIGHT = 28
                 local COL_WIDTH = (page.child:GetWidth()) / COLS
-                
+
                 -- Hide all existing
                 for _, btn in ipairs(page.buttons) do btn:Hide() end
-                
+
                 for i, item in ipairs(list) do
                     local btn = page.buttons[i]
                     if not btn then
@@ -393,45 +393,45 @@ function addon.CreateSelectionRibbon(name, parent)
                         btn.Text:SetPoint("RIGHT", -4, 0)
                         btn.Text:SetJustifyH("LEFT")
                         btn.Text:SetWordWrap(false)
-                        
+
                         btn:SetScript("OnClick", function(self)
                             if f.callback then f.callback(self.data.key) end
                             f:Hide()
                         end)
                         table.insert(page.buttons, btn)
                     end
-                    
+
                     btn:SetSize(COL_WIDTH, ROW_HEIGHT)
                     local col = (i - 1) % COLS
                     local row = math.floor((i - 1) / COLS)
                     btn:SetPoint("TOPLEFT", col * COL_WIDTH, -(row * ROW_HEIGHT))
-                    
+
                     btn.Text:SetText(item.label or item.key)
                     btn.data = item
-                    
+
                     if item.key == selectedKey then
                         btn.Text:SetTextColor(1, 0.82, 0)
                     else
                         btn.Text:SetTextColor(1, 1, 1)
                     end
-                    
+
                     btn:Show()
                 end
-                
+
                 local totalRows = math.ceil(#list / COLS)
                 page.child:SetHeight(math.max(1, totalRows * ROW_HEIGHT))
             end
         end
-        
+
         -- Select Tab
         local tabIdx = 1
         for i, cat in ipairs(CATEGORY_ORDER) do
             if cat == selectedCat then tabIdx = i break end
         end
         f.ribbon:SetActiveTab(tabIdx)
-        
+
         f:Show()
     end
-    
+
     return f
 end

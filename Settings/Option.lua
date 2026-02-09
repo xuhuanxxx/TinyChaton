@@ -66,7 +66,7 @@ end
 -- ============================================
 function addon.GetTableFromPath(path)
     if type(path) ~= "string" then return nil end
-    
+
     local current = addon.db
     for part in string.gmatch(path, "([^%.]+)") do
         if current and type(current) == "table" then
@@ -81,7 +81,7 @@ end
 -- Helper: Ensure table exists at path (create if missing)
 function addon.EnsureTableFromPath(path)
     if type(path) ~= "string" then return nil end
-    
+
     local current = addon.db
     for part in string.gmatch(path, "([^%.]+)") do
         if not current[part] then
@@ -111,20 +111,20 @@ end
 
 function addon.AddAddOnCheckbox(cat, variable, tbl, key, name, default, tooltip, applyFunc)
     if not tbl then return nil end
-    
+
     -- Resolve path to table if needed (create if missing)
     local targetTbl = type(tbl) == "string" and addon.EnsureTableFromPath(tbl) or tbl
     if not targetTbl or type(targetTbl) ~= "table" then return nil end
-    
+
     local setting = Settings.GetSetting(variable)
     if not setting then
         local defVal = default and Settings.Default.True or Settings.Default.False
         setting = Settings.RegisterAddOnSetting(cat, variable, key, targetTbl, Settings.VarType.Boolean, name, defVal)
     end
-    
+
     if setting then
         if setting.SetValueChangedCallback then
-            setting:SetValueChangedCallback(function() 
+            setting:SetValueChangedCallback(function()
                 if applyFunc then applyFunc() else addon:ApplyAllSettings() end
             end)
         end
@@ -135,11 +135,11 @@ end
 
 function addon.AddAddOnDropdown(cat, variable, tbl, key, name, optionsFunc, default, tooltip, valueChangedCallback, applyFunc)
     if not tbl then return nil end
-    
+
     -- Resolve path to table if needed (create if missing)
     local targetTbl = type(tbl) == "string" and addon.EnsureTableFromPath(tbl) or tbl
     if not targetTbl or type(targetTbl) ~= "table" then return nil end
-    
+
     local setting = Settings.GetSetting(variable)
     if not setting then
         local varType = type(default) == "number" and Settings.VarType.Number or Settings.VarType.String
@@ -162,11 +162,11 @@ end
 
 function addon.AddAddOnSlider(cat, variable, tbl, key, name, default, minVal, maxVal, step, tooltip, applyFunc)
     if not tbl then return nil end
-    
+
     -- Resolve path to table if needed (create if missing)
     local targetTbl = type(tbl) == "string" and addon.EnsureTableFromPath(tbl) or tbl
     if not targetTbl or type(targetTbl) ~= "table" then return nil end
-    
+
     local setting = Settings.GetSetting(variable)
     if not setting then
         setting = Settings.RegisterAddOnSetting(cat, variable, key, targetTbl, Settings.VarType.Number, name, default)
@@ -174,7 +174,7 @@ function addon.AddAddOnSlider(cat, variable, tbl, key, name, default, minVal, ma
 
     if setting then
         if setting.SetValueChangedCallback then
-            setting:SetValueChangedCallback(function() 
+            setting:SetValueChangedCallback(function()
                 if applyFunc then applyFunc() else addon:ApplyAllSettings() end
             end)
         end
@@ -186,7 +186,7 @@ function addon.AddAddOnSlider(cat, variable, tbl, key, name, default, minVal, ma
                 return string.format("%d", value)
             end
         end)
-        
+
         local dynamicTooltip = function()
             local val = (tbl and tbl[key]) or default
             local valStr = (step < 1) and string.format("%.1f", val) or string.format("%d", val)
@@ -207,7 +207,7 @@ function addon.AddNativeCheckbox(cat, variable, name, default, getter, setter, t
     if existingSetting then
         return existingSetting
     end
-    
+
     local setting = Settings.RegisterProxySetting(cat, variable, Settings.VarType.Boolean, name, default, getter, setter)
     Settings.CreateCheckbox(cat, setting, tooltip)
 end
@@ -218,7 +218,7 @@ function addon.AddNativeSlider(cat, variable, name, default, minVal, maxVal, ste
     if existingSetting then
         return existingSetting
     end
-    
+
     local setting = Settings.RegisterProxySetting(cat, variable, Settings.VarType.Number, name, default, getter, setter)
     local options = Settings.CreateSliderOptions(minVal, maxVal, step)
     options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value)
@@ -228,7 +228,7 @@ function addon.AddNativeSlider(cat, variable, name, default, minVal, maxVal, ste
             return string.format("%d", value)
         end
     end)
-    
+
     local dynamicTooltip = function()
         local val = getter()
         local valStr = (step < 1) and string.format("%.1f", val) or string.format("%d", val)
@@ -319,15 +319,15 @@ function addon.AddProxyMultiDropdown(cat, variable, name, optionfunc, getter, se
             table.sort(keys)
             return table.concat(keys, ",")
         end
-        
+
         local function deserializeSetter(value)
             -- Setting 框架调用此函数，但我们通过 Mixin 直接管理选择
             -- 此处无需实际操作
         end
-        
+
         setting = Settings.RegisterProxySetting(cat, variable, Settings.VarType.String, name, "", serializeGetter, deserializeSetter)
     end
-    
+
     -- 创建 MultiDropdown Initializer
     local data = {
         name = name,
@@ -341,16 +341,16 @@ function addon.AddProxyMultiDropdown(cat, variable, name, optionfunc, getter, se
         setting = setting,
         GetSetting = function() return setting end,
     }
-    
+
     local init = Settings.CreateElementInitializer("TinyChaton_MultiDropdownTemplate", data)
-    
+
     init.GetName = function() return name end
     init.GetTooltip = function() return tooltip end
     init.GetSetting = function() return setting end
     init.GetData = function() return data end
-    
+
     Settings.RegisterInitializer(cat, init)
-    
+
     return setting
 end
 
@@ -382,22 +382,22 @@ function addon.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
             insets = { left = 11, right = 12, top = 12, bottom = 11 }
         })
         EditorFrame:EnableMouse(true)
-        
+
         local header = EditorFrame:CreateTexture(nil, "ARTWORK")
         header:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
         header:SetWidth(256); header:SetHeight(64)
         header:SetPoint("TOP", 0, 12)
         EditorFrame.HeaderTitle = EditorFrame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         EditorFrame.HeaderTitle:SetPoint("TOP", header, "TOP", 0, -14)
-        
+
         local hintText = EditorFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
         hintText:SetPoint("BOTTOM", EditorFrame, "BOTTOM", 0, 45)
         EditorFrame.Hint = hintText
-        
+
         local scroll = CreateFrame("ScrollFrame", nil, EditorFrame, "UIPanelScrollFrameTemplate")
         scroll:SetPoint("TOPLEFT", 24, -30)
         scroll:SetPoint("BOTTOMRIGHT", -40, 50)
-        
+
         local edit = CreateFrame("EditBox", nil, scroll)
         edit:SetMultiLine(true)
         edit:SetSize(330, 220)
@@ -405,7 +405,7 @@ function addon.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
         edit:SetAutoFocus(false)
         scroll:SetScrollChild(edit)
         EditorFrame.Edit = edit
-        
+
         local btnSave = CreateFrame("Button", nil, EditorFrame, "UIPanelButtonTemplate")
         btnSave:SetSize(90, 22)
         btnSave:SetPoint("BOTTOMRIGHT", -20, 16)
@@ -417,7 +417,7 @@ function addon.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
                 line = line:match("^%s*(.-)%s*$") or line
                 if line ~= "" then table.insert(lines, line) end
             end
-            
+
             -- 验证函数检查
             if EditorFrame.validateFunc then
                 local isValid, errorMsg = EditorFrame.validateFunc(lines)
@@ -437,7 +437,7 @@ function addon.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
                     return
                 end
             end
-            
+
             if type(EditorFrame.dbTable[EditorFrame.dbKey]) ~= "table" then
                 EditorFrame.dbTable[EditorFrame.dbKey] = {}
             end
@@ -446,13 +446,13 @@ function addon.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
             addon:ApplyAllSettings()
             EditorFrame:Hide()
         end)
-        
+
         local btnCancel = CreateFrame("Button", nil, EditorFrame, "UIPanelButtonTemplate")
         btnCancel:SetSize(90, 22)
         btnCancel:SetPoint("RIGHT", btnSave, "LEFT", -10, 0)
         btnCancel:SetText(CANCEL)
         btnCancel:SetScript("OnClick", function() EditorFrame:Hide() end)
-    
+
         if SettingsPanel then
             SettingsPanel:HookScript("OnHide", function()
                 if EditorFrame and EditorFrame:IsShown() then
@@ -461,13 +461,13 @@ function addon.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
             end)
         end
     end
-    
+
     EditorFrame.HeaderTitle:SetText(title)
     EditorFrame.Hint:SetText(hint or "")
     EditorFrame.dbTable = dbTable
     EditorFrame.dbKey = dbKey
     EditorFrame.validateFunc = validateFunc
-    
+
     local t = dbTable[dbKey]
     -- Handle function-type templates (returns default values)
     if type(t) == "function" then
@@ -480,7 +480,7 @@ function addon.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
     else
         EditorFrame.Edit:SetText("")
     end
-    
+
     EditorFrame:Show()
 end
 
@@ -506,22 +506,22 @@ function addon.CreateCanvasLayout(parentFrame, opts)
     local style = addon.CanvasStyle
     local frameWidth = opts.frameWidth or 620
     local frameHeight = opts.frameHeight or 500
-    
+
     parentFrame = parentFrame or CreateFrame("Frame", nil, UIParent)
     parentFrame:SetSize(frameWidth, frameHeight)
-    
+
     local scrollFrame = CreateFrame("ScrollFrame", nil, parentFrame, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", 0, -10)
     scrollFrame:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", -26, 10)
-    
+
     local scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollChild:SetSize(style.contentWidth, 800)
     scrollFrame:SetScrollChild(scrollChild)
-    
+
     local yOffset = style.topPadding
-    
+
     local layout = {}
-    
+
     function layout.AddHeader(text)
         local header = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
         header:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", style.leftMargin, -yOffset)
@@ -530,42 +530,42 @@ function addon.CreateCanvasLayout(parentFrame, opts)
         header:SetText(text)
         header:SetTextColor(unpack(style.headerColor))
         yOffset = yOffset + style.headerFontSize + style.headerTopSpacing
-        
+
         local divider = scrollChild:CreateTexture(nil, "ARTWORK")
         divider:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", style.leftMargin, -yOffset)
         divider:SetSize(style.contentWidth - 40, 1)
         divider:SetColorTexture(unpack(style.dividerColor))
         yOffset = yOffset + style.headerBottomSpacing + style.sectionSpacing
     end
-    
+
     function layout.AddCheckbox(label, checked, onChange)
         local row = CreateFrame("Frame", nil, scrollChild)
         row:SetSize(style.contentWidth, style.rowHeight)
         row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", style.leftMargin, -yOffset)
-        
+
         local cb = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
         cb:SetSize(26, 26)
         cb:SetPoint("LEFT", row, "LEFT", 0, 0)
         cb:SetChecked(checked)
         cb:SetScript("OnClick", function(self) if onChange then onChange(self:GetChecked()) end end)
-        
+
         local lbl = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         lbl:SetPoint("LEFT", cb, "RIGHT", 8, 0)
         lbl:SetText(label)
-        
+
         yOffset = yOffset + style.rowHeight
         return cb
     end
-    
+
     function layout.AddSlider(label, value, minVal, maxVal, step, onChange)
         local row = CreateFrame("Frame", nil, scrollChild)
         row:SetSize(style.contentWidth, style.rowHeight + 10)
         row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", style.leftMargin, -yOffset)
-        
+
         local lbl = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         lbl:SetPoint("LEFT", row, "LEFT", 0, 0)
         lbl:SetText(label)
-        
+
         local slider = CreateFrame("Slider", nil, row, "OptionsSliderTemplate")
         slider:SetPoint("LEFT", lbl, "RIGHT", 20, 0)
         slider:SetWidth(180)
@@ -581,30 +581,30 @@ function addon.CreateCanvasLayout(parentFrame, opts)
             self.Text:SetText(tostring(val))
             if onChange then onChange(val) end
         end)
-        
+
         yOffset = yOffset + style.rowHeight + 10
         return slider
     end
-    
+
     function layout.AddButton(label, buttonText, onClick)
         local row = CreateFrame("Frame", nil, scrollChild)
         row:SetSize(style.contentWidth, style.rowHeight)
         row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", style.leftMargin, -yOffset)
-        
+
         local lbl = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         lbl:SetPoint("LEFT", row, "LEFT", 0, 0)
         lbl:SetText(label)
-        
+
         local btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
         btn:SetSize(100, 24)
         btn:SetPoint("LEFT", lbl, "RIGHT", 20, 0)
         btn:SetText(buttonText)
         btn:SetScript("OnClick", onClick)
-        
+
         yOffset = yOffset + style.rowHeight
         return btn
     end
-    
+
     function layout.AddText(text, color)
         local lbl = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
         lbl:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", style.leftMargin, -yOffset)
@@ -615,15 +615,15 @@ function addon.CreateCanvasLayout(parentFrame, opts)
         yOffset = yOffset + 20
         return lbl
     end
-    
+
     function layout.AddSpace(height)
         yOffset = yOffset + (height or style.sectionSpacing)
     end
-    
+
     function layout.GetYOffset() return yOffset end
     function layout.AdvanceY(amount) yOffset = yOffset + amount end
     function layout.SetScrollHeight(h) scrollChild:SetHeight(h) end
-    
+
     local defaultsBtn
     if opts.showDefaults ~= false then
         defaultsBtn = CreateFrame("Button", nil, parentFrame, "UIPanelButtonTemplate")
@@ -632,7 +632,7 @@ function addon.CreateCanvasLayout(parentFrame, opts)
         defaultsBtn:SetText(DEFAULTS)
         defaultsBtn:SetScript("OnClick", opts.onDefaults or function() end)
     end
-    
+
     return parentFrame, scrollFrame, scrollChild, layout, defaultsBtn
 end
 
@@ -642,21 +642,21 @@ end
 -- Registers a hidden setting that triggers a callback when "Defaults" is clicked
 function addon.RegisterPageReset(category, callback)
     if not category or not callback then return end
-    
+
     -- Create a unique variable name for this category's reset trigger
     local variable = "TinyChaton_ResetTrigger_" .. category:GetID()
-    
+
     local setting = Settings.GetSetting(variable)
     if not setting then
         -- Register a proxy setting:
         -- Getter: Always returns 1 (to appear non-default, so "Defaults" button is enabled)
-        -- Setter: Triggers the callback 
+        -- Setter: Triggers the callback
         -- Default: 0
-        setting = Settings.RegisterProxySetting(category, variable, Settings.VarType.Number, 
-            "Reset Trigger", 0, 
-            function() return 1 end, 
-            function(v) 
-                -- "Defaults" button sets value to default (0). 
+        setting = Settings.RegisterProxySetting(category, variable, Settings.VarType.Number,
+            "Reset Trigger", 0,
+            function() return 1 end,
+            function(v)
+                -- "Defaults" button sets value to default (0).
                 -- We intercept this to trigger our custom reset logic.
                 if v == 0 then
                     callback()

@@ -33,7 +33,7 @@ addon.CONSTANTS = {
     EMOTE_PAGE_SIZE = 40,
     EMOTE_COLS = 8,
     EMOTE_ROWS = 5,
-    
+
     -- Shelf Defaults
     SHELF_DEFAULT_BUTTON_SIZE = 30,
     SHELF_DEFAULT_SPACING = 2,
@@ -44,11 +44,11 @@ addon.CONSTANTS = {
     SHELF_DEFAULT_THEME = "Modern",
     SHELF_DEFAULT_COLORSET = "rainbow",
     SHELF_DEFAULT_ANCHOR = "chat_top",
-    
+
     -- Chat Defaults
     CHAT_DEFAULT_FONT = "STANDARD",
     CHAT_DEFAULT_SIZE = 16, -- Added from instruction
-    
+
     -- Snapshot Defaults
     SNAPSHOT_MAX_TOTAL_DEFAULT = 5000, -- Added from instruction
     SNAPSHOT_MAX_TOTAL_MIN = 1000, -- Added from instruction
@@ -60,7 +60,7 @@ addon.CONSTANTS = {
     MESSAGE_CACHE_LIMIT = 200,     -- Modules/ClickToCopy.lua (soft limit)
     MESSAGE_CACHE_HARD_LIMIT = 500,-- Modules/ClickToCopy.lua (hard limit)
     EMOTE_TICKER_INTERVAL = 0.2,   -- Modules/EmoteHelper.lua
-    
+
     -- Profile Defaults
     PROFILE_DEFAULT_NAME = "Default",
     PROFILE_NAME_MAX_LENGTH = 32,
@@ -97,7 +97,7 @@ end
 
 function addon:GetStreamPath(key)
     if not self.STREAM_REGISTRY then return nil end
-    
+
     for categoryKey, category in pairs(self.STREAM_REGISTRY) do
         for subKey, subCategory in pairs(category) do
             for _, stream in ipairs(subCategory) do
@@ -107,13 +107,13 @@ function addon:GetStreamPath(key)
             end
         end
     end
-    
+
     return nil
 end
 
 function addon:GetStreamByKey(key)
     if not self.STREAM_REGISTRY then return nil end
-    
+
     for categoryKey, category in pairs(self.STREAM_REGISTRY) do
         for subKey, subCategory in pairs(category) do
             for _, stream in ipairs(subCategory) do
@@ -123,7 +123,7 @@ function addon:GetStreamByKey(key)
             end
         end
     end
-    
+
     return nil
 end
 
@@ -140,23 +140,23 @@ end
 function addon:GetStreamDefaults(key)
     local path = self:GetStreamPath(key)
     if not path then return {} end
-    
+
     local defaults = {}
-    
+
     -- CHANNEL 下的项默认值
     if path:match("^CHANNEL%.") then
         defaults.defaultPinned = true
         defaults.defaultSnapshotted = true
         defaults.defaultAutoJoin = false
     end
-    
+
     -- NOTICE 下的项默认值
     if path:match("^NOTICE%.") then
         defaults.defaultPinned = false
         defaults.defaultSnapshotted = false
         defaults.defaultAutoJoin = false
     end
-    
+
     return defaults
 end
 
@@ -164,14 +164,14 @@ function addon:GetStreamProperty(stream, propertyName, fallbackValue)
     if stream[propertyName] ~= nil then
         return stream[propertyName]
     end
-    
+
     if stream.key then
         local defaults = self:GetStreamDefaults(stream.key)
         if defaults[propertyName] ~= nil then
             return defaults[propertyName]
         end
     end
-    
+
     return fallbackValue
 end
 
@@ -180,12 +180,12 @@ end
 --- @return function 迭代函数
 function addon:IterateAllStreams()
     if not self.STREAM_REGISTRY then return function() end end
-    
+
     local categories = { "CHANNEL", "NOTICE" }
     local catIdx = 1
     local subIdx = 1
     local itemIdx = 0
-    
+
     -- 获取当前的 subGroups 列表
     local function getSubGroups(catKey)
         local cat = self.STREAM_REGISTRY[catKey]
@@ -195,18 +195,18 @@ function addon:IterateAllStreams()
         table.sort(keys) -- 保证稳定顺序
         return keys
     end
-    
+
     local subGroups = getSubGroups(categories[catIdx])
-    
+
     return function()
         while catIdx <= #categories do
             local catKey = categories[catIdx]
             local subKey = subGroups[subIdx]
-            
+
             if subKey then
                 local items = self.STREAM_REGISTRY[catKey][subKey]
                 itemIdx = itemIdx + 1
-                
+
                 if items[itemIdx] then
                     return itemIdx, items[itemIdx], catKey, subKey
                 else
@@ -234,7 +234,7 @@ end
 local function BuildChatEvents()
     local events = {}
     local eventSet = {}  -- 用于去重
-    
+
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
         for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
             for _, stream in ipairs(category) do
@@ -249,7 +249,7 @@ local function BuildChatEvents()
             end
         end
     end
-    
+
     return events
 end
 
@@ -258,7 +258,7 @@ addon.CHAT_EVENTS = BuildChatEvents()
 
 local function BuildChannelPins()
     local pins = {}
-    
+
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
         for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
             for _, stream in ipairs(category) do
@@ -266,7 +266,7 @@ local function BuildChannelPins()
             end
         end
     end
-    
+
     return pins
 end
 
@@ -280,7 +280,7 @@ end
 
 local function BuildSnapshotChannels()
     local channels = {}
-    
+
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
         for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
             for _, stream in ipairs(category) do
@@ -288,19 +288,19 @@ local function BuildSnapshotChannels()
             end
         end
     end
-    
+
     return channels
 end
 
 local function BuildAutoJoinChannels()
     local channels = {}
-    
+
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL and addon.STREAM_REGISTRY.CHANNEL.DYNAMIC then
         for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.DYNAMIC) do
             channels[stream.key] = addon:GetStreamProperty(stream, "defaultAutoJoin", false)
         end
     end
-    
+
     return channels
 end
 
@@ -397,7 +397,7 @@ end
 function addon:GetSettingDefault(key)
     local reg = addon:GetSettingInfo(key)
     if not reg then return nil end
-    
+
     if type(reg.default) == "function" then
         return reg.default()
     else
@@ -408,10 +408,10 @@ end
 function addon:GetSettingValue(key)
     local reg = addon:GetSettingInfo(key)
     if not reg then return nil end
-    
+
     if reg.get then return reg.get() end
     if reg.getValue then return reg.getValue() end
-    
+
     if reg.category == "system" then return addon:GetSettingDefault(key) end
     return nil
 end
@@ -419,7 +419,7 @@ end
 function addon:SetSettingValue(key, value)
     local reg = addon:GetSettingInfo(key)
     if not reg then return end
-    
+
     if reg.set then reg.set(value) end
     if reg.setValue then reg.setValue(value) end
 end

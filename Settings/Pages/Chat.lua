@@ -9,25 +9,25 @@ addon.CategoryBuilders = CategoryBuilders
 local function CreateSettingFromRegistry(subCat, key)
     local reg = addon.SETTING_REGISTRY[key]
     if not reg or not reg.ui then return end
-    
+
     local P = "TinyChaton_"
     local variable = P .. key
-    
+
     -- Unified accessors for Proxy settings
     local getter = function()
-        if reg.getValue then 
+        if reg.getValue then
             local val = reg.getValue()
             if val ~= nil then return val end
         end
         return reg.get()
     end
-    
+
     local setter = function(v)
         if reg.setValue then reg.setValue(v) end
         if reg.set then reg.set(v) end
         if addon.ApplyAllSettings then addon:ApplyAllSettings() end
     end
-    
+
     local defVal = (type(reg.default) == "function") and reg.default() or reg.default
 
     if reg.ui.type == "checkbox" then
@@ -40,7 +40,7 @@ local function CreateSettingFromRegistry(subCat, key)
         return addon.AddNativeButton(subCat, L[reg.ui.label], L[reg.ui.label], function()
             local r,g,b,a = addon.Utils.ParseColorHex(getter())
             ColorPickerFrame:SetupColorPickerAndShow({ r=r, g=g, b=b, opacity=a, hasOpacity=true,
-                swatchFunc = function() 
+                swatchFunc = function()
                     local cr,cg,cb,ca = ColorPickerFrame:GetColorRGB(), ColorPickerFrame:GetColorAlpha()
                     setter(addon.Utils.FormatColorHex(cr,cg,cb,ca))
                 end
@@ -56,32 +56,32 @@ CategoryBuilders.chat = function(rootCat)
 
     addon.AddSectionHeader(subCat, L["SECTION_CHAT_FONT"])
     CreateSettingFromRegistry(subCat, "fontManaged")
-    
+
     addon.AddNativeDropdown(subCat, P .. "font", L["LABEL_FONT"], addon.CONSTANTS.CHAT_DEFAULT_FONT,
-        function() 
+        function()
             local c = Settings.CreateControlTextContainer()
             c:Add("STANDARD", L["FONT_STANDARD"])
             c:Add("CHAT", L["FONT_CHAT"])
             c:Add("DAMAGE", L["FONT_DAMAGE"])
-            
+
             local val = addon.db.plugin.chat.font.font
             if val and val ~= "STANDARD" and val ~= "CHAT" and val ~= "DAMAGE" and val ~= "" then
                  local name = L["LABEL_CUSTOM"] .. " (" .. (val:match("([^\\]+)$") or val) .. ")"
                  c:Add(val, name)
             end
-            return c:GetData() 
+            return c:GetData()
         end,
-        function() 
+        function()
             local val = addon.db.plugin.chat.font.font
             if val == "CHAT" or val == "DAMAGE" then return val end
             if val and val ~= "" and val ~= "STANDARD" then return val end
             return "STANDARD"
         end,
-        function(v) 
-             addon.db.plugin.chat.font.font = (v ~= "STANDARD") and v or nil; 
-             if addon.ApplyChatFontSettings then addon:ApplyChatFontSettings() end 
+        function(v)
+             addon.db.plugin.chat.font.font = (v ~= "STANDARD") and v or nil;
+             if addon.ApplyChatFontSettings then addon:ApplyChatFontSettings() end
         end, nil)
-    
+
     CreateSettingFromRegistry(subCat, "fontSize")
     CreateSettingFromRegistry(subCat, "fontOutline")
 
@@ -139,7 +139,7 @@ CategoryBuilders.chat = function(rootCat)
             end
         end
     end
-    
+
     addon.RegisterPageReset(subCat, ResetChatData)
 
     return subCat

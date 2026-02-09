@@ -39,9 +39,9 @@ end
 
 local function GetChannelKey(event, ...)
     local key = EVENT_TO_CHANNEL_KEY[event]
-    if key then 
+    if key then
         if key == "INSTANCE_CHAT" then return "instance" end
-        return string.lower(key) 
+        return string.lower(key)
     end
     if event == "CHAT_MSG_CHANNEL" then
         -- Logic to find registry key would go here (omitted for brevity in middleware, relying on simple key)
@@ -60,14 +60,14 @@ local function OnSnapshotEvent(self, event, ...)
     if InCombatLockdown() then return end
 
     if not addon.db or not addon.db.enabled then return end
-    
+
     -- Check if snapshot enabled
     local contentSettings = addon.db.plugin and addon.db.plugin.chat and addon.db.plugin.chat.content
     if not contentSettings or contentSettings.snapshotEnabled == false then return end
-    
+
     local charKey = GetCharKey()
     if charKey == "Default" then return end
-    
+
     -- We can safely reuse ChatData parser since it only reads args
     -- But we must be careful not to modify anything
     local chatData = addon.ChatData and addon.ChatData:New(nil, event, ...)
@@ -76,9 +76,9 @@ local function OnSnapshotEvent(self, event, ...)
     -- Ensure global DB exists
     if not addon.db.global.chatSnapshot then addon.db.global.chatSnapshot = {} end
     if not addon.db.global.chatSnapshot[charKey] then addon.db.global.chatSnapshot[charKey] = {} end
-    
+
     local channelKey = GetChannelKey(event, unpack(chatData.args))
-    
+
     -- Check specific channel enabled
     local sc = contentSettings.snapshotChannels
     if sc then
@@ -87,10 +87,10 @@ local function OnSnapshotEvent(self, event, ...)
             return
         end
     end
-    
+
     local perChannel = addon.db.global.chatSnapshot[charKey]
     if not perChannel[channelKey] then perChannel[channelKey] = {} end
-    
+
     -- Capture data
     local chatType = EVENT_TO_CHANNEL_KEY[event] or "CHANNEL"
     local channelId, channelBaseName
@@ -98,7 +98,7 @@ local function OnSnapshotEvent(self, event, ...)
         channelId = chatData.channelNumber
         channelBaseName = chatData.channelName
     end
-    
+
     -- Extract Class Color info from GUID (arg 12)
     local guid = chatData.args[12]
     local classFilename
@@ -116,33 +116,33 @@ local function OnSnapshotEvent(self, event, ...)
         time = time(),
         classFilename = classFilename,
         -- frameName is less relevant in background logging, nil is fine
-        frameName = nil 
+        frameName = nil
     })
-    
+
     -- Update global line count if tracked
     if addon.db.global.chatSnapshotLineCount then
         addon.db.global.chatSnapshotLineCount = addon.db.global.chatSnapshotLineCount + 1
     end
-    
+
     -- Maintenance (Trimming)
     -- Optimized: Normally remove 1, but if limit changed drastically, remove a small batch per event
     -- This avoids freezing when limit is lowered significantly (MC-002)
     local maxPerChannel = contentSettings.maxPerChannel or 500
     local excess = #perChannel[channelKey] - maxPerChannel
-    
+
     if excess > 0 then
         -- Remove at most 5 items per event to gradually reach the limit without stalling
         local batch = (excess > 5) and 5 or excess
         for i = 1, batch do
             table.remove(perChannel[channelKey], 1)
         end
-        
+
         -- Update global count
         if addon.db.global.chatSnapshotLineCount then
             addon.db.global.chatSnapshotLineCount = math.max(0, addon.db.global.chatSnapshotLineCount - batch)
         end
     end
-    
+
     -- Trigger global eviction if available and needed
     if addon.TriggerEviction and (addon.db.global.chatSnapshotLineCount or 0) > (addon.db.global.chatSnapshotMaxTotal or 5000) then
         addon:TriggerEviction()

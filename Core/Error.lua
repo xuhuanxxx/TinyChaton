@@ -14,19 +14,19 @@ local MAX_ERRORS = 100
 function addon:Error(msg, ...)
     local formatted = string.format(msg, ...)
     local timestamp = GetTime()
-    
+
     -- Add to internal log
-    table.insert(self.errors, { 
-        msg = formatted, 
+    table.insert(self.errors, {
+        msg = formatted,
         time = timestamp,
-        stack = debugstack(2) 
+        stack = debugstack(2)
     })
-    
+
     -- Cap the log
     if #self.errors > MAX_ERRORS then
         table.remove(self.errors, 1)
     end
-    
+
     -- Output to chat if debug enabled
     -- Use safe access in case config isn't loaded yet
     local debugEnabled = false
@@ -65,7 +65,7 @@ SlashCmdList["TINYCHATON_ERROR"] = function(msg)
         print("|cFF00FF00[TinyChaton]|r No recent errors logged.")
         return
     end
-    
+
     print("|cFFFF0000[TinyChaton] Recent Errors:|r")
     for _, err in ipairs(errors) do
         print(string.format("  [%s] %s", date("%H:%M:%S", err.time), err.msg))

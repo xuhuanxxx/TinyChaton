@@ -51,7 +51,7 @@ local function CallLifecycle(element, hookName, frame, ...)
     if type(component) == "table" and component[hookName] then
         local ok, err = pcall(component[hookName], component, frame, ...)
         if not ok then
-            TR:Error("reconciler", "Lifecycle hook %s failed for %s: %s", 
+            TR:Error("reconciler", "Lifecycle hook %s failed for %s: %s",
                 hookName, component.displayName or "Unknown", tostring(err))
         end
     end
@@ -82,7 +82,7 @@ local function ApplyProps(frame, oldProps, newProps)
     oldProps = oldProps or {}
     -- Always ensure newProps is a table (could be nil if component returns element with no props, though unlikely in this framework)
     newProps = newProps or {}
-    
+
     TR:DebugLog("props", "ApplyProps: %s (frame: %s)", frame.TR_LeafElement and frame.TR_LeafElement.key or "?", frame:GetName() or "unnamed")
 
     -- Styles & Layout
@@ -94,7 +94,7 @@ local function ApplyProps(frame, oldProps, newProps)
         end
         frame:SetSize(unpack(newProps.size))
     end
-    
+
     if newProps.point then
          frame:ClearAllPoints()
          -- V1.1: Magic $parent ID resolution
@@ -105,7 +105,7 @@ local function ApplyProps(frame, oldProps, newProps)
          end
          frame:SetPoint(unpack(pt))
     end
-    
+
     -- Visuals (Backdrop & Textures)
     if newProps.backdrop then
         -- Only apply if changed
@@ -115,7 +115,7 @@ local function ApplyProps(frame, oldProps, newProps)
                 _G.Mixin(frame, _G.BackdropTemplateMixin)
                 if frame.OnBackdropLoaded then frame:OnBackdropLoaded() end
             end
-            
+
             if frame.SetBackdrop then
                 frame:SetBackdrop(newProps.backdrop)
             end
@@ -132,7 +132,7 @@ local function ApplyProps(frame, oldProps, newProps)
             end
         end
     end
-    
+
     if newProps.backdropBorderColor then
         if not oldProps or newProps.backdropBorderColor ~= oldProps.backdropBorderColor then
             if not frame.SetBackdropBorderColor and _G.BackdropTemplateMixin then
@@ -143,7 +143,7 @@ local function ApplyProps(frame, oldProps, newProps)
             end
         end
     end
-    
+
     if frame:GetObjectType() == "Button" then
         if newProps.normalTexture ~= oldProps.normalTexture then
             frame:SetNormalTexture(newProps.normalTexture or "")
@@ -175,21 +175,21 @@ local function ApplyProps(frame, oldProps, newProps)
                  fs:SetTextColor(unpack(newProps.textColor))
              end
         end
-        
+
         -- Events / Scripts
         if newProps.onClick ~= oldProps.onClick then
             frame:SetScript("OnClick", newProps.onClick)
         end
-        
+
         if newProps.onEnter ~= oldProps.onEnter then
             frame:SetScript("OnEnter", newProps.onEnter)
         end
-        
+
         if newProps.onLeave ~= oldProps.onLeave then
             frame:SetScript("OnLeave", newProps.onLeave)
         end
     end
-    
+
     -- Custom Refs
     if newProps.ref and type(newProps.ref) == "function" then
         newProps.ref(frame)
@@ -204,7 +204,7 @@ end
 local function RenderComponent(component, props, container)
     local ok, result = pcall(component.Render, component, props)
     if not ok then
-        TR:Error("reconciler", "Component '%s' render failed: %s", 
+        TR:Error("reconciler", "Component '%s' render failed: %s",
             component.displayName or "Unknown", tostring(result))
         return nil, result
     end
@@ -221,46 +221,46 @@ end
 function Reconciler:Render(container, elementList)
     local containerName = container.GetName and container:GetName() or tostring(container)
     TR:DebugLog("reconciler", "Render START: container=%s, elements=%d", containerName, #elementList)
-    
+
     if not container.TR_Children then container.TR_Children = {} end
-    
+
     local oldChildrenMap = container.TR_Children
     local newChildrenMap = {}
-    
+
     -- Pool management
     local poolManager = TR.PoolManager
-    
+
     -- Diff & Mount
     for _, element in ipairs(elementList) do
         local key = element.key or error("TinyReactor: All items must have a unique 'key' prop.")
         local existingFrame = oldChildrenMap[key]
         local isUpdate = existingFrame ~= nil
-        
+
         TR:DebugLog("reconciler", "  Processing key='%s', existing=%s", key, isUpdate and "YES" or "NO")
-        
+
         -- Store original element for lifecycle
         local originalElement = element
-        
+
         -- Resolve Leaf Element (Unwrap Components)
         local leafElement = element
         local componentDepth = 0
         local componentStack = {} -- Track component hierarchy for error recovery
-        
+
         while type(leafElement.type) == "table" and leafElement.type._isComponent do
             componentDepth = componentDepth + 1
             local component = leafElement.type
             table.insert(componentStack, component)
-            
+
             TR:DebugLog("component", "    Rendering component '%s' (depth=%d)", component.displayName, componentDepth)
-            
+
             -- V1.1: Inject 'children' into props so components can access them
             if element.children and #element.children > 0 then
                 leafElement.props.children = element.children
             end
-            
+
             -- Render component with error handling
             local renderResult, renderErr = RenderComponent(component, leafElement.props, container)
-            
+
             if not renderResult then
                 -- Component render failed - try to use error boundary
                 local fallbackElement = HandleRenderError(container, element, renderErr)
@@ -269,37 +269,37 @@ function Reconciler:Render(container, elementList)
                     break
                 end
             end
-            
+
             leafElement = renderResult
-            
+
             if not leafElement then
                  error("Component " .. (component.displayName or "Unknown") .. " returned nil from :Render()")
             end
             -- Inherit key if missing in leaf
             if not leafElement.key then leafElement.key = element.key end
         end
-        
+
         local renderType = leafElement.type
         if type(renderType) ~= "string" then
              error("TinyReactor: Page eventually rendered into " .. type(renderType) .. ", expected string (FrameType).")
         end
-        
+
         local frame
         local prevProps = nil
         -- Support custom template from props (e.g., "UIPanelButtonTemplate" for Retro theme)
         local template = leafElement.props and leafElement.props.template or poolManager.DEFAULT_TEMPLATE
-        
+
         if isUpdate then
             -- UPDATE
             frame = existingFrame
             TR:DebugLog("reconciler", "    UPDATE key='%s' type='%s'", key, renderType)
-            
+
             -- Get previous props for DidUpdate
             local oldLeaf = frame.TR_LeafElement
             if oldLeaf then
                 prevProps = oldLeaf.props
             end
-            
+
             -- Template Mismatch Check
             -- UIPanelButtonTemplate has built-in FontString, needs recreation when switching
             local oldTemplate = prevProps and prevProps.template or poolManager.DEFAULT_TEMPLATE
@@ -316,27 +316,27 @@ function Reconciler:Render(container, elementList)
                 else
                     TR:Warn("reconciler", "    Template mismatch! Expected '%s', got '%s'. Recreating...", template, oldTemplate)
                 end
-                
+
                 -- Call WillUnmount before releasing
                 if frame.TR_Element then
                     ComponentWillUnmount(frame.TR_Element, frame)
                 end
-                
+
                 -- Release to correct pool (auto-tracked by PoolManager)
                 poolManager:Release(frame)
-                
+
                 -- Acquire from new pool
                 frame = poolManager:Acquire(container, renderType, template)
                 frame:Show()
-                
+
                 -- Reset state to ensure ApplyProps works correctly
                 prevProps = nil
             else
                 frame:Show()
             end
-            
+
             ApplyProps(frame, prevProps, leafElement.props)
-            
+
             -- Remove from old map so we know it's re-used
             oldChildrenMap[key] = nil
         else
@@ -346,16 +346,16 @@ function Reconciler:Render(container, elementList)
             frame:Show()
             ApplyProps(frame, nil, leafElement.props)
         end
-        
+
         -- Link Virtual Element to Native Frame
         frame.TR_Element = originalElement
         frame.TR_LeafElement = leafElement
         frame.TR_ComponentStack = componentStack
         -- Note: Template tracking is now handled automatically by PoolManager
-        
+
         -- Add to new map
         newChildrenMap[key] = frame
-        
+
         -- V1.1: Recursively Render Children
         -- If leafElement has children, renders them into 'frame'
         if leafElement.children and #leafElement.children > 0 then
@@ -367,7 +367,7 @@ function Reconciler:Render(container, elementList)
             TR:DebugLog("reconciler", "    Unmounting old children from key='%s'", key)
             Reconciler:Render(frame, {})
         end
-        
+
         -- Call lifecycle hooks AFTER children are rendered
         if isUpdate then
             -- Component was updated
@@ -381,18 +381,18 @@ function Reconciler:Render(container, elementList)
             end
         end
     end
-    
+
     -- Unmount remaining children
     local unmountCount = 0
     for key, frame in pairs(oldChildrenMap) do
         unmountCount = unmountCount + 1
         TR:Info("reconciler", "  UNMOUNT key='%s' type='%s'", key, frame:GetObjectType())
-        
+
         -- Call WillUnmount before any cleanup
         if frame.TR_Element then
             ComponentWillUnmount(frame.TR_Element, frame)
         end
-        
+
         -- Recursively unmount children of this frame first?
         -- If we just Release(frame), its children (WoW Frames) are hidden/re-parented?
         -- WoW FramePool:Release(frame) hides the frame.
@@ -401,23 +401,23 @@ function Reconciler:Render(container, elementList)
         if frame.TR_Children then
             Reconciler:Render(frame, {}) -- Unmount all TR children
         end
-        
+
         frame.TR_Element = nil
         frame.TR_LeafElement = nil
         frame.TR_ComponentStack = nil
         frame:Hide()
         frame:ClearAllPoints()
-        
+
         -- Release to correct pool (auto-tracked by PoolManager)
         poolManager:Release(frame)
     end
-    
+
     -- Update Container State
     container.TR_Children = newChildrenMap
-    
-    TR:DebugLog("reconciler", "Render END: container=%s, created=%d, unmounted=%d", 
-        containerName, 
-        #elementList - unmountCount, 
+
+    TR:DebugLog("reconciler", "Render END: container=%s, created=%d, unmounted=%d",
+        containerName,
+        #elementList - unmountCount,
         unmountCount)
 end
 
@@ -428,18 +428,18 @@ end
 --- Create an error boundary wrapper for a component
 function Reconciler:CreateErrorBoundary(Component, fallbackRenderer)
     local Boundary = TR:Component(Component.displayName .. "ErrorBoundary")
-    
+
     Boundary.WrappedComponent = Component
     Boundary.hasError = false
     Boundary.error = nil
-    
+
     function Boundary:Render(props)
         if self.hasError then
             return fallbackRenderer(self.error, props)
         end
         return Component:Create(props)
     end
-    
+
     function Boundary:DidMount(frame)
         -- Register error boundary for this container
         Reconciler:RegisterErrorBoundary(frame:GetParent(), function(element, err)
@@ -448,10 +448,10 @@ function Reconciler:CreateErrorBoundary(Component, fallbackRenderer)
             return fallbackRenderer(err, element.props)
         end)
     end
-    
+
     function Boundary:WillUnmount(frame)
         Reconciler:UnregisterErrorBoundary(frame:GetParent())
     end
-    
+
     return Boundary
 end

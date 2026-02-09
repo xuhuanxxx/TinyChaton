@@ -38,7 +38,7 @@ end
 -- Build current cycle list
 local function BuildCycleList()
     local list = {}
-    
+
     -- Add available system channels
     for _, channel in ipairs(systemCycleOrder) do
         if channel == "SAY" or channel == "YELL" then
@@ -53,13 +53,13 @@ local function BuildCycleList()
             list[#list + 1] = { chatType = channel }
         end
     end
-    
+
     -- Add joined dynamic channels
     local joinedChannels = GetJoinedDynamicChannels()
     for _, ch in ipairs(joinedChannels) do
         list[#list + 1] = { chatType = "CHANNEL", channelTarget = ch.id, channelName = ch.name }
     end
-    
+
     return list
 end
 
@@ -86,7 +86,7 @@ local function GetNextChannel(currentType, currentTarget)
     if #list == 0 then
         return { chatType = "SAY" }
     end
-    
+
     local currentIdx = FindCurrentIndex(list, currentType, currentTarget)
     local nextIdx = (currentIdx % #list) + 1
     return list[nextIdx]
@@ -96,20 +96,20 @@ local function OnTabPressed(self)
     if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction or not addon.db.plugin.chat.interaction.tabCycle then return end
     local text = self:GetText()
     if text:sub(1, 1) ~= "/" then return end
-    
+
     -- Get current chat type (compatible with modern/legacy API)
     local currentType = self:GetAttribute("chatType") or self.chatType
     local currentTarget = self:GetAttribute("channelTarget") or self.channelTarget
     if currentType == "CHANNEL" and type(currentTarget) == "string" then
         currentTarget = tonumber(currentTarget)
     end
-    
+
     local next = GetNextChannel(currentType, currentTarget)
     if not next then return end
-    
+
     -- Use SetAttribute and ChatEdit_UpdateHeader to switch channel correctly
     self:SetAttribute("chatType", next.chatType)
-    
+
     if next.chatType == "CHANNEL" then
         -- Dynamic channel needs channelTarget
         self:SetAttribute("channelTarget", next.channelTarget)
@@ -117,7 +117,7 @@ local function OnTabPressed(self)
         -- Non-dynamic channel clears channelTarget
         self:SetAttribute("channelTarget", nil)
     end
-    
+
     ChatEdit_UpdateHeader(self)
     self:SetText("")  -- Clear input, keep channel switch
 end
@@ -131,12 +131,12 @@ function addon:InitTabCycle()
         editBox._TinyChatonTabCycleHooked = true
         editBox:HookScript("OnTabPressed", OnTabPressed)
     end
-    
+
     -- Prioritize ChatFrame1EditBox (Retail shared EditBox)
     if ChatFrame1EditBox then
         HookEditBox(ChatFrame1EditBox)
     end
-    
+
     -- Compatibility loop: ChatFrame.editBox and ChatFrame*EditBox
     for i = 1, NUM_CHAT_WINDOWS do
         local cf = _G["ChatFrame"..i]
@@ -148,7 +148,7 @@ function addon:InitTabCycle()
             HookEditBox(eb)
         end
     end
-    
+
     -- Retry with delay (EditBox might not be created yet)
     delayedHookTimer = C_Timer.NewTimer(1, function()
         delayedHookTimer = nil

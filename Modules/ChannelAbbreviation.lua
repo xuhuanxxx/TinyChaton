@@ -52,7 +52,7 @@ end
 -- Resolve channel name to short label using our registry
 local function GetChannelShortLabel(name)
     if not name then return nil end
-    
+
     for _, stream, catKey, subKey in addon:IterateAllStreams() do
         if stream.label == name then
             return addon:GetChannelLabel(stream, nil)
@@ -64,7 +64,7 @@ local function GetChannelShortLabel(name)
             end
         end
     end
-    
+
     return nil
 end
 
@@ -117,7 +117,7 @@ end
 
 function CA:ResolveShortPrefixed(communityChannel)
     local format = addon.db and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat or "SHORT"
-    
+
     -- Extract parts: "1. General" -> prefix="1", rest="General"
     local prefix, rest = string.match(communityChannel, "^(%d+)%.%s*(.*)")
     if not prefix then
@@ -133,7 +133,7 @@ function CA:ResolveShortPrefixed(communityChannel)
             rest = r2 -- StripDuplicate prefix
         end
     end
-    
+
     if format == "NUMBER" then
         if prefix then return prefix end
         return communityChannel
@@ -144,7 +144,7 @@ function CA:ResolveShortPrefixed(communityChannel)
             local short = GetChannelShortLabel(rest)
             if short then return short end
         end
-        
+
         -- Try ID-based resolution
         if prefix then
             local id = tonumber(prefix)
@@ -155,7 +155,7 @@ function CA:ResolveShortPrefixed(communityChannel)
                     local short = GetChannelShortLabel(normalized)
                     if short then return short end
                 end
-                
+
                 -- Reverse lookup in streams
                 for _, stream, catKey, subKey in addon:IterateAllStreams() do
                     if subKey == "DYNAMIC" and stream.mappingKey then
@@ -173,7 +173,7 @@ function CA:ResolveShortPrefixed(communityChannel)
 
     elseif format == "NUMBER_SHORT" then
         -- NUMBER_SHORT: "6.世"
-        
+
         if prefix and rest and rest ~= "" then
             local short = GetChannelShortLabel(rest)
             if short then
@@ -200,7 +200,7 @@ function CA:ResolveShortPrefixed(communityChannel)
     elseif format == "FULL" then
         return rest or communityChannel
     end
-    
+
     -- If no format matched or no resolution found, call original if exists
     if addon.OriginalResolvePrefixed then
         return addon.OriginalResolvePrefixed(communityChannel)
@@ -211,18 +211,18 @@ end
 -- 3. Transformer Implementation (Visual Layer - Safe)
 local function ChannelAbbreviationTransformer(frame, text, ...)
     if not text or type(text) ~= "string" then return text, ... end
-    
+
     local format = addon.db and addon.db.enabled and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat or "SHORT"
     if format == "NONE" then return text, ... end
-    
+
     -- Channel links look like: |Hchannel:CHANNEL_ID|h[CHANNEL_NAME]|h
     -- We want to replace CHANNEL_NAME with its abbreviation
-    
+
     -- Pattern explain:
     -- (|Hchannel:[^|]+|h)%[([^%]]+)%]
     -- Group 1: Prefix up to the name bracket e.g. "|Hchannel:20|h"
     -- Group 2: The content inside brackets e.g. "1. General"
-    
+
     local newText = text:gsub("(|Hchannel:[^|]+|h)%[([^%]]+)%]", function(prefix, channelName)
         -- CA:ResolveShortPrefixed handles all logic:
         -- 1. Splits "1. Gen"
@@ -231,7 +231,7 @@ local function ChannelAbbreviationTransformer(frame, text, ...)
         local abbr = CA:ResolveShortPrefixed(channelName)
         return prefix .. "[" .. abbr .. "]"
     end)
-    
+
     return newText, ...
 end
 
@@ -240,10 +240,10 @@ function CA:Init()
     -- Apply global strings modification (e.g. CHAT_GUILD_GET = "[G]")
     -- This is generally safe as it just changes string constants
     CA:ApplyShortChannelGlobals()
-    
+
     -- Register as a ChatFrame Transformer (Visual Layer)
     addon:RegisterChatFrameTransformer("channel_abbrev", ChannelAbbreviationTransformer)
-    
+
     -- Inject into the transformer pipeline at the beginning
     -- We want abbreviation to happen before other visual mods (like timestamps or coloring)
     -- to ensure they work on the shortened key if needed, or simply preference.

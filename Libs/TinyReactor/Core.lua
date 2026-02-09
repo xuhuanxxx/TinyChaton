@@ -38,15 +38,15 @@ end
 --- Main logging function
 function TR:Log(level, category, message, ...)
     if not self:ShouldLog(level, category) then return end
-    
+
     local color = self.Debug.colors[level] or ""
     local reset = self.Debug.reset
     local prefix = string.format("[TinyReactor][%s]%s", level, category and "[" .. category .. "]" or "")
-    
+
     if select("#", ...) > 0 then
         message = string.format(message, ...)
     end
-    
+
     print(color .. prefix .. " " .. message .. reset)
 end
 
@@ -68,7 +68,7 @@ function TR:DumpTable(tbl, name, maxDepth)
     if not self.Debug.enabled then return end
     maxDepth = maxDepth or 2
     name = name or "table"
-    
+
     local function dump(t, n, d)
         if d > maxDepth then return "..." end
         local result = {}
@@ -88,7 +88,7 @@ function TR:DumpTable(tbl, name, maxDepth)
         end
         return "{" .. table.concat(result, ", ") .. "}"
     end
-    
+
     self:DebugLog("dump", "%s = %s", name, dump(tbl, name, 1))
 end
 
@@ -117,15 +117,15 @@ function TR:Component(name)
     class.__index = class
     class._isComponent = true
     class.displayName = name or "Anonymous"
-    
+
     function class:Create(props, children)
         return TR:CreateElement(self, props, children)
     end
-    
+
     function class:Render(props)
         error("Component " .. self.displayName .. " must implement :Render(props)")
     end
-    
+
     return class
 end
 

@@ -23,7 +23,7 @@ addon.ACTION_DEFINITIONS = {
         execute = function(streamKey)
             local stream = addon:GetStreamByKey(streamKey)
             if not stream then return end
-            
+
             if stream.chatType then
                 addon:ActionSend(stream.chatType, streamKey, stream.mappingKey and L[stream.mappingKey])
             end
@@ -37,7 +37,7 @@ addon.ACTION_DEFINITIONS = {
             return L["TOOLTIP_SEND_TO"]
         end
     },
-    
+
     -- =====================================================================
     -- [JOIN] 加入动态频道
     -- =====================================================================
@@ -62,7 +62,7 @@ addon.ACTION_DEFINITIONS = {
             return L["TOOLTIP_JOIN"]
         end
     },
-    
+
     -- =====================================================================
     -- [LEAVE] 离开动态频道
     -- =====================================================================
@@ -87,7 +87,7 @@ addon.ACTION_DEFINITIONS = {
             return L["TOOLTIP_LEAVE"]
         end
     },
-    
+
     -- =====================================================================
     -- [WHISPER_SEND] 私聊发送（特殊处理）
     -- =====================================================================
@@ -113,7 +113,7 @@ addon.ACTION_DEFINITIONS = {
             return L["TOOLTIP_SEND_TO"]
         end
     },
-    
+
     -- =====================================================================
     -- [EMOTE_SEND] 表情发送
     -- =====================================================================
@@ -135,7 +135,7 @@ addon.ACTION_DEFINITIONS = {
             return L["TOOLTIP_SEND_TO"]
         end
     },
-    
+
     -- =====================================================================
     -- [KIT ACTIONS] 工具按钮操作
     -- =====================================================================
@@ -159,8 +159,8 @@ addon.ACTION_DEFINITIONS = {
         key = "countdown_primary",
         category = "kit",
         appliesTo = { kits = { "countdown" } },
-        execute = function() 
-            C_PartyInfo.DoCountdown(addon.db.plugin.shelf.kitOptions.countdown.primary or 10) 
+        execute = function()
+            C_PartyInfo.DoCountdown(addon.db.plugin.shelf.kitOptions.countdown.primary or 10)
         end,
         getLabel = function() return L["ACTION_TIMER_PRIMARY"] end,
         getTooltip = function() return L["ACTION_TIMER_PRIMARY_DESC"] end
@@ -169,8 +169,8 @@ addon.ACTION_DEFINITIONS = {
         key = "countdown_secondary",
         category = "kit",
         appliesTo = { kits = { "countdown" } },
-        execute = function() 
-            C_PartyInfo.DoCountdown(addon.db.plugin.shelf.kitOptions.countdown.secondary or 5) 
+        execute = function()
+            C_PartyInfo.DoCountdown(addon.db.plugin.shelf.kitOptions.countdown.secondary or 5)
         end,
         getLabel = function() return L["ACTION_TIMER_SECONDARY"] end,
         getTooltip = function() return L["ACTION_TIMER_SECONDARY_DESC"] end
@@ -195,12 +195,12 @@ addon.ACTION_DEFINITIONS = {
         key = "filter_toggle",
         category = "kit",
         appliesTo = { kits = { "filter" } },
-        execute = function() 
-            if addon.db.plugin.filter then 
+        execute = function()
+            if addon.db.plugin.filter then
                 addon.db.plugin.filter.enabled = not addon.db.plugin.filter.enabled
                 addon:ApplyFilterSettings()
                 print(L["LABEL_FILTER"] .. " " .. (addon.db.plugin.filter.enabled and L["LABEL_STATUS_ENABLED"] or L["LABEL_STATUS_DISABLED"]))
-            end 
+            end
         end,
         getLabel = function() return L["KIT_FILTER"] end,
         getTooltip = function() return L["KIT_FILTER_TOOLTIP"] end
@@ -209,12 +209,12 @@ addon.ACTION_DEFINITIONS = {
         key = "macro_toggle",
         category = "kit",
         appliesTo = { kits = { "macro" } },
-        execute = function() 
-            if MacroFrame and MacroFrame:IsShown() then 
-                HideUIPanel(MacroFrame) 
-            else 
-                ShowMacroFrame() 
-            end 
+        execute = function()
+            if MacroFrame and MacroFrame:IsShown() then
+                HideUIPanel(MacroFrame)
+            else
+                ShowMacroFrame()
+            end
         end,
         getLabel = function() return L["KIT_MACRO"] end,
         getTooltip = function() return L["KIT_MACRO_TOOLTIP"] end
@@ -231,10 +231,10 @@ addon.ACTION_DEFINITIONS = {
         key = "emote_panel",
         category = "kit",
         appliesTo = { kits = { "emotePanel" } },
-        execute = function(self) 
-            if addon.ToggleEmotePanel then 
-                addon:ToggleEmotePanel(self) 
-            end 
+        execute = function(self)
+            if addon.ToggleEmotePanel then
+                addon:ToggleEmotePanel(self)
+            end
         end,
         getLabel = function() return L["KIT_EMOTE"] end,
         getTooltip = function() return L["KIT_EMOTE_TOOLTIP"] end
@@ -256,7 +256,7 @@ addon.ACTION_DEFINITIONS = {
 
 function addon:BuildActionRegistryFromDefinitions()
     local registry = {}
-    
+
     -- 遍历所有 ACTION 定义
     for _, actionDef in ipairs(self.ACTION_DEFINITIONS or {}) do
         -- 如果 ACTION 声明了 streamPaths
@@ -286,7 +286,7 @@ function addon:BuildActionRegistryFromDefinitions()
                 end
             end
         end
-        
+
         -- 如果 ACTION 声明了特定的 streamKeys
         if actionDef.appliesTo and actionDef.appliesTo.streamKeys then
             for _, streamKey in ipairs(actionDef.appliesTo.streamKeys) do
@@ -303,7 +303,7 @@ function addon:BuildActionRegistryFromDefinitions()
                 }
             end
         end
-        
+
         -- 如果 ACTION 声明了 kits
         if actionDef.appliesTo and actionDef.appliesTo.kits then
             for _, kitKey in ipairs(actionDef.appliesTo.kits) do
@@ -319,6 +319,6 @@ function addon:BuildActionRegistryFromDefinitions()
             end
         end
     end
-    
+
     return registry
 end

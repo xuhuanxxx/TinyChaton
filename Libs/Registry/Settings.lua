@@ -20,7 +20,7 @@ addon.SETTING_REGISTRY = {
         category = "system",
         get = function() return addon.db.system and addon.db.system.fontSize end,
         set = function(v) if addon.db.system then addon.db.system.fontSize = v end end,
-        getValue = function() 
+        getValue = function()
             local _, s = ChatFrame1:GetFont()
             return s or 14
         end,
@@ -44,7 +44,7 @@ addon.SETTING_REGISTRY = {
             local _, _, outline = ChatFrame1:GetFont()
             return (outline == "" or not outline) and "NONE" or outline
         end,
-        ui = { 
+        ui = {
             type = "dropdown", label = "LABEL_FONT_OUTLINE", page = "chat", section = "SECTION_CHAT_FONT",
             options = function()
                 local c = Settings.CreateControlTextContainer()
@@ -60,7 +60,7 @@ addon.SETTING_REGISTRY = {
         get = function() return addon.db.plugin.chat.visual.channelNameFormat end,
         set = function(v) addon.db.plugin.chat.visual.channelNameFormat = v end,
         default = "SHORT",
-        ui = { 
+        ui = {
             type = "dropdown", label = "LABEL_STREAM_NAME_FORMAT_DESC_LABEL", page = "chat", section = "SECTION_CHAT_CHANNEL",
             options = function()
                 local c = Settings.CreateControlTextContainer()
@@ -114,7 +114,7 @@ addon.SETTING_REGISTRY = {
         category = "system",
         get = function() return addon.db.system and addon.db.system.timestampFormat end,
         set = function(v) if addon.db.system then addon.db.system.timestampFormat = v end end,
-        getValue = function() 
+        getValue = function()
             local cv = C_CVar.GetCVar("showTimestamps")
             return cv ~= "none" and cv or "%H:%M "
         end,
@@ -127,7 +127,7 @@ addon.SETTING_REGISTRY = {
             local cv = C_CVar.GetCVar("showTimestamps")
             return cv ~= "none" and cv or "%H:%M "
         end,
-        ui = { 
+        ui = {
             type = "dropdown", label = "LABEL_FORMAT", page = "chat", section = "SECTION_CHAT_INTERACTION",
             isEnabled = function() return C_CVar.GetCVar("showTimestamps") ~= "none" end,
             options = function()

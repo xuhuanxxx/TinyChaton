@@ -37,7 +37,7 @@ function addon.Shelf:GetThemeProperty(prop)
     local theme = db.theme or addon.CONSTANTS.SHELF_DEFAULT_THEME
     if not db.themes then db.themes = {} end
     if not db.themes[theme] then db.themes[theme] = {} end
-    
+
     local val = db.themes[theme][prop]
     if val == nil then
         -- Fallback to theme default
@@ -53,7 +53,7 @@ function addon.Shelf:SetThemeProperty(prop, val)
     local theme = db.theme or addon.CONSTANTS.SHELF_DEFAULT_THEME
     if not db.themes then db.themes = {} end
     if not db.themes[theme] then db.themes[theme] = {} end
-    
+
     db.themes[theme][prop] = val
     addon:RefreshShelf()
 end
@@ -63,37 +63,37 @@ function addon.Shelf:GetOrder()
     if addon.db.plugin.shelf.shelfOrder and #addon.db.plugin.shelf.shelfOrder > 0 then
         return addon.db.plugin.shelf.shelfOrder
     end
-    
+
     -- 2. Fully dynamic generation from registries
     local items = {}
-    
+
     -- Ensure registries are loaded
     local hasStreamRegistry = addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL
     local hasKitRegistry = addon.KIT_REGISTRY
-    
+
     if not hasStreamRegistry or not hasKitRegistry then
         return {}
     end
-    
+
     -- Get all channels from STREAM_REGISTRY
     -- Get CHANNEL.SYSTEM streams
     for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.SYSTEM or {}) do
         table.insert(items, { key = stream.key, order = stream.order or 0, type = "channel" })
     end
-    
+
     -- Get CHANNEL.DYNAMIC streams
     for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.DYNAMIC or {}) do
         table.insert(items, { key = stream.key, order = stream.order or 0, type = "channel" })
     end
-    
+
     -- Get all kits
     for _, reg in ipairs(addon.KIT_REGISTRY) do
         table.insert(items, { key = reg.key, order = reg.order or 0, type = "kit" })
     end
-    
+
     -- Sort by order
     table.sort(items, function(a, b) return a.order < b.order end)
-    
+
     -- Return key list
     local order = {}
     for _, item in ipairs(items) do
@@ -105,27 +105,27 @@ end
 function addon.Shelf:GetItemConfig(key)
     local bindings = (addon.db and addon.db.plugin and addon.db.plugin.shelf and addon.db.plugin.shelf.bindings) or {}
     local customBind = bindings[key]
-    
+
     -- Try to find Stream first (new architecture)
     local stream = addon:GetStreamByKey(key)
     if stream and addon:IsChannelStream(key) then
         local defBindings = stream.defaultBindings or {}
-        
+
         -- Resolve Actions
         local leftAction, rightAction
-        
+
         -- Helper to map shorthand to full action key
         local function MapAction(actionKey, itemKey)
             if not actionKey then return nil end
             if actionKey == false then return false end -- Explicit Unbind
-            
+
             -- Check if it's already a full key (from custom binding)
             if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
                 return actionKey
             end
-            
+
             -- Map short key to full ACTION key
-            if actionKey == "send" then 
+            if actionKey == "send" then
                 -- Check if this is a special stream (whisper, emote)
                 if itemKey == "whisper" or itemKey == "bn_whisper" then
                     return "whisper_send_" .. itemKey
@@ -134,33 +134,33 @@ function addon.Shelf:GetItemConfig(key)
                 else
                     return "send_" .. itemKey
                 end
-            elseif actionKey == "join" then 
+            elseif actionKey == "join" then
                 return "join_" .. itemKey
-            elseif actionKey == "leave" then 
+            elseif actionKey == "leave" then
                 return "leave_" .. itemKey
-            else 
-                return "channel_" .. itemKey .. "_" .. actionKey 
+            else
+                return "channel_" .. itemKey .. "_" .. actionKey
             end
         end
-        
+
         -- 1. Left Click
         if customBind and customBind.left ~= nil then
             leftAction = customBind.left
         else
             leftAction = MapAction(defBindings.left, key)
         end
-        
+
         -- 2. Right Click
         if customBind and customBind.right ~= nil then
             rightAction = customBind.right
         else
             rightAction = MapAction(defBindings.right, key)
         end
-        
+
         -- Determine if dynamic
         local path = addon:GetStreamPath(key)
         local isDynamic = path and path:match("%.DYNAMIC$") ~= nil
-        
+
         return {
             type = "channel",
             key = stream.key,
@@ -173,26 +173,26 @@ function addon.Shelf:GetItemConfig(key)
             rightClick = rightAction,
         }
     end
-    
+
     -- Fallback to old CHANNEL_REGISTRY
     if addon.CHANNEL_REGISTRY then
         for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
             if reg.key == key and (reg.isSystem or reg.isDynamic) then
                 local defBindings = reg.defaultBindings or {}
-                
+
                 -- Resolve Actions
                 local leftAction, rightAction
-                
+
                 -- Helper to map shorthand to full action key
                 local function MapAction(actionKey, typePrefix, itemKey)
                     if not actionKey then return nil end
                     if actionKey == false then return false end -- Explicit Unbind
-                    
+
                     -- Check if it's already a full key (from custom binding)
                     if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
                         return actionKey
                     end
-                    
+
                     -- Otherwise map short key
                     if typePrefix == "channel" then
                         if actionKey == "send" then return "sendTo_" .. itemKey
@@ -203,21 +203,21 @@ function addon.Shelf:GetItemConfig(key)
                          return "kit_" .. itemKey .. "_" .. actionKey
                     end
                 end
-                
+
                 -- 1. Left Click
                 if customBind and customBind.left ~= nil then
                     leftAction = customBind.left -- Can be false or string
                 else
                     leftAction = MapAction(defBindings.left, "channel", key)
                 end
-                
+
                 -- 2. Right Click
                 if customBind and customBind.right ~= nil then
                     rightAction = customBind.right
                 else
                     rightAction = MapAction(defBindings.right, "channel", key)
                 end
-                
+
                 return {
                     type = "channel",
                     key = reg.key,
@@ -233,22 +233,22 @@ function addon.Shelf:GetItemConfig(key)
             end
         end
     end
-    
+
     -- Check KIT_REGISTRY
     for _, reg in ipairs(addon.KIT_REGISTRY) do
         if reg.key == key then
             local defBindings = reg.defaultBindings or {}
             local leftAction, rightAction
-            
+
              -- Helper to map shorthand to full action key
             local function MapKitAction(actionKey, itemKey)
                 if not actionKey then return nil end
                  if actionKey == false then return false end
-                 
+
                  if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
                     return actionKey
                 end
-                
+
                 return "kit_" .. itemKey .. "_" .. actionKey
             end
 
@@ -257,13 +257,13 @@ function addon.Shelf:GetItemConfig(key)
             else
                 leftAction = MapKitAction(defBindings.left, key)
             end
-            
+
             if customBind and customBind.right ~= nil then
                 rightAction = customBind.right
             else
                 rightAction = MapKitAction(defBindings.right, key)
             end
-            
+
             return {
                 type = "kit",
                 key = reg.key,
@@ -277,20 +277,20 @@ function addon.Shelf:GetItemConfig(key)
             }
         end
     end
-    
+
     return nil
 end
 
 function addon.Shelf:GetVisibleItems()
     local visibleItems = {}
-    
+
     if not addon.db or not addon.db.plugin.shelf then return visibleItems end
-    
+
     local shelfOrder = self:GetOrder()
     local channelPins = addon.db.plugin.shelf.channelPins or {}
     local kitPins = addon.db.plugin.shelf.kitPins or {}
     local dynamicMode = addon.db.plugin.shelf.dynamicMode or "hide"
-    
+
     -- Debug: Check initialization
     if #shelfOrder == 0 then
          -- print("Shelf Core Debug: WARNING - shelfOrder is EMPTY! Registry likely missing or config corrupt.")
@@ -329,7 +329,7 @@ function addon.Shelf:GetVisibleItems()
         if item then
             local isChannel = item.type == "channel"
             local isKit = item.type == "kit"
-            
+
             local isEnabled = false
             if isChannel then
                 isEnabled = channelPins[key] ~= false
@@ -341,26 +341,26 @@ function addon.Shelf:GetVisibleItems()
                     isEnabled = item.item and item.item.defaultPinned
                 end
             end
-            
+
             if isEnabled then
                 local isJoined = true
                 local channelNumber = nil
                 local shouldShow = true
-                
+
                 if isChannel and item.isDynamic then
                     local realName = item.mappingKey and L[item.mappingKey]
                     channelNumber = realName and findChannelByBaseName(realName) or nil
                     isJoined = channelNumber ~= nil
-                    
+
                     if not isJoined and dynamicMode == "hide" then
                         shouldShow = false
                     end
                 end
-                
+
                 if shouldShow then
                     local btnKey = channelNumber and tostring(channelNumber) or item.key
                     local displayText = isChannel and addon:GetChannelLabel(item, channelNumber, "SHORT") or (item.short or item.label or key)
-                    
+
                     table.insert(visibleItems, {
                         key = btnKey,
                         itemKey = item.key,
@@ -379,7 +379,7 @@ function addon.Shelf:GetVisibleItems()
             end
         end
     end
-    
+
     return visibleItems
 end
 
@@ -389,7 +389,7 @@ end
 
 function addon.Shelf:BuildActionRegistry()
     local actions = {}
-    
+
     -- =====================================================================
     -- NEW: Use ACTION_DEFINITIONS if available (preferred)
     -- =====================================================================
@@ -402,7 +402,7 @@ function addon.Shelf:BuildActionRegistry()
             end
         end
     end
-    
+
     -- =====================================================================
     -- LEGACY: Process old CHANNEL_REGISTRY and KIT_REGISTRY
     -- =====================================================================
@@ -414,19 +414,19 @@ function addon.Shelf:BuildActionRegistry()
                     local fullKey
                     local label = actionSpec.label
                     local category = "other"
-                    
+
                     if typePrefix == "channel" then
-                        if actionSpec.key == "send" then 
+                        if actionSpec.key == "send" then
                             fullKey = "sendTo_" .. item.key
                             category = "channel"
-                        elseif actionSpec.key == "join" then 
+                        elseif actionSpec.key == "join" then
                             fullKey = "join_" .. item.key
                             category = "join"
-                        elseif actionSpec.key == "leave" then 
+                        elseif actionSpec.key == "leave" then
                             fullKey = "leave_" .. item.key
                             category = "leave"
-                        else 
-                            fullKey = "channel_" .. item.key .. "_" .. actionSpec.key 
+                        else
+                            fullKey = "channel_" .. item.key .. "_" .. actionSpec.key
                             category = "channel"
                         end
                     else
@@ -451,10 +451,10 @@ function addon.Shelf:BuildActionRegistry()
             end
         end
     end
-    
+
     ProcessRegistry(addon.CHANNEL_REGISTRY, "", "channel")
     ProcessRegistry(addon.KIT_REGISTRY, L["ACTION_PREFIX_KIT"], "kit")
-    
+
     return actions
 end
 

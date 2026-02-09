@@ -26,7 +26,7 @@ CategoryBuilders.automation = function(rootCat)
         elseif tab == "party" then return db.welcomeParty
         else return db.welcomeRaid end
     end
-    
+
     local tabSettings = {}
     local function RefreshTabSettings()
         local cfg = GetTabConfig()
@@ -44,11 +44,11 @@ CategoryBuilders.automation = function(rootCat)
         return c:GetData()
     end, nil)
 
-    tabSettings.enabled = Settings.RegisterProxySetting(cat, P .. "welcomeTab_enabled", Settings.VarType.Boolean, L["LABEL_ENABLED"], false, 
+    tabSettings.enabled = Settings.RegisterProxySetting(cat, P .. "welcomeTab_enabled", Settings.VarType.Boolean, L["LABEL_ENABLED"], false,
         function() return GetTabConfig().enabled end, function(v) GetTabConfig().enabled = v end)
     Settings.CreateCheckbox(cat, tabSettings.enabled)
 
-    tabSettings.sendMode = Settings.RegisterProxySetting(cat, P .. "welcomeTab_sendMode", Settings.VarType.String, L["LABEL_WELCOME_SEND_MODE"], "channel", 
+    tabSettings.sendMode = Settings.RegisterProxySetting(cat, P .. "welcomeTab_sendMode", Settings.VarType.String, L["LABEL_WELCOME_SEND_MODE"], "channel",
         function() return GetTabConfig().sendMode or "channel" end, function(v) GetTabConfig().sendMode = v end)
     Settings.CreateDropdown(cat, tabSettings.sendMode, function()
         local c = Settings.CreateControlTextContainer(); c:Add("channel", L["LABEL_WELCOME_CHANNEL"]); c:Add("whisper", L["LABEL_WELCOME_WHISPER"])
@@ -58,7 +58,7 @@ CategoryBuilders.automation = function(rootCat)
     addon.AddNativeButton(cat, L["LABEL_WELCOME_TEMPLATES"], L["ACTION_EDIT"], function()
         local db = addon.GetTableFromPath("plugin.automation")
         if not db then return end
-        local cfg = (db.currentSocialTab == "guild" and db.welcomeGuild) or 
+        local cfg = (db.currentSocialTab == "guild" and db.welcomeGuild) or
                     (db.currentSocialTab == "party" and db.welcomeParty) or db.welcomeRaid
         -- Initialize templates with defaults if empty/nil
         if cfg then
@@ -73,15 +73,15 @@ CategoryBuilders.automation = function(rootCat)
                 end
             end
         end
-        local label = db.currentSocialTab == "guild" and L["LABEL_WELCOME_GUILD"] or 
+        local label = db.currentSocialTab == "guild" and L["LABEL_WELCOME_GUILD"] or
                       db.currentSocialTab == "party" and L["LABEL_WELCOME_PARTY"] or L["LABEL_WELCOME_RAID"]
         addon.ShowEditor(label, cfg, "templates", L["LABEL_WELCOME_TEMPLATE_HINT"])
     end, nil)
 
     -- 2. Auto Join Channels
     addon.AddSectionHeader(cat, L["SECTION_AUTO_JOIN_CHANNELS"])
-    
-    addon.AddProxyMultiDropdown(cat, P .. "autoJoinChannels", 
+
+    addon.AddProxyMultiDropdown(cat, P .. "autoJoinChannels",
         L["LABEL_AUTO_JOIN_CHANNELS"],
         function() return addon:GetAutoJoinChannelsItems() end,
         function() return addon:GetAutoJoinChannelSelection() end,
@@ -102,7 +102,7 @@ CategoryBuilders.automation = function(rootCat)
             setting:SetValue(setting:GetValue())
         end
     end
-    
+
     addon.RegisterPageReset(cat, ResetAutomationData)
 
     return cat

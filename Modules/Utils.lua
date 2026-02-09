@@ -1,19 +1,23 @@
 local addonName, addon = ...
 addon.Utils = {}
 
--- Deep Copy (handles cycles)
+--- Deep Copy (handles cycles)
+--- @generic T
+--- @param orig T The original table
+--- @param copies? table Internal table to track cycles
+--- @return T The copied table
 function addon.Utils.DeepCopy(orig, copies)
     copies = copies or {}
-    local orig_type = type(orig)
+    local origType = type(orig)
     local copy
-    if orig_type == 'table' then
+    if origType == 'table' then
         if copies[orig] then
             copy = copies[orig]
         else
             copy = {}
             copies[orig] = copy
-            for orig_key, orig_value in next, orig, nil do
-                copy[addon.Utils.DeepCopy(orig_key, copies)] = addon.Utils.DeepCopy(orig_value, copies)
+            for origKey, origValue in next, orig, nil do
+                copy[addon.Utils.DeepCopy(origKey, copies)] = addon.Utils.DeepCopy(origValue, copies)
             end
             setmetatable(copy, addon.Utils.DeepCopy(getmetatable(orig), copies))
         end
@@ -23,7 +27,10 @@ function addon.Utils.DeepCopy(orig, copies)
     return copy
 end
 
--- Merge Tables (recursive)
+--- Merge Tables (recursive)
+--- @param dst table Destination table (modified in place)
+--- @param src table Source table
+--- @return table The destination table
 function addon.Utils.MergeTables(dst, src)
     if type(dst) ~= "table" then dst = {} end
     if type(src) ~= "table" then return dst end
@@ -37,7 +44,9 @@ function addon.Utils.MergeTables(dst, src)
     return dst
 end
 
--- Color Parsing
+--- Parse Color Hex
+--- @param hex string Hex color string (e.g. "RRGGBB" or "AARRGGBB" or "#RRGGBB")
+--- @return number r, number g, number b, number a Normalized RGBA values (0-1)
 function addon.Utils.ParseColorHex(hex)
     -- Validate input: must be string with at least 6 hex chars (RGB) or 8 (ARGB)
     if not hex or type(hex) ~= "string" then return 1, 1, 1, 1 end
@@ -45,7 +54,7 @@ function addon.Utils.ParseColorHex(hex)
     hex = hex:gsub("^#", "")
     -- Validate hex format
     if not hex:match("^%x+$") then return 1, 1, 1, 1 end
-    
+
     local len = #hex
     if len == 6 then
         -- RGB format (no alpha)
@@ -64,6 +73,12 @@ function addon.Utils.ParseColorHex(hex)
     return 1, 1, 1, 1
 end
 
+--- Format Color to Hex
+--- @param r number Red (0-1)
+--- @param g number Green (0-1)
+--- @param b number Blue (0-1)
+--- @param a? number Alpha (0-1), defaults to 1
+--- @return string Hex string "AARRGGBB"
 function addon.Utils.FormatColorHex(r, g, b, a)
     return string.format("%02X%02X%02X%02X",
         math.floor((a or 1) * 255),
@@ -96,7 +111,9 @@ function addon.Utils.SetByPath(t, path, value)
     t[parts[#parts]] = value
 end
 
--- Normalize channel base name (strip server suffix like "World - ServerName" -> "World")
+--- Normalize channel base name (strip server suffix like "World - ServerName" -> "World")
+--- @param name string Original channel name
+--- @return string Normalized channel name
 function addon.Utils.NormalizeChannelBaseName(name)
     if not name or name == "" then return name end
     return name:match("^%s*(.-)%s*%-%s*.+$") or name
@@ -106,10 +123,10 @@ end
 local function MatchChannelName(stream, normalizedName)
     if not stream or not normalizedName then return false end
     local L = addon.L
-    
+
     -- 1. Match by label (highest priority?)
     if stream.label == normalizedName then return true end
-    
+
     -- 2. Match by real channel name (for dynamic channels)
     if stream.mappingKey then
         local realName = L[stream.mappingKey]
@@ -123,66 +140,83 @@ local function MatchChannelName(stream, normalizedName)
             if realName:find(normalizedName, 1, true) == 1 then return true end
         end
     end
-    
+
     return false
 end
 
--- Channel Cache (P1 Optimization)
--- key: normalizedName, value: stream object
-local channelCache = {}
-local isChannelCacheBuilt = false
+-- Channel Index (Performance Optimization)
+-- Replaces O(n) iteration with O(1) lookup
+addon.ChannelIndex = {}
+local isChannelIndexBuilt = false
 
-local function BuildChannelCache()
-    if isChannelCacheBuilt then return end
+--- Build the channel reverse index
+function addon.Utils.BuildChannelIndex()
+    if isChannelIndexBuilt then return end
     
-    -- Iterate all streams and build cache
+    addon.ChannelIndex = {}
+    local index = addon.ChannelIndex
+    
+    -- Iterate all streams and build index
     for _, stream in addon:IterateAllStreams() do
-        -- Add mapping for label
+        -- 1. Index by label
         if stream.label then
-            channelCache[stream.label] = stream
+            index[stream.label] = stream
         end
         
-        -- Add mapping for real name (if dynamic)
+        -- 2. Index by mapping key (for dynamic channels)
         if stream.mappingKey then
             local realName = addon.L[stream.mappingKey]
             if realName then
-                channelCache[realName] = stream
+                index[realName] = stream
                 -- Also cache normalized version if different
                 local norm = addon.Utils.NormalizeChannelBaseName(realName)
                 if norm ~= realName then
-                    channelCache[norm] = stream
+                    index[norm] = stream
                 end
             end
         end
+        
+        -- 3. Index by registry key (unique ID)
+        -- This might be redundant if GetStreamByKey is efficient, but good for uniformity
+        -- Assuming stream has a key field or we can derive it? 
+        -- The registry iteration gives us the stream object directly.
     end
     
-    isChannelCacheBuilt = true
+    isChannelIndexBuilt = true
+end
+
+--- Find a channel stream by key (O(1))
+--- @param key string The key to look up (label, real name, or normalized name)
+--- @return table|nil The stream object or nil
+function addon.Utils.FindChannelByKey(key)
+    if not key then return nil end
+    if not isChannelIndexBuilt then addon.Utils.BuildChannelIndex() end
+    return addon.ChannelIndex[key]
 end
 
 -- Find registry item by various inputs
 local function FindRegistryItem(input)
     if not input then return nil end
     local L = addon.L
-    
+
     -- input can be: { chatType, channelId, channelName, registryKey }
     local registryKey = input.registryKey
-    
+
     -- 1. Try by registryKey (most reliable)
     if registryKey then
         local stream = addon:GetStreamByKey(registryKey)
         if stream then return stream end
     end
-    
+
     -- Fallback: Iterate all streams for more complex matching
     local chatType = input.chatType
     local channelId = input.channelId
     local channelName = input.channelName
     local normalizedName = channelName and addon.Utils.NormalizeChannelBaseName(channelName) or nil
 
-    -- 2. Fast Lookup via Cache for Channel Name (O(1))
+    -- 2. Fast Lookup via Index for Channel Name (O(1))
     if normalizedName then
-        if not isChannelCacheBuilt then BuildChannelCache() end
-        local cached = channelCache[normalizedName]
+        local cached = addon.Utils.FindChannelByKey(normalizedName)
         if cached then return cached end
     end
 
@@ -191,7 +225,7 @@ local function FindRegistryItem(input)
         if chatType and chatType ~= "CHANNEL" and stream.chatType == chatType then
             return stream
         end
-        
+
         -- 4. Try by channelId for dynamic channels (reverse lookup)
         if chatType == "CHANNEL" and channelId and subKey == "DYNAMIC" and stream.mappingKey then
             local realName = L[stream.mappingKey]
@@ -199,15 +233,16 @@ local function FindRegistryItem(input)
                 return stream
             end
         end
-        
+
         -- 5. Try by channelName for dynamic channels (Partial Matches that might be missed by cache)
         if normalizedName and MatchChannelName(stream, normalizedName) then
-             -- Cache this result for future
-             channelCache[normalizedName] = stream
+             -- Add to index for future O(1) lookup
+             if not isChannelIndexBuilt then addon.Utils.BuildChannelIndex() end
+             addon.ChannelIndex[normalizedName] = stream
              return stream
         end
     end
-    
+
     return nil
 end
 
@@ -217,15 +252,15 @@ end
 -- Returns: displayText, registryItem
 function addon.Utils.ResolveChannelDisplay(input, format)
     if not input then return "", nil end
-    
+
     local fmt = format or (addon.db and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat) or "SHORT"
     local reg = FindRegistryItem(input)
-    
+
     if reg then
         local label = addon:GetChannelLabel(reg, input.channelId, fmt)
         return "[" .. label .. "] ", reg
     end
-    
+
     -- Fallback for unrecognized channels
     if input.channelName and input.channelName ~= "" then
         local normalized = addon.Utils.NormalizeChannelBaseName(input.channelName)
@@ -241,7 +276,7 @@ function addon.Utils.ResolveChannelDisplay(input, format)
             return "[" .. normalized .. "] ", nil
         end
     end
-    
+
     return "", nil
 end
 
@@ -263,9 +298,9 @@ end
 --- @return string Shortened channel name
 function addon.Utils.ShortenChannelString(str, fmt)
     if not str or type(str) ~= "string" or str == "" then return str end
-    
+
     local L = addon.L
-    
+
     -- Parse numeric ID and name (e.g., "1. General" -> num="1", name="General")
     -- Also handle "1." format (number with trailing dot but no name)
     local num, name = str:match("^(%d+)%.%s*(.*)")
@@ -290,7 +325,7 @@ function addon.Utils.ShortenChannelString(str, fmt)
             num = num or tostring(id)
         end
     end
-    
+
     -- For dynamic channels, always try reverse lookup by channel ID first
     -- This is the most reliable method when we only have a number
     local item
@@ -319,7 +354,7 @@ function addon.Utils.ShortenChannelString(str, fmt)
             end
         end
     end
-    
+
     if item then
         return addon:GetChannelLabel(item, num)
     end

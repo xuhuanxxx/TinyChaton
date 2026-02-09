@@ -153,24 +153,6 @@ function addon:OnInitialize()
         end
     end
 
-    -- Legacy support: Load modules that haven't migrated to RegisterModule yet but exist in global addon table
-    -- Eventually this list should be empty
-    local legacyModules = { 
-        -- "SnapshotManager", "ClickToCopy", "EmoteHelper", "AutoJoinHelper", 
-        -- "LinkHover", "TabCycle", "AutoWelcome", "ChannelAbbreviation", 
-        -- "ChatFont", "StickyChannels", "ChatHighlight", "Shelf" 
-    }
-    
-    for _, moduleName in ipairs(legacyModules) do
-        local fn = addon["Init" .. moduleName]
-        if fn then
-            local ok, err = pcall(fn, addon)
-            if not ok then
-                addon:Error("Failed to init legacy module %s: %s", moduleName, tostring(err))
-            end
-        end
-    end
-
     addon:ApplyAllSettings()
 end
 

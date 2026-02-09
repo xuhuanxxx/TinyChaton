@@ -122,7 +122,7 @@ function addon:OnInitialize()
     
     -- Register modules in load order
     -- Note: Modules should check addon.db.enabled internally
-    addon.MODULES = { "ChatSnapshot", "ClickToCopy", "EmoteParser", "AutoJoinHelper", "LinkHover", "TabCycle", "AutoWelcome", "ChannelAbbreviation", "ChatFont", "StickyChannels", "Shelf" }
+    addon.MODULES = { "SnapshotManager", "ClickToCopy", "EmoteHelper", "AutoJoinHelper", "LinkHover", "TabCycle", "AutoWelcome", "ChannelAbbreviation", "ChatFont", "StickyChannels", "ChatHighlight", "Shelf" }
     for _, module in ipairs(addon.MODULES) do
         local fn = addon["Init" .. module]
         if fn then

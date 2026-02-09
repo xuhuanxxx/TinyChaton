@@ -48,7 +48,6 @@ Core\Middleware\StripPrefix.lua
 Core\Middleware\Blacklist.lua
 Core\Middleware\Whitelist.lua
 Core\Middleware\DuplicateFilter.lua
-Core\Middleware\Highlight.lua
 Core\Middleware\SnapshotLogger.lua
 
 Events.lua
@@ -57,13 +56,14 @@ Modules\Utils.lua
 Modules\ChannelAbbreviation.lua
 Modules\ChatFont.lua
 Modules\StickyChannels.lua
-Modules\ChatSnapshot.lua
+Modules\SnapshotManager.lua
 Modules\ClickToCopy.lua
-Modules\EmoteParser.lua
+Modules\EmoteHelper.lua
 Modules\AutoWelcome.lua
 Modules\AutoJoinHelper.lua
 Modules\LinkHover.lua
 Modules\TabCycle.lua
+Modules\ChatHighlight.lua
 
 Shelf\Core.lua
 Shelf\Themes.lua

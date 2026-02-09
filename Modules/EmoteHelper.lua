@@ -120,7 +120,7 @@ function addon:StopBubbleTicker()
     end
 end
 
-function addon:InitEmoteParser()
+function addon:InitEmoteHelper()
     -- Register as a Transformer (Visual Layer)
     addon:RegisterChatFrameTransformer("emote_render", EmoteTransformer)
     

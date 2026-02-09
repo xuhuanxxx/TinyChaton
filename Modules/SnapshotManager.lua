@@ -168,7 +168,7 @@ function addon:ClearHistory()
     print("|cff00ff00" .. L["LABEL_ADDON_NAME"] .. "|r: " .. L["MSG_HISTORY_CLEARED"])
 end
 
-function addon:InitChatSnapshot()
+function addon:InitSnapshotManager()
     local L = addon.L
 
     local restored

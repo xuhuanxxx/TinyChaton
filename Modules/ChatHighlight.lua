@@ -1,10 +1,11 @@
 local addonName, addon = ...
 
 -- =========================================================================
--- Middleware: Highlight
--- Stage: ENRICH
+-- Module: ChatHighlight
+-- Moved from Core/Middleware/Highlight
+-- Stage: ENRICH (via EventDispatcher)
 -- Priority: 40
--- Description: Adds color codes to names and keywords
+-- Description: Adds color codes to names and keywords in chat messages
 -- =========================================================================
 
 local function escapePattern(s)
@@ -51,7 +52,7 @@ local function HighlightMiddleware(chatData)
                 
                 local newBody, count
                 if useFrontier then
-                    newBody, count = string.gsub(body, "(%f[%a]"..escaped.."%f[%a])", "|c"..colorCode.."%1|r")
+                    newBody, count = string.gsub(body, "(%f[%a]"..escaped.."%f[%A])", "|c"..colorCode.."%1|r")
                 end
                 
                 if not count or count == 0 then
@@ -71,4 +72,9 @@ local function HighlightMiddleware(chatData)
     end
 end
 
-addon.EventDispatcher:RegisterMiddleware("ENRICH", 40, "Highlight", HighlightMiddleware)
+function addon:InitChatHighlight()
+    -- Register as middleware in ENRICH stage
+    if addon.EventDispatcher then
+        addon.EventDispatcher:RegisterMiddleware("ENRICH", 40, "ChatHighlight", HighlightMiddleware)
+    end
+end

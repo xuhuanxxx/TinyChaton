@@ -49,22 +49,21 @@ Core\Middleware\Blacklist.lua
 Core\Middleware\Whitelist.lua
 Core\Middleware\DuplicateFilter.lua
 Core\Middleware\Highlight.lua
-Core\Middleware\EmoteParser.lua
-Core\Middleware\ChannelShortener.lua
 Core\Middleware\SnapshotLogger.lua
-Core\Middleware\CopyCache.lua
-Core\Middleware\Greeting.lua
 
 Events.lua
 
 Modules\Utils.lua
 Modules\ChannelAbbreviation.lua
-Modules\Visual.lua
-Modules\Snapshot.lua
-Modules\Copy.lua
-Modules\Emotes.lua
-Modules\Social.lua
-Modules\Tweaks.lua
+Modules\ChatFont.lua
+Modules\StickyChannels.lua
+Modules\ChatSnapshot.lua
+Modules\ClickToCopy.lua
+Modules\EmoteParser.lua
+Modules\AutoWelcome.lua
+Modules\AutoJoinHelper.lua
+Modules\LinkHover.lua
+Modules\TabCycle.lua
 
 Shelf\Core.lua
 Shelf\Themes.lua

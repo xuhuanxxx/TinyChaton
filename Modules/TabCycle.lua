@@ -1,46 +1,19 @@
 local addonName, addon = ...
 local L = addon.L
 
-addon.Tweaks = {}
+-- =========================================================================
+-- Module: TabCycle
+-- Description: Cycles through available channels using TAB key
+-- =========================================================================
 
-local linkTypes = {
-    item = true, spell = true, unit = true, quest = true, enchant = true,
-    achievement = true, instancelock = true, talent = true, glyph = true,
-    azessence = true, mawpower = true, conduit = true, mount = true, pet = true,
-    currency = true, battlepet = true, transmogappearance = true, journal = true, toy = true,
-}
+addon.TabCycle = {}
 
-local function OnHyperlinkEnter(self, linkData, link)
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction or not addon.db.plugin.chat.interaction.linkHover then return end
-    local t = linkData:match("^(.-):")
-    if linkTypes[t] then
-        GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
-        GameTooltip:SetHyperlink(link)
-        GameTooltip:Show()
-    end
-end
-
-local function OnHyperlinkLeave(self)
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction or not addon.db.plugin.chat.interaction.linkHover then return end
-    GameTooltip:Hide()
-end
-
-function addon.Tweaks:InitLinkHover()
-    for i = 1, NUM_CHAT_WINDOWS do
-        local frame = _G["ChatFrame"..i]
-        if frame then
-            frame:HookScript("OnHyperlinkEnter", OnHyperlinkEnter)
-            frame:HookScript("OnHyperlinkLeave", OnHyperlinkLeave)
-        end
-    end
-end
-
--- 系统频道轮换顺序
+-- System channel cycle order
 local systemCycleOrder = {
     "SAY", "PARTY", "RAID", "INSTANCE_CHAT", "GUILD", "YELL"
 }
 
--- 归一化 chatType：PARTY_LEADER -> PARTY, INSTANCE_CHAT_LEADER -> INSTANCE_CHAT
+-- Normalize chatType：PARTY_LEADER -> PARTY, INSTANCE_CHAT_LEADER -> INSTANCE_CHAT
 local function NormalizeChatType(t)
     if not t then return "SAY" end
     if t == "PARTY_LEADER" then return "PARTY" end
@@ -49,7 +22,7 @@ local function NormalizeChatType(t)
     return t
 end
 
--- 获取已加入的动态频道列表
+-- Get joined dynamic channels
 local function GetJoinedDynamicChannels()
     local channelList = { GetChannelList() }
     local joined = {}
@@ -62,11 +35,11 @@ local function GetJoinedDynamicChannels()
     return joined
 end
 
--- 构建当前可用的频道轮换列表
+-- Build current cycle list
 local function BuildCycleList()
     local list = {}
     
-    -- 添加可用的系统频道
+    -- Add available system channels
     for _, channel in ipairs(systemCycleOrder) do
         if channel == "SAY" or channel == "YELL" then
             list[#list + 1] = { chatType = channel }
@@ -81,7 +54,7 @@ local function BuildCycleList()
         end
     end
     
-    -- 添加已加入的动态频道
+    -- Add joined dynamic channels
     local joinedChannels = GetJoinedDynamicChannels()
     for _, ch in ipairs(joinedChannels) do
         list[#list + 1] = { chatType = "CHANNEL", channelTarget = ch.id, channelName = ch.name }
@@ -90,7 +63,7 @@ local function BuildCycleList()
     return list
 end
 
--- 查找当前频道在轮换列表中的位置
+-- Find current index in cycle list
 local function FindCurrentIndex(list, currentType, currentTarget)
     currentType = NormalizeChatType(currentType)
     for i, entry in ipairs(list) do
@@ -107,7 +80,7 @@ local function FindCurrentIndex(list, currentType, currentTarget)
     return 0
 end
 
--- 获取下一个频道
+-- Get next channel
 local function GetNextChannel(currentType, currentTarget)
     local list = BuildCycleList()
     if #list == 0 then
@@ -124,7 +97,7 @@ local function OnTabPressed(self)
     local text = self:GetText()
     if text:sub(1, 1) ~= "/" then return end
     
-    -- 获取当前频道类型（兼容新旧 API）
+    -- Get current chat type (compatible with modern/legacy API)
     local currentType = self:GetAttribute("chatType") or self.chatType
     local currentTarget = self:GetAttribute("channelTarget") or self.channelTarget
     if currentType == "CHANNEL" and type(currentTarget) == "string" then
@@ -134,37 +107,37 @@ local function OnTabPressed(self)
     local next = GetNextChannel(currentType, currentTarget)
     if not next then return end
     
-    -- 使用 SetAttribute 和 ChatEdit_UpdateHeader 正确切换频道
+    -- Use SetAttribute and ChatEdit_UpdateHeader to switch channel correctly
     self:SetAttribute("chatType", next.chatType)
     
     if next.chatType == "CHANNEL" then
-        -- 动态频道需要设置 channelTarget
+        -- Dynamic channel needs channelTarget
         self:SetAttribute("channelTarget", next.channelTarget)
     else
-        -- 非动态频道清除 channelTarget
+        -- Non-dynamic channel clears channelTarget
         self:SetAttribute("channelTarget", nil)
     end
     
     ChatEdit_UpdateHeader(self)
-    self:SetText("")  -- 清空输入，保留频道切换
+    self:SetText("")  -- Clear input, keep channel switch
 end
 
 -- Store delayed timer reference for cancellation
 local delayedHookTimer = nil
 
-function addon.Tweaks:InitTabCycle()
+function addon:InitTabCycle()
     local function HookEditBox(editBox)
         if not editBox or editBox._TinyChatonTabCycleHooked then return end
         editBox._TinyChatonTabCycleHooked = true
         editBox:HookScript("OnTabPressed", OnTabPressed)
     end
     
-    -- 优先使用 ChatFrame1EditBox（Retail 共享 EditBox）
+    -- Prioritize ChatFrame1EditBox (Retail shared EditBox)
     if ChatFrame1EditBox then
         HookEditBox(ChatFrame1EditBox)
     end
     
-    -- 兼容多聊天框：遍历 ChatFrame.editBox 和 ChatFrame*EditBox
+    -- Compatibility loop: ChatFrame.editBox and ChatFrame*EditBox
     for i = 1, NUM_CHAT_WINDOWS do
         local cf = _G["ChatFrame"..i]
         if cf and cf.editBox then
@@ -176,7 +149,7 @@ function addon.Tweaks:InitTabCycle()
         end
     end
     
-    -- 延迟再尝试一次（EditBox 可能尚未创建）- save timer reference
+    -- Retry with delay (EditBox might not be created yet)
     delayedHookTimer = C_Timer.NewTimer(1, function()
         delayedHookTimer = nil
         if ChatFrame1EditBox and not ChatFrame1EditBox._TinyChatonTabCycleHooked then
@@ -192,15 +165,9 @@ function addon.Tweaks:InitTabCycle()
 end
 
 -- Cancel delayed hook timer
-function addon:CancelTweaksTimer()
+function addon:CancelTabCycleTimer()
     if delayedHookTimer then
         delayedHookTimer:Cancel()
         delayedHookTimer = nil
     end
-end
-
-function addon:InitTweaks()
-    if not addon.Tweaks then return end
-    addon.Tweaks:InitLinkHover()
-    addon.Tweaks:InitTabCycle()
 end

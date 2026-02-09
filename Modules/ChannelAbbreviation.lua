@@ -257,3 +257,7 @@ function CA:Init()
         end
     end
 end
+
+function addon:InitChannelAbbreviation()
+    CA:Init()
+end

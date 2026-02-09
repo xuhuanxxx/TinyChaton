@@ -319,7 +319,7 @@ addon.DEFAULTS = {
             interaction = {
                 clickToCopy = true,
                 linkHover = true,
-                timestampColor = "FF888888",
+                timestampColor = nil,
                 sticky = true,
                 tabCycle = true,
             },

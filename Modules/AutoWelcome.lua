@@ -1,7 +1,7 @@
 local addonName, addon = ...
 
 -- =========================================================================
--- Greeting Middleware
+-- Module: AutoWelcome
 -- Automatically sends welcome messages when players join guild/party/raid
 -- =========================================================================
 
@@ -110,40 +110,37 @@ end
 
 --- Greeting Middleware (PRE_PROCESS stage)
 --- Detects player join messages and sends automated greetings
-local function GreetingMiddleware(chatData)
-    -- Only process SYSTEM messages
-    if chatData.event ~= "CHAT_MSG_SYSTEM" then
-        return false
-    end
-    
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.automation then
-        return false
-    end
-    
-    local msg = chatData.text
-    if not msg then return false end
+-- Standalone Event Listener
+local listener = CreateFrame("Frame")
+listener:RegisterEvent("CHAT_MSG_SYSTEM")
+
+local function OnSystemMessage(self, event, msg)
+    if not addon.db or not addon.db.enabled or not addon.db.plugin.automation then return end
+    if not msg then return end
     
     -- Check each scene
     local player = getJoinedPlayer(msg, "guild")
     if player then
         trySendWelcome(player, "guild")
-        return false
+        return
     end
     
     player = getJoinedPlayer(msg, "party")
     if player then
         trySendWelcome(player, "party")
-        return false
+        return
     end
     
     player = getJoinedPlayer(msg, "raid")
     if player then
         trySendWelcome(player, "raid")
-        return false
+        return
     end
-    
-    return false
 end
 
--- Register middleware in PRE_PROCESS stage (priority 50)
-addon.EventDispatcher:RegisterMiddleware("PRE_PROCESS", 50, "Greeting", GreetingMiddleware)
+listener:SetScript("OnEvent", OnSystemMessage)
+
+function addon:InitAutoWelcome()
+    -- Nothing to do here as frame is created automatically, 
+    -- but keeping function for consistency if needed later.
+end

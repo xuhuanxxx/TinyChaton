@@ -46,12 +46,13 @@ function addon.Emotes.Parse(msg)
     return msg
 end
 
-local function EmoteFilter(self, event, msg, ...)
-    local newMsg = addon.Emotes.Parse(msg)
-    if newMsg ~= msg then
-        return false, newMsg, ...
-    end
-    return false, msg, ...
+-- Transformer implementation (replaces old EmoteFilter)
+local function EmoteTransformer(frame, text, ...)
+    if not text or type(text) ~= "string" then return text, ... end
+    if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.content.emoteRender then return text, ... end
+    
+    local newText = addon.Emotes.Parse(text)
+    return newText, ...
 end
 
 -- Chat Bubble Support
@@ -119,7 +120,21 @@ function addon:StopBubbleTicker()
     end
 end
 
-function addon:InitEmotes()
+function addon:InitEmoteParser()
+    -- Register as a Transformer (Visual Layer)
+    addon:RegisterChatFrameTransformer("emote_render", EmoteTransformer)
+    
+    -- Ensure it's in the execution order (lowest priority, run last)
+    if addon.TRANSFORMER_ORDER then
+        local found = false
+        for _, v in ipairs(addon.TRANSFORMER_ORDER) do
+            if v == "emote_render" then found = true; break end
+        end
+        if not found then
+            table.insert(addon.TRANSFORMER_ORDER, "emote_render")
+        end
+    end
+
     HookChatBubbles()
 end
 

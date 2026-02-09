@@ -1,12 +1,12 @@
 local addonName, addon = ...
 
 -- =========================================================================
--- Social Module
+-- Module: AutoJoinHelper (formerly Social)
 -- Helper functions for social automation settings (auto-join channels etc.)
 -- Note: Welcome message logic has been moved to Core/Middleware/Greeting.lua
 -- =========================================================================
 
-addon.Social = {}
+addon.AutoJoinHelper = {}
 
 -- Auto Join Channels Configuration Helpers
 
@@ -53,4 +53,46 @@ function addon:SetAutoJoinChannelSelection(selection)
     end
     
     if addon.ApplyAllSettings then addon:ApplyAllSettings() end
+end
+
+-- =========================================================================
+-- Auto Join Logic
+-- =========================================================================
+
+local function GetStreamChannelName(stream)
+    if not stream then return nil end
+    -- Check for mapping key (localized channel name key)
+    if stream.mappingKey and addon.L and addon.L[stream.mappingKey] then
+        return addon.L[stream.mappingKey]
+    end
+    return stream.key
+end
+
+function addon:ApplyAutomationSettings()
+    if not self.db or not self.db.plugin.automation then return end
+    
+    -- Auto Join Channels
+    local ajc = self.db.plugin.automation.autoJoinChannels
+    if ajc then
+        for _, stream, _, subKey in self:IterateAllStreams() do
+            if subKey == "DYNAMIC" then
+                -- Join if explicitly enabled (true) or simplified check
+                -- Default behavior is handled by Config.lua populating the DB
+                if ajc[stream.key] then
+                    local channelName = GetStreamChannelName(stream)
+                    if channelName then
+                        if addon.ActionJoin then
+                            addon:ActionJoin(channelName)
+                        else
+                            JoinChannelByName(channelName)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function addon:InitAutoJoinHelper()
+    addon:ApplyAutomationSettings()
 end

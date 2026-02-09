@@ -122,7 +122,7 @@ function addon:OnInitialize()
     
     -- Register modules in load order
     -- Note: Modules should check addon.db.enabled internally
-    addon.MODULES = { "Snapshot", "Copy", "Emotes", "Social", "Tweaks", "Shelf" }
+    addon.MODULES = { "ChatSnapshot", "ClickToCopy", "EmoteParser", "AutoJoinHelper", "LinkHover", "TabCycle", "AutoWelcome", "ChannelAbbreviation", "ChatFont", "StickyChannels", "Shelf" }
     for _, module in ipairs(addon.MODULES) do
         local fn = addon["Init" .. module]
         if fn then
@@ -188,7 +188,7 @@ function addon:ApplyAllSettings()
     end
 
     if addon.ApplyChatFontSettings then addon:ApplyChatFontSettings() end
-    if addon.ApplyChatVisualSettings then addon:ApplyChatVisualSettings() end
+    if addon.ApplyStickyChannelSettings then addon:ApplyStickyChannelSettings() end
     if addon.ApplyFilterSettings then addon:ApplyFilterSettings() end
     if addon.ApplyAutomationSettings then addon:ApplyAutomationSettings() end
     if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
@@ -469,5 +469,5 @@ end
 function addon:Shutdown()
     if addon.StopBubbleTicker then addon:StopBubbleTicker() end
     if addon.CancelPendingWelcomeTimers then addon:CancelPendingWelcomeTimers() end
-    if addon.CancelTweaksTimer then addon:CancelTweaksTimer() end
+    if addon.CancelTabCycleTimer then addon:CancelTabCycleTimer() end
 end

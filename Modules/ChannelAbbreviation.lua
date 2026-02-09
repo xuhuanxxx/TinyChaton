@@ -210,7 +210,7 @@ end
 
 -- 3. Transformer Implementation (Visual Layer - Safe)
 local function ChannelAbbreviationTransformer(frame, text, ...)
-    if not text then return text, ... end
+    if not text or type(text) ~= "string" then return text, ... end
     
     local format = addon.db and addon.db.enabled and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat or "SHORT"
     if format == "NONE" then return text, ... end

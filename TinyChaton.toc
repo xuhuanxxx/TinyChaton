@@ -41,7 +41,6 @@ Libs\TinyReactor\TinyReactor.xml
 
 Config.lua
 Core.lua
-Core\SecretValueFilter.lua
 Core\EventDispatcher.lua
 Core\Pipeline\ChatData.lua
 

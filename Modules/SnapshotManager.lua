@@ -216,8 +216,9 @@ function addon:InitSnapshotManager()
         -- 1. Global & Module Switch Check
         if not addon.db or not addon.db.enabled then return end
         
-        local chatSettings = addon.db.plugin and addon.db.plugin.chat
-        if not chatSettings or not chatSettings.content or chatSettings.content.snapshotEnabled == false then
+        -- P0: Config Access
+        local snapshotEnabled = addon:GetConfig("plugin.chat.content.snapshotEnabled", true)
+        if not snapshotEnabled then
             return
         end
         
@@ -496,3 +497,6 @@ function addon:GetSnapshotChannelsSummary()
     if #selected == 0 then return L["LABEL_SNAPSHOT_CHANNELS_NONE"] end
     return table.concat(selected, "、")
 end
+
+-- P0: Register Module
+addon:RegisterModule("SnapshotManager", addon.InitSnapshotManager)

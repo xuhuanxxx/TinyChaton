@@ -37,12 +37,17 @@ end
 -- Exported parser function
 function addon.Emotes.Parse(msg)
     if not msg or type(msg) ~= "string" then return msg end
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.content.emoteRender then return msg end
+    -- P0: Config Safety
+    if not addon:GetConfig("plugin.chat.content.emoteRender", true) then return msg end
 
     for _, e in ipairs(emotes) do
-        -- Escape magic characters in key (e.g. { }) to treat them as literals
-        local pattern = e.key:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", "%%%1")
-        msg = msg:gsub(pattern, format("|T%s:0|t", e.file))
+        -- P1: Regex Caching
+        if not e.pattern then
+             -- Escape magic characters in key (e.g. { }) to treat them as literals
+             e.pattern = e.key:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", "%%%1")
+             e.replacement = format("|T%s:0|t", e.file)
+        end
+        msg = msg:gsub(e.pattern, e.replacement)
     end
     return msg
 end
@@ -50,7 +55,7 @@ end
 -- Transformer implementation (replaces old EmoteFilter)
 local function EmoteTransformer(frame, text, ...)
     if not text or type(text) ~= "string" then return text, ... end
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.content.emoteRender then return text, ... end
+    if not addon:GetConfig("plugin.chat.content.emoteRender", true) then return text, ... end
     
     local newText = addon.Emotes.Parse(text)
     return newText, ...
@@ -92,7 +97,7 @@ local function HookChatBubbles()
     end
     
     local function UpdateBubbles()
-        if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.content.emoteRender then return end
+        if not addon:GetConfig("plugin.chat.content.emoteRender", true) then return end
         
         local bubbles = C_ChatBubbles.GetAllChatBubbles()
         for _, bubble in ipairs(bubbles) do
@@ -115,9 +120,11 @@ local function HookChatBubbles()
     end
 
     -- Update bubbles periodically (save ticker for cleanup)
-    -- Reduced frequency to 0.2s for performance (HC-001)
-    if not addon._bubbleTicker and addon.db and addon.db.enabled and addon.db.plugin.chat and addon.db.plugin.chat.content.emoteRender then
-        addon._bubbleTicker = C_Timer.NewTicker(0.2, UpdateBubbles)
+    -- P1: Config Constant
+    local interval = addon.CONSTANTS.EMOTE_TICKER_INTERVAL or 0.2
+    
+    if not addon._bubbleTicker and addon:GetConfig("plugin.chat.content.emoteRender", true) then
+        addon._bubbleTicker = C_Timer.NewTicker(interval, UpdateBubbles)
     end
 end
 
@@ -131,7 +138,7 @@ end
 
 -- Update ticker state based on settings
 function addon:UpdateEmoteTickerState()
-    local enabled = addon.db and addon.db.enabled and addon.db.plugin and addon.db.plugin.chat and addon.db.plugin.chat.content and addon.db.plugin.chat.content.emoteRender
+    local enabled = addon:GetConfig("plugin.chat.content.emoteRender", true)
     
     if enabled then
         -- Delegate to HookChatBubbles which handles ticker creation and uses the correct local UpdateBubbles function
@@ -167,6 +174,9 @@ function addon:InitEmoteHelper()
         self:UpdateEmoteTickerState()
     end
 end
+
+-- P0: Register Module
+addon:RegisterModule("EmoteHelper", addon.InitEmoteHelper)
 
 local panel
 local buttons = {}

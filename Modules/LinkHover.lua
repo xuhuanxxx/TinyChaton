@@ -39,3 +39,6 @@ function addon:InitLinkHover()
         end
     end
 end
+
+-- P0: Register Module
+addon:RegisterModule("LinkHover", addon.InitLinkHover)

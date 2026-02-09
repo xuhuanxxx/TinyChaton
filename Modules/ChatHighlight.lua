@@ -78,3 +78,6 @@ function addon:InitChatHighlight()
         addon.EventDispatcher:RegisterMiddleware("ENRICH", 40, "ChatHighlight", HighlightMiddleware)
     end
 end
+
+-- P0: Register Module
+addon:RegisterModule("ChatHighlight", addon.InitChatHighlight)

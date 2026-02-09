@@ -26,10 +26,10 @@ function addon:GetAutoJoinChannelsItems()
 end
 
 function addon:GetAutoJoinChannelSelection()
-    if not self.db or not self.db.plugin.automation or not self.db.plugin.automation.autoJoinChannels then 
+    local ajc = self:GetConfig("plugin.automation.autoJoinChannels")
+    if not ajc then 
         return {}
     end
-    local ajc = self.db.plugin.automation.autoJoinChannels
     local items = self:GetAutoJoinChannelsItems()
     local selection = {}
     for _, item in ipairs(items) do
@@ -96,3 +96,6 @@ end
 function addon:InitAutoJoinHelper()
     addon:ApplyAutomationSettings()
 end
+
+-- P0: Register Module
+addon:RegisterModule("AutoJoinHelper", addon.InitAutoJoinHelper)

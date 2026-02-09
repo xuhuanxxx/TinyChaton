@@ -4,8 +4,8 @@ addon.messageCache = addon.messageCache or {}
 
 local function PruneCache()
     local now = GetTime()
-    local maxAge = 600
-    local maxCount = addon.COPY_MESSAGE_LIMIT or 200
+    local maxAge = addon.CONSTANTS.MESSAGE_CACHE_MAX_AGE or 600
+    local maxCount = addon.CONSTANTS.MESSAGE_CACHE_LIMIT or 200
     local toRemove = {}
     local n = 0
     
@@ -109,3 +109,6 @@ function addon:InitClickToCopy()
         end
     end)
 end
+
+-- P0: Register Module
+addon:RegisterModule("ClickToCopy", addon.InitClickToCopy)

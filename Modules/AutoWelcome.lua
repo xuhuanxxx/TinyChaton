@@ -115,7 +115,8 @@ local listener = CreateFrame("Frame")
 listener:RegisterEvent("CHAT_MSG_SYSTEM")
 
 local function OnSystemMessage(self, event, msg)
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.automation then return end
+    -- P0: Config Access
+    if not addon:GetConfig("plugin.automation", true) then return end
     if not msg then return end
     
     -- Check each scene
@@ -144,3 +145,6 @@ function addon:InitAutoWelcome()
     -- Nothing to do here as frame is created automatically, 
     -- but keeping function for consistency if needed later.
 end
+
+-- P0: Register Module
+addon:RegisterModule("AutoWelcome", addon.InitAutoWelcome)

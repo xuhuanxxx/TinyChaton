@@ -47,11 +47,15 @@ function addon:InitStickyChannels()
     HookEditBoxForSticky()
     
     -- Delayed update to ensure settings persist
-    if addon.db and addon.db.plugin.chat and addon.db.plugin.chat.interaction and addon.db.plugin.chat.interaction.sticky and C_Timer and C_Timer.After then
+    -- P0: Config Access
+    if addon:GetConfig("plugin.chat.interaction.sticky", true) and C_Timer and C_Timer.After then
         C_Timer.After(2, function()
-            if addon.db and addon.db.plugin.chat and addon.db.plugin.chat.interaction and addon.db.plugin.chat.interaction.sticky then
+            if addon:GetConfig("plugin.chat.interaction.sticky", true) then
                 UpdateSticky()
             end
         end)
     end
 end
+
+-- P0: Register Module
+addon:RegisterModule("StickyChannels", addon.InitStickyChannels)

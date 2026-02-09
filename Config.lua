@@ -54,11 +54,40 @@ addon.CONSTANTS = {
     SNAPSHOT_MAX_TOTAL_MIN = 1000, -- Added from instruction
     SNAPSHOT_MAX_TOTAL_MAX = 20000, -- Added from instruction
     SNAPSHOT_MAX_TOTAL_STEP = 500, -- Added from instruction
+
+    -- Cache & Limits (P1 Fixes)
+    MESSAGE_CACHE_MAX_AGE = 600,   -- Modules/ClickToCopy.lua
+    MESSAGE_CACHE_LIMIT = 200,     -- Modules/ClickToCopy.lua (soft limit)
+    MESSAGE_CACHE_HARD_LIMIT = 500,-- Modules/ClickToCopy.lua (hard limit)
+    EMOTE_TICKER_INTERVAL = 0.2,   -- Modules/EmoteHelper.lua
     
     -- Profile Defaults
     PROFILE_DEFAULT_NAME = "Default",
     PROFILE_NAME_MAX_LENGTH = 32,
 }
+
+-- =========================================================================
+-- Configuration Accessors (P0 Fixes)
+-- =========================================================================
+
+--- Get a configuration value by path safely
+--- @param path string Dot-separated path (e.g., "plugin.chat.content.snapshotEnabled")
+--- @param default any Default value if nil
+--- @return any The value or default
+function addon:GetConfig(path, default)
+    if not addon.db then return default end
+    local val = addon.Utils.GetByPath(addon.db, path)
+    if val == nil then return default end
+    return val
+end
+
+--- Set a configuration value by path safely
+--- @param path string Dot-separated path
+--- @param value any Value to set
+function addon:SetConfig(path, value)
+    if not addon.db then return end
+    addon.Utils.SetByPath(addon.db, path, value)
+end
 
 -- =========================================================================
 -- Stream Helper Functions

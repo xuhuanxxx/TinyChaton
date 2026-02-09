@@ -164,6 +164,9 @@ function addon:InitTabCycle()
     end)
 end
 
+-- P0: Register Module
+addon:RegisterModule("TabCycle", addon.InitTabCycle)
+
 -- Cancel delayed hook timer
 function addon:CancelTabCycleTimer()
     if delayedHookTimer then

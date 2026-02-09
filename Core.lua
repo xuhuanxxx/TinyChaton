@@ -91,7 +91,25 @@ end)
 -- 获取指定 key 在 STREAM_REGISTRY 中的完整路径
 -- 返回格式: "CHANNEL.SYSTEM", "CHANNEL.DYNAMIC", "NOTICE.ALERT" 等
 
+-- Module Registry
+addon.moduleRegistry = {}
+
+--- Register a module for initialization
+--- @param name string Module name
+--- @param initFn function Initialization function
+function addon:RegisterModule(name, initFn)
+    if not name or not initFn then 
+        addon:Error("Attempted to register invalid module: %s", tostring(name))
+        return 
+    end
+    table.insert(self.moduleRegistry, { name = name, init = initFn })
+end
+
 function addon:OnInitialize()
+    -- 1. Initialize Error Handling immediately (if loaded)
+    -- Error.lua contributes to addon table but doesn't need init function
+
+    -- 2. Initialize Config
     if addon.InitConfig then addon:InitConfig() end
     
     -- Check if InitConfig succeeded
@@ -100,15 +118,18 @@ function addon:OnInitialize()
         return
     end
     
+    -- 3. Initialize Events
     if addon.InitEvents then addon:InitEvents() end
     
+    -- 4. Register Settings (UI)
     if addon.RegisterSettings then 
         local ok, err = pcall(addon.RegisterSettings, addon)
         if not ok then
-            print("|cFFFF0000" .. L["LABEL_ADDON_NAME"] .. " " .. L["MSG_SETTINGS_ERROR"] .. "|r", err)
+            addon:Error("Settings registration failed: %s", tostring(err))
         end
     end
 
+    local L = addon.L
     if not addon.db.enabled then
         print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_DISABLED"])
     else
@@ -117,20 +138,35 @@ function addon:OnInitialize()
 
     addon:SetupChatFrameHooks()
     
-    -- 初始化事件分发器（基于 STREAM_REGISTRY 自动注册过滤器）
+    -- 5. Initialize Event Dispatcher
     if addon.InitializeEventDispatcher then
         addon:InitializeEventDispatcher()
     end
     
-    -- Register modules in load order
-    -- Note: Modules should check addon.db.enabled internally
-    addon.MODULES = { "SnapshotManager", "ClickToCopy", "EmoteHelper", "AutoJoinHelper", "LinkHover", "TabCycle", "AutoWelcome", "ChannelAbbreviation", "ChatFont", "StickyChannels", "ChatHighlight", "Shelf" }
-    for _, module in ipairs(addon.MODULES) do
-        local fn = addon["Init" .. module]
+    -- 6. Initialize Registered Modules
+    -- Note: Modules are registered when their files are loaded.
+    -- We can sort them if we add priority later, but for now load order in TOC determines registry order.
+    for _, mod in ipairs(self.moduleRegistry) do
+        local ok, err = pcall(mod.init, addon)
+        if not ok then
+            addon:Error("Failed to init module %s: %s", mod.name, tostring(err))
+        end
+    end
+
+    -- Legacy support: Load modules that haven't migrated to RegisterModule yet but exist in global addon table
+    -- Eventually this list should be empty
+    local legacyModules = { 
+        -- "SnapshotManager", "ClickToCopy", "EmoteHelper", "AutoJoinHelper", 
+        -- "LinkHover", "TabCycle", "AutoWelcome", "ChannelAbbreviation", 
+        -- "ChatFont", "StickyChannels", "ChatHighlight", "Shelf" 
+    }
+    
+    for _, moduleName in ipairs(legacyModules) do
+        local fn = addon["Init" .. moduleName]
         if fn then
             local ok, err = pcall(fn, addon)
             if not ok then
-                print("|cFFFF0000TinyChaton:|r Failed to init module " .. module .. ": " .. tostring(err))
+                addon:Error("Failed to init legacy module %s: %s", moduleName, tostring(err))
             end
         end
     end

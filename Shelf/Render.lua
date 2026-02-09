@@ -573,12 +573,18 @@ end
 -- Global Entry Point
 function addon:InitShelf()
     -- Initialize Shelf Core (Action Registry)
-    if addon.Shelf and addon.Shelf.InitActionRegistry then
+    -- P1: Ensure Shelf table exists
+    if not addon.Shelf then return end
+
+    if addon.Shelf.InitActionRegistry then
         addon.Shelf:InitActionRegistry()
     end
     
     -- Initialize Shelf Render (UI)
-    if addon.Shelf and addon.Shelf.InitRender then
+    if addon.Shelf.InitRender then
         addon.Shelf:InitRender()
     end
 end
+
+-- P0: Register Module
+addon:RegisterModule("Shelf", addon.InitShelf)

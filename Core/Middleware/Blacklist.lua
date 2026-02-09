@@ -14,8 +14,23 @@ local ruleCache = {
     version = 0,
 }
 
+local function IsPatternSafe(pattern)
+    if not pattern then return false end
+    local len = #pattern
+    if len > 100 then return false end -- Length check
+
+    -- Complexity check: count special characters
+    -- If > 30% of characters are special, it might be complex/malicious
+    local _, count = pattern:gsub("[%%%(%)%.%[%]%*%+%-%?%$%^]", "")
+    if count > 20 then return false end
+
+    return true
+end
+
 local function IsLuaPattern(pattern)
     if not pattern or pattern == "" then return false end
+    if not IsPatternSafe(pattern) then return false end
+    
     if not string.find(pattern, "[%^%$%(%)%%%.%[%]%*%+%-%?]") then return false end
     local success = pcall(function() return string.match("", pattern) end)
     return success

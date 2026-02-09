@@ -261,3 +261,6 @@ end
 function addon:InitChannelAbbreviation()
     CA:Init()
 end
+
+-- P0: Register Module
+addon:RegisterModule("ChannelAbbreviation", addon.InitChannelAbbreviation)

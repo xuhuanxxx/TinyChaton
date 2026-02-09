@@ -47,3 +47,6 @@ addon.ApplyChatFontSettings = ApplyChatFontSettings
 function addon:InitChatFont()
     ApplyChatFontSettings()
 end
+
+-- P0: Register Module
+addon:RegisterModule("ChatFont", addon.InitChatFont)

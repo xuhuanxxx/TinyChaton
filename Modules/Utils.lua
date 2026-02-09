@@ -127,6 +127,38 @@ local function MatchChannelName(stream, normalizedName)
     return false
 end
 
+-- Channel Cache (P1 Optimization)
+-- key: normalizedName, value: stream object
+local channelCache = {}
+local isChannelCacheBuilt = false
+
+local function BuildChannelCache()
+    if isChannelCacheBuilt then return end
+    
+    -- Iterate all streams and build cache
+    for _, stream in addon:IterateAllStreams() do
+        -- Add mapping for label
+        if stream.label then
+            channelCache[stream.label] = stream
+        end
+        
+        -- Add mapping for real name (if dynamic)
+        if stream.mappingKey then
+            local realName = addon.L[stream.mappingKey]
+            if realName then
+                channelCache[realName] = stream
+                -- Also cache normalized version if different
+                local norm = addon.Utils.NormalizeChannelBaseName(realName)
+                if norm ~= realName then
+                    channelCache[norm] = stream
+                end
+            end
+        end
+    end
+    
+    isChannelCacheBuilt = true
+end
+
 -- Find registry item by various inputs
 local function FindRegistryItem(input)
     if not input then return nil end
@@ -147,13 +179,20 @@ local function FindRegistryItem(input)
     local channelName = input.channelName
     local normalizedName = channelName and addon.Utils.NormalizeChannelBaseName(channelName) or nil
 
+    -- 2. Fast Lookup via Cache for Channel Name (O(1))
+    if normalizedName then
+        if not isChannelCacheBuilt then BuildChannelCache() end
+        local cached = channelCache[normalizedName]
+        if cached then return cached end
+    end
+
     for _, stream, catKey, subKey in addon:IterateAllStreams() do
-        -- 2. Try by chatType for system channels
+        -- 3. Try by chatType for system channels
         if chatType and chatType ~= "CHANNEL" and stream.chatType == chatType then
             return stream
         end
         
-        -- 3. Try by channelId for dynamic channels (reverse lookup)
+        -- 4. Try by channelId for dynamic channels (reverse lookup)
         if chatType == "CHANNEL" and channelId and subKey == "DYNAMIC" and stream.mappingKey then
             local realName = L[stream.mappingKey]
             if realName and GetChannelName(realName) == channelId then
@@ -161,10 +200,11 @@ local function FindRegistryItem(input)
             end
         end
         
-        -- 4. Try by channelName for dynamic channels
-        -- Unified matching logic (LC-001)
+        -- 5. Try by channelName for dynamic channels (Partial Matches that might be missed by cache)
         if normalizedName and MatchChannelName(stream, normalizedName) then
-            return stream
+             -- Cache this result for future
+             channelCache[normalizedName] = stream
+             return stream
         end
     end
     

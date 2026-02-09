@@ -12,11 +12,7 @@ addon.KIT_REGISTRY = {
         key = "readyCheck", 
         label = L["KIT_READYCHECK"], 
         short = L["KIT_READYCHECK_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 1, 1, 1},
-        },
+
         order = 10, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
@@ -27,11 +23,7 @@ addon.KIT_REGISTRY = {
         key = "resetInstances", 
         label = L["KIT_RESET_INSTANCES"], 
         short = L["KIT_RESET_INSTANCES_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 1, 1, 1},
-        },
+
         order = 20, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
@@ -42,11 +34,7 @@ addon.KIT_REGISTRY = {
         key = "countdown", 
         label = L["KIT_COUNTDOWN"], 
         short = L["KIT_COUNTDOWN_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 1, 1, 1},
-        },
+
         order = 30, 
         defaultPinned = true, 
         defaultBindings = { left = "default", right = "secondary", middle = "cancel" }, 
@@ -61,11 +49,7 @@ addon.KIT_REGISTRY = {
         key = "roll", 
         label = L["KIT_ROLL"], 
         short = L["KIT_ROLL_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 1, 1, 1},
-        },
+
         order = 40, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
@@ -76,11 +60,7 @@ addon.KIT_REGISTRY = {
         key = "filter", 
         label = L["KIT_FILTER"], 
         short = L["KIT_FILTER_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 1, 1, 1},
-        },
+
         order = 50, 
         defaultPinned = false, 
         defaultBindings = { left = "default" }, 
@@ -91,11 +71,7 @@ addon.KIT_REGISTRY = {
         key = "macro", 
         label = L["KIT_MACRO"], 
         short = L["KIT_MACRO_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 1, 1, 1},
-        },
+
         order = 60, 
         defaultPinned = false, 
         defaultBindings = { left = "default" }, 
@@ -106,11 +82,7 @@ addon.KIT_REGISTRY = {
         key = "leave", 
         label = L["KIT_LEAVE"], 
         short = L["KIT_LEAVE_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 0.5, 0.5, 1},  -- 红色警示
-        },
+
         order = 70, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
@@ -121,11 +93,7 @@ addon.KIT_REGISTRY = {
         key = "emotePanel", 
         label = L["KIT_EMOTE"], 
         short = L["KIT_EMOTE_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 1, 1, 1},
-        },
+
         order = 80, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 
@@ -136,11 +104,7 @@ addon.KIT_REGISTRY = {
         key = "reload", 
         label = L["KIT_RELOAD"], 
         short = L["KIT_RELOAD_SHORT"], 
-        colors = {
-            white = {1, 1, 1, 1},
-            blizzard = {1, 0.82, 0, 1},
-            rainbow = {1, 1, 1, 1},
-        },
+
         order = 90, 
         defaultPinned = true, 
         defaultBindings = { left = "default" }, 

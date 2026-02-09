@@ -8,7 +8,7 @@ function addon:RegisterChatFrameTransformer(name, fn)
     self.chatFrameTransformers[name] = fn
 end
 
-local TRANSFORMER_ORDER = { "copy", "visual" }
+addon.TRANSFORMER_ORDER = { "copy", "visual" }
 
 -- Track hooked frames for unhook support
 local hookedFrames = {}
@@ -20,7 +20,7 @@ local function SetupChatFrameAddMessageHook(frame)
     -- Save original AddMessage for direct access (used by history restore)
     frame._TinyChatonOrigAddMessage = orig
     frame.AddMessage = function(self, msg, ...)
-        for _, name in ipairs(TRANSFORMER_ORDER) do
+        for _, name in ipairs(addon.TRANSFORMER_ORDER) do
             local fn = addon.chatFrameTransformers[name]
             if fn then
                 local ok, result = pcall(fn, self, msg, ...)
@@ -68,6 +68,7 @@ function addon:SetupChatFrameHooks()
     end
 end
 
+
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, ...)
@@ -80,7 +81,13 @@ f:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
+-- =========================================================================
+-- Stream Registry Helper Functions
+-- 通过层级位置推导能力，而非依赖布尔标志
+-- =========================================================================
 
+-- 获取指定 key 在 STREAM_REGISTRY 中的完整路径
+-- 返回格式: "CHANNEL.SYSTEM", "CHANNEL.DYNAMIC", "NOTICE.ALERT" 等
 
 function addon:OnInitialize()
     if addon.InitConfig then addon:InitConfig() end
@@ -102,16 +109,20 @@ function addon:OnInitialize()
 
     if not addon.db.enabled then
         print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_DISABLED"])
-        if addon.RegisterSettings then 
-            pcall(addon.RegisterSettings, addon)
-        end
-        return
+    else
+        print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_LOADED"])
     end
 
     addon:SetupChatFrameHooks()
     
+    -- 初始化事件分发器（基于 STREAM_REGISTRY 自动注册过滤器）
+    if addon.InitializeEventDispatcher then
+        addon:InitializeEventDispatcher()
+    end
+    
     -- Register modules in load order
-    addon.MODULES = { "Filters", "Highlight", "Snapshot", "Copy", "Emotes", "Social", "Tweaks", "Shelf" }
+    -- Note: Modules should check addon.db.enabled internally
+    addon.MODULES = { "Snapshot", "Copy", "Emotes", "Social", "Tweaks", "Shelf" }
     for _, module in ipairs(addon.MODULES) do
         local fn = addon["Init" .. module]
         if fn then
@@ -123,8 +134,6 @@ function addon:OnInitialize()
     end
 
     addon:ApplyAllSettings()
-
-    print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_LOADED"])
 end
 
 -- Resolve channel display name based on format setting
@@ -161,6 +170,16 @@ function addon:GetChannelLabel(item, channelNumber, format)
     return short
 end
 
+-- Apply filter settings and invalidate cache
+function addon:ApplyFilterSettings()
+    -- Increment FilterVersion to invalidate middleware caches
+    addon.FilterVersion = (addon.FilterVersion or 0) + 1
+    
+    if addon.Debug then
+        addon:Debug(string.format("Filter cache invalidated (version: %d)", addon.FilterVersion))
+    end
+end
+
 function addon:ApplyAllSettings()
     if not addon.db.enabled then
         if addon.Shelf and addon.Shelf.frame then addon.Shelf.frame:Hide() end
@@ -179,6 +198,9 @@ end
 local function RecursiveSync(target, source, isReset, isPruning)
     if not target or not source then return end
 
+    -- Determine if the source is an empty table (likely a user-defined container)
+    local sourceIsEmpty = (next(source) == nil)
+
     for k, v in pairs(source) do
         if type(v) == "table" then
             if type(target[k]) ~= "table" then
@@ -192,9 +214,11 @@ local function RecursiveSync(target, source, isReset, isPruning)
         end
     end
 
-    if isPruning then
+    -- Pruning: Remove keys in target that are not in source
+    -- Skip pruning for empty source tables (containers) or for numeric indices (lists)
+    if isPruning and not sourceIsEmpty then
         for k, v in pairs(target) do
-            if source[k] == nil then
+            if source[k] == nil and type(k) == "string" then
                 target[k] = nil
             end
         end
@@ -395,18 +419,7 @@ function addon:SynchronizeConfig(isReset)
 end
 
 function addon:InitConfig()
-    -- Ensure Config module is fully loaded
-    if not addon.DEFAULTS then
-        local configLoaded, configErr = pcall(function()
-            dofile("Interface\\AddOns\\TinyChaton\\Config.lua")
-        end)
-        if not configLoaded then
-            print("|cFFFF0000TinyChaton Error:|r Failed to load Config: " .. tostring(configErr))
-            addon.db = TinyChatonDB or { enabled = false }
-            return
-        end
-    end
-    
+    -- Config.lua is loaded via TOC before Core.lua, so DEFAULTS must exist.
     if not addon.DEFAULTS then
         print("|cFFFF0000TinyChaton Error:|r Config loaded but DEFAULTS is nil")
         addon.db = TinyChatonDB or { enabled = false }

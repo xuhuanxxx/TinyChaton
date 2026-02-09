@@ -60,21 +60,184 @@ addon.CONSTANTS = {
     PROFILE_NAME_MAX_LENGTH = 32,
 }
 
-addon.CHAT_EVENTS = {
-    "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER",
-    "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER",
-    "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER", "CHAT_MSG_CHANNEL",
-    "CHAT_MSG_WHISPER", "CHAT_MSG_EMOTE", "CHAT_MSG_TEXT_EMOTE", "CHAT_MSG_SYSTEM",
-    "CHAT_MSG_BATTLEGROUND", "CHAT_MSG_BATTLEGROUND_LEADER", "CHAT_MSG_RAID_WARNING"
-}
+-- =========================================================================
+-- Stream Helper Functions
+-- Used for registry traversal and property derivation
+-- These are defined here to be available for DEFAULTS construction
+-- =========================================================================
+
+function addon:GetStreamPath(key)
+    if not self.STREAM_REGISTRY then return nil end
+    
+    for categoryKey, category in pairs(self.STREAM_REGISTRY) do
+        for subKey, subCategory in pairs(category) do
+            for _, stream in ipairs(subCategory) do
+                if stream.key == key then
+                    return categoryKey .. "." .. subKey
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+function addon:GetStreamByKey(key)
+    if not self.STREAM_REGISTRY then return nil end
+    
+    for categoryKey, category in pairs(self.STREAM_REGISTRY) do
+        for subKey, subCategory in pairs(category) do
+            for _, stream in ipairs(subCategory) do
+                if stream.key == key then
+                    return stream
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+function addon:IsChannelStream(key)
+    local path = self:GetStreamPath(key)
+    return path and path:match("^CHANNEL%.") ~= nil
+end
+
+function addon:IsNoticeStream(key)
+    local path = self:GetStreamPath(key)
+    return path and path:match("^NOTICE%.") ~= nil
+end
+
+function addon:GetStreamDefaults(key)
+    local path = self:GetStreamPath(key)
+    if not path then return {} end
+    
+    local defaults = {}
+    
+    -- CHANNEL 下的项默认值
+    if path:match("^CHANNEL%.") then
+        defaults.defaultPinned = true
+        defaults.defaultSnapshotted = true
+        defaults.defaultAutoJoin = false
+    end
+    
+    -- NOTICE 下的项默认值
+    if path:match("^NOTICE%.") then
+        defaults.defaultPinned = false
+        defaults.defaultSnapshotted = false
+        defaults.defaultAutoJoin = false
+    end
+    
+    return defaults
+end
+
+function addon:GetStreamProperty(stream, propertyName, fallbackValue)
+    if stream[propertyName] ~= nil then
+        return stream[propertyName]
+    end
+    
+    if stream.key then
+        local defaults = self:GetStreamDefaults(stream.key)
+        if defaults[propertyName] ~= nil then
+            return defaults[propertyName]
+        end
+    end
+    
+    return fallbackValue
+end
+
+--- 扁平化遍历所有 Stream 的迭代器
+--- 包含所有 CHANNEL 和 NOTICE 类别的项
+--- @return function 迭代函数
+function addon:IterateAllStreams()
+    if not self.STREAM_REGISTRY then return function() end end
+    
+    local categories = { "CHANNEL", "NOTICE" }
+    local catIdx = 1
+    local subIdx = 1
+    local itemIdx = 0
+    
+    -- 获取当前的 subGroups 列表
+    local function getSubGroups(catKey)
+        local cat = self.STREAM_REGISTRY[catKey]
+        if not cat then return {} end
+        local keys = {}
+        for k in pairs(cat) do table.insert(keys, k) end
+        table.sort(keys) -- 保证稳定顺序
+        return keys
+    end
+    
+    local subGroups = getSubGroups(categories[catIdx])
+    
+    return function()
+        while catIdx <= #categories do
+            local catKey = categories[catIdx]
+            local subKey = subGroups[subIdx]
+            
+            if subKey then
+                local items = self.STREAM_REGISTRY[catKey][subKey]
+                itemIdx = itemIdx + 1
+                
+                if items[itemIdx] then
+                    return itemIdx, items[itemIdx], catKey, subKey
+                else
+                    -- Move to next subGroup
+                    subIdx = subIdx + 1
+                    itemIdx = 0
+                end
+            else
+                -- Move to next category
+                catIdx = catIdx + 1
+                if catIdx <= #categories then
+                    subGroups = getSubGroups(categories[catIdx])
+                    subIdx = 1
+                    itemIdx = 0
+                end
+            end
+        end
+    end
+end
+
+-- =========================================================================
+-- Dynamic CHAT_EVENTS Construction
+-- 从 STREAM_REGISTRY 或 CHANNEL_REGISTRY 动态构建事件列表
+-- =========================================================================
+local function BuildChatEvents()
+    local events = {}
+    local eventSet = {}  -- 用于去重
+    
+    if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
+        for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
+            for _, stream in ipairs(category) do
+                if stream.events then
+                    for _, event in ipairs(stream.events) do
+                        if not eventSet[event] then
+                            eventSet[event] = true
+                            table.insert(events, event)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return events
+end
+
+-- 初始化 CHAT_EVENTS（会在 InitConfig 时调用）
+addon.CHAT_EVENTS = BuildChatEvents()
 
 local function BuildChannelPins()
     local pins = {}
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if reg.isSystem or reg.isDynamic then
-            pins[reg.key] = reg.defaultPinned or false
+    
+    if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
+        for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
+            for _, stream in ipairs(category) do
+                pins[stream.key] = addon:GetStreamProperty(stream, "defaultPinned", false)
+            end
         end
     end
+    
     return pins
 end
 
@@ -88,21 +251,27 @@ end
 
 local function BuildSnapshotChannels()
     local channels = {}
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if not reg.isSystemMsg and not reg.isNotStorable then
-            channels[reg.key] = reg.defaultSnapshotted or false
+    
+    if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
+        for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
+            for _, stream in ipairs(category) do
+                channels[stream.key] = addon:GetStreamProperty(stream, "defaultSnapshotted", false)
+            end
         end
     end
+    
     return channels
 end
 
 local function BuildAutoJoinChannels()
     local channels = {}
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if reg.isDynamic then
-            channels[reg.key] = reg.defaultAutoJoin or false
+    
+    if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL and addon.STREAM_REGISTRY.CHANNEL.DYNAMIC then
+        for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.DYNAMIC) do
+            channels[stream.key] = addon:GetStreamProperty(stream, "defaultAutoJoin", false)
         end
     end
+    
     return channels
 end
 
@@ -156,10 +325,13 @@ addon.DEFAULTS = {
             },
         },
         filter = {
-            enabled = false,
+            mode = "disabled", -- "blacklist", "whitelist", "disabled"
             repeatFilter = true,
-            block = {
-                enabled = false,
+            blacklist = {
+                names = {},
+                keywords = {},
+            },
+            whitelist = {
                 names = {},
                 keywords = {},
             },

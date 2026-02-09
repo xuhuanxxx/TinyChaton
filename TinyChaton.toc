@@ -27,11 +27,12 @@ Locales\deDE.lua
 
 
 Libs\Ribbon.lua
-Libs\Registry\Channels.lua
+Libs\Registry\Stream.lua
+Libs\Registry\Actions.lua
+Libs\Registry\Colors.lua
 Libs\Registry\Anchors.lua
 Libs\Registry\Kits.lua
 Libs\Registry\Themes.lua
-Libs\Registry\ColorSets.lua
 Libs\Registry\Settings.lua
 Libs\MultiDropdown\MultiDropdown.xml
 Libs\MultiDropdown\Core.lua
@@ -40,12 +41,26 @@ Libs\TinyReactor\TinyReactor.xml
 
 Config.lua
 Core.lua
+Core\SecretValueFilter.lua
+Core\EventDispatcher.lua
+Core\Pipeline\ChatData.lua
+
+Core\Middleware\StripPrefix.lua
+Core\Middleware\Blacklist.lua
+Core\Middleware\Whitelist.lua
+Core\Middleware\DuplicateFilter.lua
+Core\Middleware\Highlight.lua
+Core\Middleware\EmoteParser.lua
+Core\Middleware\ChannelShortener.lua
+Core\Middleware\SnapshotLogger.lua
+Core\Middleware\CopyCache.lua
+Core\Middleware\Greeting.lua
+
 Events.lua
 
 Modules\Utils.lua
+Modules\ChannelAbbreviation.lua
 Modules\Visual.lua
-Modules\Filters.lua
-Modules\Highlight.lua
 Modules\Snapshot.lua
 Modules\Copy.lua
 Modules\Emotes.lua

@@ -104,69 +104,51 @@ end
 
 -- Find registry item by various inputs
 local function FindRegistryItem(input)
-    if not input or not addon.CHANNEL_REGISTRY then return nil end
+    if not input then return nil end
     local L = addon.L
     
     -- input can be: { chatType, channelId, channelName, registryKey }
-    local chatType = input.chatType
-    local channelId = input.channelId
-    local channelName = input.channelName
     local registryKey = input.registryKey
     
     -- 1. Try by registryKey (most reliable)
     if registryKey then
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-            if reg.key == registryKey then
-                return reg
-            end
-        end
+        local stream = addon:GetStreamByKey(registryKey)
+        if stream then return stream end
     end
     
-    -- 2. Try by chatType for system channels
-    if chatType and chatType ~= "CHANNEL" then
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-            if reg.chatType == chatType then
-                return reg
+    -- Fallback: Iterate all streams for more complex matching
+    local chatType = input.chatType
+    local channelId = input.channelId
+    local channelName = input.channelName
+    local normalizedName = channelName and addon.Utils.NormalizeChannelBaseName(channelName) or nil
+
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        -- 2. Try by chatType for system channels
+        if chatType and chatType ~= "CHANNEL" and stream.chatType == chatType then
+            return stream
+        end
+        
+        -- 3. Try by channelId for dynamic channels (reverse lookup)
+        if chatType == "CHANNEL" and channelId and subKey == "DYNAMIC" and stream.mappingKey then
+            local realName = L[stream.mappingKey]
+            if realName and GetChannelName(realName) == channelId then
+                return stream
             end
         end
-    end
-    
-    -- 3. Try by channelId for dynamic channels (reverse lookup)
-    if chatType == "CHANNEL" and channelId then
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-            if reg.isDynamic and reg.mappingKey then
-                local realName = L[reg.mappingKey]
+        
+        -- 4. Try by channelName for dynamic channels
+        if normalizedName then
+            if subKey == "DYNAMIC" and stream.mappingKey then
+                local realName = L[stream.mappingKey]
                 if realName then
-                    local id = GetChannelName(realName)
-                    if id == channelId then
-                        return reg
-                    end
-                end
-            end
-        end
-    end
-    
-    -- 4. Try by channelName for dynamic channels
-    if channelName and channelName ~= "" then
-        local normalized = addon.Utils.NormalizeChannelBaseName(channelName)
-        for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-            if reg.isDynamic and reg.mappingKey then
-                local realName = L[reg.mappingKey]
-                if realName then
-                    if realName == normalized then
-                        return reg
-                    end
-                    if normalized:find(realName, 1, true) == 1 then
-                        return reg
-                    end
-                    if realName:find(normalized, 1, true) == 1 then
-                        return reg
+                    if realName == normalizedName or normalizedName:find(realName, 1, true) == 1 or realName:find(normalizedName, 1, true) == 1 then
+                        return stream
                     end
                 end
             end
             -- Also match by label
-            if reg.label == normalized then
-                return reg
+            if stream.label == normalizedName then
+                return stream
             end
         end
     end
@@ -206,4 +188,120 @@ function addon.Utils.ResolveChannelDisplay(input, format)
     end
     
     return "", nil
+end
+
+-- Helper for GetJoinedChannelNameById (used by ShortenChannelString)
+local function GetJoinedChannelNameById(id)
+    if not id then return nil end
+    local list = { GetChannelList() }
+    for i = 1, #list, 3 do
+        if list[i] == id then
+            return list[i + 1]
+        end
+    end
+    return nil
+end
+
+--- Shorten channel string based on format
+--- @param str string Channel string (e.g., "1. General")
+--- @param fmt string Format: "NUMBER", "SHORT", "NUMBER_SHORT", "FULL"
+--- @return string Shortened channel name
+function addon.Utils.ShortenChannelString(str, fmt)
+    if not str or type(str) ~= "string" or str == "" then return str end
+    
+    local L = addon.L
+    
+    -- Parse numeric ID and name (e.g., "1. General" -> num="1", name="General")
+    -- Also handle "1." format (number with trailing dot but no name)
+    local num, name = str:match("^(%d+)%.%s*(.*)")
+    if not num then
+        -- Try matching just "1." or just "1" (number with optional dot, no name)
+        num = str:match("^(%d+)%.?$")
+        if num then
+            name = ""
+        else
+            name = str
+        end
+    end
+
+    local id = tonumber(num)
+    if id and (not name or name == "" or name:match("^%d+$")) then
+        local _, resolvedName = GetChannelName(id)
+        if not resolvedName or resolvedName == "" then
+            resolvedName = GetJoinedChannelNameById(id)
+        end
+        if resolvedName and resolvedName ~= "" then
+            name = addon.Utils.NormalizeChannelBaseName(resolvedName)
+            num = num or tostring(id)
+        end
+    end
+    
+    -- For dynamic channels, always try reverse lookup by channel ID first
+    -- This is the most reliable method when we only have a number
+    local item
+    if id then
+        for _, stream, catKey, subKey in addon:IterateAllStreams() do
+            if subKey == "DYNAMIC" and stream.mappingKey then
+                local realName = L[stream.mappingKey]
+                if realName then
+                    local chanId = GetChannelName(realName)
+                    if chanId == id then
+                        item = stream
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    -- If reverse lookup failed and we have a name, try name matching
+    if not item and name and name ~= "" then
+        local normalizedName = addon.Utils.NormalizeChannelBaseName(name)
+        for _, stream, catKey, subKey in addon:IterateAllStreams() do
+            -- Match by label
+            if stream.label == normalizedName then
+                item = stream
+                break
+            end
+            -- Match by real channel name (for dynamic channels)
+            if stream.mappingKey then
+                local realName = L[stream.mappingKey]
+                if realName == normalizedName then
+                    item = stream
+                    break
+                end
+                -- Also try partial match
+                if realName and normalizedName:find(realName, 1, true) == 1 then
+                    item = stream
+                    break
+                end
+                if realName and realName:find(normalizedName, 1, true) == 1 then
+                    item = stream
+                    break
+                end
+            end
+        end
+    end
+    
+    if item then
+        return addon:GetChannelLabel(item, num)
+    end
+
+    -- Fallback for unrecognized channels
+    local fallbackName = (name and name ~= "") and name or (num or str)
+    if fmt == "NUMBER" then
+        return num or fallbackName
+    elseif fmt == "SHORT" then
+        if fallbackName and fallbackName ~= "" then
+            return fallbackName:match("[%z\1-\127\194-\244][\128-\191]*") or fallbackName:sub(1,3)
+        end
+        return str
+    elseif fmt == "NUMBER_SHORT" then
+        local short = fallbackName:match("[%z\1-\127\194-\244][\128-\191]*") or fallbackName:sub(1,3)
+        return num and (num .. "." .. short) or short
+    elseif fmt == "FULL" then
+        return fallbackName
+    end
+
+    return str
 end

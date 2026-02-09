@@ -61,13 +61,13 @@ addon.SETTING_REGISTRY = {
         set = function(v) addon.db.plugin.chat.visual.channelNameFormat = v end,
         default = "SHORT",
         ui = { 
-            type = "dropdown", label = "LABEL_CHANNEL_NAME_FORMAT_DESC", page = "chat", section = "SECTION_CHAT_CHANNEL",
+            type = "dropdown", label = "LABEL_STREAM_NAME_FORMAT_DESC_LABEL", page = "chat", section = "SECTION_CHAT_CHANNEL",
             options = function()
                 local c = Settings.CreateControlTextContainer()
-                c:Add("SHORT", L["LABEL_CHANNEL_FORMAT_SHORT"])
-                c:Add("FULL", L["LABEL_CHANNEL_FORMAT_FULL"])
-                c:Add("NUMBER", L["LABEL_CHANNEL_FORMAT_NUMBER"])
-                c:Add("NUMBER_SHORT", L["LABEL_CHANNEL_FORMAT_NUMBER_SHORT"])
+                c:Add("SHORT", L["LABEL_STREAM_FORMAT_SHORT"])
+                c:Add("FULL", L["LABEL_STREAM_FORMAT_FULL_LABEL"])
+                c:Add("NUMBER", L["LABEL_STREAM_FORMAT_NUMBER_LABEL"])
+                c:Add("NUMBER_SHORT", L["LABEL_STREAM_FORMAT_NUMBER_SHORT"])
                 return c:GetData()
             end,
         },
@@ -171,7 +171,7 @@ addon.SETTING_REGISTRY = {
         get = function() return addon.db.plugin.chat.interaction.sticky end,
         set = function(v) addon.db.plugin.chat.interaction.sticky = v end,
         default = true,
-        ui = { type = "checkbox", label = "LABEL_CHANNEL_STICKY", tooltip = "LABEL_CHANNEL_STICKY_DESC", page = "chat", section = "SECTION_CHAT_INTERACTION" },
+        ui = { type = "checkbox", label = "LABEL_STREAM_STICKY_LABEL", tooltip = "LABEL_STREAM_STICKY_DESC_LABEL", page = "chat", section = "SECTION_CHAT_INTERACTION" },
     },
     tabCycle = {
         category = "plugin",

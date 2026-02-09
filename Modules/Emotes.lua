@@ -120,10 +120,6 @@ function addon:StopBubbleTicker()
 end
 
 function addon:InitEmotes()
-    local events = addon.CHAT_EVENTS or {}
-    for _, event in ipairs(events) do
-        ChatFrame_AddMessageEventFilter(event, EmoteFilter)
-    end
     HookChatBubbles()
 end
 

@@ -12,13 +12,15 @@ local EVENT_TO_CHANNEL_KEY = {
     ["CHAT_MSG_INSTANCE_CHAT"] = "INSTANCE_CHAT",
     ["CHAT_MSG_INSTANCE_CHAT_LEADER"] = "INSTANCE_CHAT",
     ["CHAT_MSG_WHISPER"] = "WHISPER",
+    ["CHAT_MSG_WHISPER_INFORM"] = "WHISPER",
     ["CHAT_MSG_EMOTE"] = "EMOTE",
     ["CHAT_MSG_TEXT_EMOTE"] = "EMOTE",
     ["CHAT_MSG_SYSTEM"] = "SYSTEM",
-    ["CHAT_MSG_BATTLEGROUND"] = "BATTLEGROUND",
-    ["CHAT_MSG_BATTLEGROUND_LEADER"] = "BATTLEGROUND",
     ["CHAT_MSG_RAID_WARNING"] = "RAID_WARNING",
 }
+
+-- Default timestamp color for restored messages (gray)
+local DEFAULT_SNAPSHOT_TIMESTAMP_COLOR = "FF888888"
 
 local function GetCharKey()
     local name = UnitName("player")
@@ -37,7 +39,7 @@ end
 local channelNameCache = {}
 
 local function FindRegistryKeyByChannelBaseName(baseName)
-    if not baseName or not addon.CHANNEL_REGISTRY then return nil end
+    if not baseName then return nil end
     
     -- Check cache first
     if channelNameCache[baseName] ~= nil then
@@ -46,21 +48,14 @@ local function FindRegistryKeyByChannelBaseName(baseName)
     
     local L = addon.L
     local normalized = addon.Utils.NormalizeChannelBaseName(baseName)
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if reg.isDynamic and reg.mappingKey then
-            local realName = L[reg.mappingKey]
+    
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        if subKey == "DYNAMIC" and stream.mappingKey then
+            local realName = L[stream.mappingKey]
             if realName then
-                if realName == normalized then
-                    channelNameCache[baseName] = reg.key
-                    return reg.key
-                end
-                if normalized:find(realName, 1, true) == 1 then
-                    channelNameCache[baseName] = reg.key
-                    return reg.key
-                end
-                if realName:find(normalized, 1, true) == 1 then
-                    channelNameCache[baseName] = reg.key
-                    return reg.key
+                if realName == normalized or normalized:find(realName, 1, true) == 1 or realName:find(normalized, 1, true) == 1 then
+                    channelNameCache[baseName] = stream.key
+                    return stream.key
                 end
             end
         end
@@ -157,97 +152,6 @@ local function EvictOldestUntilUnderMax()
 end
 
 
-local function StoreChannelContentFilter(self, event, msg, author, ...)
-    -- 1. Global & Module Switch Check
-    if not addon.db or not addon.db.enabled then return false, msg, author, ... end
-    
-    local chatSettings = addon.db.plugin and addon.db.plugin.chat
-    if not chatSettings or not chatSettings.content or chatSettings.content.snapshotEnabled == false then
-        return false, msg, author, ...
-    end
-    
-    if not msg or type(msg) ~= "string" or msg == "" then return false, msg, author, ... end
-
-    local charKey = GetCharKey()
-    -- If we are in "Default" state (no name/realm yet), don't store to avoid missing data later
-    if charKey == "Default" then return false, msg, author, ... end
-    
-    local channelKey = GetChannelKey(event, ...)
-    
-    -- Check if this specific channel should be stored
-    local sc = addon.db.plugin.chat.content.snapshotChannels
-    if sc then
-        local legacyKey = ({ instance = "INSTANCE_CHAT" })[channelKey] or channelKey:upper()
-        if sc[channelKey] == false or sc[legacyKey] == false then
-            return false, msg, author, ...
-        end
-    end
-
-    if not addon.db.global.chatSnapshot[charKey] then
-        addon.db.global.chatSnapshot[charKey] = {}
-    end
-    local perChannel = addon.db.global.chatSnapshot[charKey]
-    if not perChannel[channelKey] then
-        perChannel[channelKey] = {}
-    end
-    
-    -- Get chat type and channel ID for dynamic channels
-    local chatType = EVENT_TO_CHANNEL_KEY[event] or "CHANNEL"
-    local channelId = nil
-    local registryKey = nil  -- Store the registry key (e.g., "world", "lfg") for reliable lookup
-    local channelBaseName = nil
-    local channelBaseNameNormalized = nil
-    if event == "CHAT_MSG_CHANNEL" then
-        channelId = select(6, ...) -- channelIndex (numeric ID like 1, 2, 3)
-        channelBaseName = select(7, ...)
-        channelBaseNameNormalized = addon.Utils.NormalizeChannelBaseName(channelBaseName)
-        registryKey = FindRegistryKeyByChannelBaseName(channelBaseNameNormalized)
-    end
-    
-    -- Get player GUID for class color (arg12 in chat event)
-    local playerGUID = select(10, ...)
-    local classFilename = nil
-    if playerGUID then
-        local _, engClass = GetPlayerInfoByGUID(playerGUID)
-        classFilename = engClass
-    end
-    
-    -- Capture original message color (chat type color)
-    local r, g, b = nil, nil, nil
-    if ChatTypeInfo then
-        if chatType == "CHANNEL" and channelId then
-            local info = ChatTypeInfo["CHANNEL" .. channelId] or ChatTypeInfo["CHANNEL"]
-            if info then r, g, b = info.r, info.g, info.b end
-        else
-            local info = ChatTypeInfo[chatType]
-            if info then r, g, b = info.r, info.g, info.b end
-        end
-    end
-
-    table.insert(perChannel[channelKey], {
-        text = msg,
-        author = author and tostring(author) or "",
-        channelKey = channelKey,
-        chatType = chatType,
-        channelId = channelId,
-        channelBaseName = channelBaseName,
-        channelBaseNameNormalized = channelBaseNameNormalized,
-        registryKey = registryKey,
-        classFilename = classFilename,
-        time = time(),
-        frameName = self:GetName(),
-        r = r, g = g, b = b,
-    })
-    addon.db.global.chatSnapshotLineCount = (addon.db.global.chatSnapshotLineCount or 0) + 1
-    local maxPerChannel = addon.db.plugin.chat.content.maxPerChannel or 500
-    while #perChannel[channelKey] > maxPerChannel do
-        table.remove(perChannel[channelKey], 1)
-        addon.db.global.chatSnapshotLineCount = (addon.db.global.chatSnapshotLineCount or 0) - 1
-    end
-    EvictOldestUntilUnderMax()
-    return false, msg, author, ...
-end
-
 function addon:ClearHistory()
     local L = addon.L
     if not addon.db or not addon.db.global.chatSnapshot then return end
@@ -266,10 +170,6 @@ end
 
 function addon:InitSnapshot()
     local L = addon.L
-    local events = addon.CHAT_EVENTS or {}
-    for _, event in ipairs(events) do
-        ChatFrame_AddMessageEventFilter(event, StoreChannelContentFilter)
-    end
 
     local restored
     
@@ -301,17 +201,31 @@ function addon:InitSnapshot()
             if not frame or not frame.AddMessage then return end
             
             -- 2. Channel tag: use unified resolver
-            local channelNameDisplay = addon.Utils.ResolveChannelDisplay({
+            local channelNameDisplay, registryItem = addon.Utils.ResolveChannelDisplay({
                 chatType = line.chatType,
                 channelId = line.channelId,
                 channelName = line.channelBaseNameNormalized,
                 registryKey = line.registryKey,
             })
             
-            -- Wrap in |Hchannel:id|h...|h link if valid channel ID exists
+            -- Apply channel color from current system ChatTypeInfo (same as message body)
             local channelTag = channelNameDisplay
+            -- Get color from ChatTypeInfo to match message body color
+            local chatTypeForColor = line.chatType
             if line.chatType == "CHANNEL" and line.channelId then
-                channelTag = string.format("|Hchannel:%s|h%s|h", line.channelId, channelNameDisplay)
+                chatTypeForColor = "CHANNEL" .. line.channelId
+            end
+            
+            if ChatTypeInfo and ChatTypeInfo[chatTypeForColor] then
+                local info = ChatTypeInfo[chatTypeForColor]
+                local r, g, b = info.r or 1, info.g or 1, info.b or 1
+                channelTag = string.format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, channelNameDisplay)
+            end
+            
+            -- Wrap in |Hchannel:CHANNEL:id|h...|h link if valid channel ID exists
+            -- Format: |Hchannel:CHANNEL:channelId|h to ensure proper chatType resolution
+            if line.chatType == "CHANNEL" and line.channelId then
+                channelTag = string.format("|Hchannel:CHANNEL:%s|h%s|h", line.channelId, channelTag)
             end
             
             -- 3. Author with class color
@@ -352,7 +266,7 @@ function addon:InitSnapshot()
                     local clickEnabled = (addon.db.plugin.chat.interaction and addon.db.plugin.chat.interaction.clickToCopy ~= false)
                     
                     -- Note: System timestamp color is usually handled by ChatFrame, but here we reconstruct it.
-                    local tsColor = (addon.db.plugin.chat.interaction and addon.db.plugin.chat.interaction.timestampColor) or "FF888888"
+                    local tsColor = (addon.db.plugin.chat.interaction and addon.db.plugin.chat.interaction.timestampColor) or DEFAULT_SNAPSHOT_TIMESTAMP_COLOR
                     
                          -- Smart Spacing for History:
                          -- If the formatted time 'ts' doesn't end with a space, add one.
@@ -379,11 +293,21 @@ function addon:InitSnapshot()
             
             -- 5. Add to frame using original AddMessage (bypass transformers to avoid double timestamp)
             local addMessageFn = frame._TinyChatonOrigAddMessage or frame.AddMessage
-            if line.r and line.g and line.b then
-                addMessageFn(frame, displayLine, line.r, line.g, line.b)
-            else
-                addMessageFn(frame, displayLine)
+            
+            -- Get message color from current system's ChatTypeInfo
+            local chatTypeForColor = line.chatType
+            -- For CHANNEL messages, WoW uses "CHANNEL" + channelId as the key
+            if line.chatType == "CHANNEL" and line.channelId then
+                chatTypeForColor = "CHANNEL" .. line.channelId
             end
+            
+            local r, g, b = 1, 1, 1  -- Default to white
+            if ChatTypeInfo and ChatTypeInfo[chatTypeForColor] then
+                local info = ChatTypeInfo[chatTypeForColor]
+                r, g, b = info.r or 1, info.g or 1, info.b or 1
+            end
+            
+            addMessageFn(frame, displayLine, r, g, b)
         end
 
         -- Collect all messages from all channels
@@ -429,14 +353,18 @@ end
 function addon:GetSnapshotChannelsItems(filter)
     -- filter: "private" | "system" | "dynamic" | nil(全部)
     local items = {}
-    for _, reg in ipairs(addon.CHANNEL_REGISTRY) do
-        if not reg.isSystemMsg and not reg.isNotStorable then
+    
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        -- Skip items that shouldn't be snapshotted (e.g. non-storable)
+        if not stream.isNotStorable then
             local match = false
-            if filter == "private" and reg.isPrivate then 
+            local isPrivate = (stream.chatType == "WHISPER" or stream.chatType == "BN_WHISPER")
+            
+            if filter == "private" and isPrivate then 
                 match = true
-            elseif filter == "system" and reg.isSystem then 
+            elseif filter == "system" and subKey == "SYSTEM" then 
                 match = true
-            elseif filter == "dynamic" and reg.isDynamic then 
+            elseif filter == "dynamic" and subKey == "DYNAMIC" then 
                 match = true
             elseif not filter then 
                 match = true
@@ -444,10 +372,10 @@ function addon:GetSnapshotChannelsItems(filter)
             
             if match then
                 table.insert(items, { 
-                    key = reg.key, 
-                    label = reg.label or reg.key,
-                    value = reg.key,  -- for MultiDropdown compatibility
-                    text = reg.label or reg.key,
+                    key = stream.key, 
+                    label = stream.label or stream.key,
+                    value = stream.key,  -- for MultiDropdown compatibility
+                    text = stream.label or stream.key,
                 })
             end
         end

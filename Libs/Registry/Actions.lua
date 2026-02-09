@@ -44,7 +44,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "join",
         label = L["ACTION_JOIN"],
-        category = "channel",
+        category = "join",
         appliesTo = {
             streamPaths = { "CHANNEL.DYNAMIC" }
         },
@@ -69,7 +69,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "leave",
         label = L["ACTION_LEAVE"],
-        category = "channel",
+        category = "leave",
         appliesTo = {
             streamPaths = { "CHANNEL.DYNAMIC" }
         },

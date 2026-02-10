@@ -1,0 +1,8 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Core.lua"/>
+    <Script file="Component.lua"/>
+    <Script file="PoolManager.lua"/>
+    <Script file="Reconciler.lua"/>
+    <Script file="Components/Hstack.lua"/>
+    <Script file="Components/VStack.lua"/>
+</Ui>

@@ -1,0 +1,4 @@
+ignore:
+  - .github
+  - .gitignore
+  - Docs

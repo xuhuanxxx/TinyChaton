@@ -1,0 +1,91 @@
+## Interface: 120001
+## Title: TinyChaton
+## Notes: A lightweight chat addon with copying, emotes, and shelf tools.
+## Notes-zhCN: 聊天增强插件
+## Notes-zhTW: 聊天增強插件
+## Category: Chat
+## Category-zhCN: 聊天增强
+## Category-zhTW: 聊天增強
+## Author: xuhuaxxx
+## Version: 1.0.0
+## SavedVariables: TinyChatonDB
+## IconTexture: Interface\AddOns\TinyChaton\icon.png
+
+Locales\Init.lua
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+
+Libs\Ribbon.lua
+Libs\UI\UI.lua
+Libs\MultiDropdown\MultiDropdown.xml
+Libs\MultiDropdown\Core.lua
+Libs\TinyReactor\TinyReactor.xml
+
+Infrastructure\Runtime\Logger.lua
+App\Container.lua
+App\Bootstrap.lua
+
+Domain\Chat\Types.lua
+Domain\Chat\Contracts.lua
+Domain\Chat\StreamRegistry.lua
+Domain\Chat\ActionRegistry.lua
+Domain\Shelf\ShelfAnchorRegistry.lua
+Domain\Shelf\ShelfColorRegistry.lua
+Domain\Shelf\ShelfKitRegistry.lua
+Domain\Shelf\ShelfThemePresetRegistry.lua
+
+Config.lua
+
+Infrastructure\Runtime\Utils.lua
+Infrastructure\Runtime\ObjectPool.lua
+Infrastructure\Runtime\CapabilityPolicyEngine.lua
+Infrastructure\WowApi\ChatGateway.lua
+Infrastructure\WowApi\EnvironmentWatcher.lua
+Infrastructure\Runtime\FeatureRegistry.lua
+Infrastructure\WowApi\ChatFrameHooks.lua
+Infrastructure\WowApi\CVarSync.lua
+Infrastructure\Runtime\InternalTests.lua
+Infrastructure\Runtime\Profiler.lua
+
+Domain\Chat\Storage\SnapshotKeys.lua
+Domain\Chat\Policy\VisibilityPolicy.lua
+Domain\Chat\Ingress\EventContextFactory.lua
+Domain\Chat\Render\MessageFormatter.lua
+Domain\Chat\Ingress\EventRouter.lua
+Domain\Chat\Ingress\Filters\Blacklist.lua
+Domain\Chat\Ingress\Filters\Whitelist.lua
+Domain\Chat\Ingress\Filters\Duplicate.lua
+Domain\Chat\Storage\SnapshotStore.lua
+Domain\Chat\Storage\SnapshotReplayer.lua
+
+Domain\Chat\Render\Transformers\StripPrefix.lua
+Domain\Chat\Render\Transformers\ChannelFormatter.lua
+Domain\Chat\Render\ChatFont.lua
+Domain\Chat\Interaction\StickyChannels.lua
+Domain\Chat\Render\Transformers\CleanMessage.lua
+Domain\Chat\Render\Transformers\TimestampInteraction.lua
+Domain\Chat\Render\Transformers\Emotes.lua
+Domain\Chat\Render\EmotesPanel.lua
+Domain\Chat\Automation\AutoWelcome.lua
+Domain\Chat\Automation\AutoJoinHelper.lua
+Domain\Chat\Interaction\LinkHover.lua
+Domain\Chat\Interaction\TabCycle.lua
+Domain\Chat\Render\Transformers\Highlight.lua
+
+Domain\Shelf\ShelfService.lua
+Domain\Shelf\ShelfThemeRegistry.lua
+Domain\Shelf\ShelfRender.lua
+Domain\Shelf\SelectionDialog.lua
+
+Domain\Settings\SettingsSchema.lua
+Domain\Settings\SettingsControls.lua
+Domain\Settings\Pages\General.lua
+Domain\Settings\Pages\Filters.lua
+Domain\Settings\Pages\Shelf.lua
+Domain\Settings\Pages\Chat.lua
+Domain\Settings\Pages\Automation.lua
+Domain\Settings\Pages\Profile.lua
+Domain\Settings\SettingsService.lua
+
+App\Events.lua

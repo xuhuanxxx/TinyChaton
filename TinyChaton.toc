@@ -13,7 +13,7 @@
 ## Category-ruRU: Чат
 ## Category-deDE: Chat
 ## Author: xuhuaxxx
-## Version: 1.0.0
+## Version: 1.0.0-rc.1
 ## SavedVariables: TinyChatonDB
 ## IconTexture: Interface\AddOns\TinyChaton\icon.png
 

@@ -212,43 +212,40 @@ function addon:InitSnapshotManager()
                             visible = false
                         end
                     end
-                    if not visible then
-                        goto continue
-                    end
+                    if visible then
+                        local channelTag = addon.MessageFormatter.GetChannelTag(line)
+                        local authorTag = addon.MessageFormatter.GetAuthorTag(line)
+                        -- DELAYED: local timestamp = FormatTimestamp(line)
+                        
+                        local finalText = line.text
+                        -- Now we have the final content, generate timestamp
+                        -- Construct the full message (minus timestamp) for the copy payload
+                        local contentForCopy = string.format("%s%s%s", channelTag, authorTag, finalText)
+                        local timestamp = FormatTimestamp(line, contentForCopy)
+                        
+                        local displayLine = string.format("%s%s", timestamp, contentForCopy)
 
-                    local channelTag = addon.MessageFormatter.GetChannelTag(line)
-                    local authorTag = addon.MessageFormatter.GetAuthorTag(line)
-                    -- DELAYED: local timestamp = FormatTimestamp(line)
-                    
-                    local finalText = line.text
-                    -- Now we have the final content, generate timestamp
-                    -- Construct the full message (minus timestamp) for the copy payload
-                    local contentForCopy = string.format("%s%s%s", channelTag, authorTag, finalText)
-                    local timestamp = FormatTimestamp(line, contentForCopy)
-                    
-                    local displayLine = string.format("%s%s", timestamp, contentForCopy)
+                        -- Determine color
+                        local chatTypeForColor = line.chatType
+                        if line.chatType == "CHANNEL" and line.channelId then
+                            chatTypeForColor = "CHANNEL" .. line.channelId
+                        end
+                        
+                        local r, g, b = 1, 1, 1
+                        if ChatTypeInfo and ChatTypeInfo[chatTypeForColor] then
+                            local info = ChatTypeInfo[chatTypeForColor]
+                            r, g, b = info.r or 1, info.g or 1, info.b or 1
+                        end
 
-                    -- Determine color
-                    local chatTypeForColor = line.chatType
-                    if line.chatType == "CHANNEL" and line.channelId then
-                        chatTypeForColor = "CHANNEL" .. line.channelId
-                    end
-                    
-                    local r, g, b = 1, 1, 1
-                    if ChatTypeInfo and ChatTypeInfo[chatTypeForColor] then
-                        local info = ChatTypeInfo[chatTypeForColor]
-                        r, g, b = info.r or 1, info.g or 1, info.b or 1
-                    end
+                        if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
+                            displayLine = addon.Gateway.Display:Transform(frame, displayLine, r, g, b)
+                        end
 
-                    if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
-                        displayLine = addon.Gateway.Display:Transform(frame, displayLine, r, g, b)
+                        local addMessageFn = frame._TinyChatonOrigAddMessage or frame.AddMessage
+                        addMessageFn(frame, displayLine, r, g, b)
                     end
-
-                    local addMessageFn = frame._TinyChatonOrigAddMessage or frame.AddMessage
-                    addMessageFn(frame, displayLine, r, g, b)
                 end
             end
-            ::continue::
         end
 
         restored = true

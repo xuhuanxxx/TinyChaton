@@ -187,6 +187,14 @@ function Dispatcher:OnChatEvent(frame, event, ...)
         return false
     end
 
+    -- Safety: never repack CHAT_MSG_CHANNEL args.
+    -- In modern clients these varargs may contain protected/secret sentinel values
+    -- that are safe in pass-through mode but unsafe after Lua table repacking.
+    if event == "CHAT_MSG_CHANNEL" then
+        addon.ChatData:Release(chatData)
+        return false
+    end
+
     -- Get modified arguments
     local result = {addon.ChatData:GetArgs(chatData)}
     

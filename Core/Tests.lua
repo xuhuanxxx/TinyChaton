@@ -104,6 +104,10 @@ function addon.Tests.TestPool()
     local obj3 = addon.Pool:Acquire("TestPool")
     addon.Tests.AssertEqual(obj3.id, 2, "New object created when pool empty")
     addon.Tests.AssertEqual(factoryCount, 2, "Factory called again")
+
+    local available, total = addon.Pool:GetStats("TestPool")
+    addon.Tests.AssertEqual(available, 0, "Pool available count")
+    addon.Tests.AssertEqual(total, 2, "Pool total created count")
 end
 
 -- Slash Command

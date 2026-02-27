@@ -1,6 +1,8 @@
 local addonName, addon = ...
 
 addon.messageCache = addon.messageCache or {}
+addon.InteractionTimestamp = addon.InteractionTimestamp or {}
+local itemRefHooked = false
 
 local function PruneCache()
     local now = GetTime()
@@ -56,57 +58,53 @@ function addon:CreateClickableTimestamp(tsText, copyMsg, tsColor)
     return linkified, id
 end
 
-function addon:InitInteractionTimestamp()
-    -- Transformer for real-time messages
-    self:RegisterChatFrameTransformer("interaction_timestamp", function(frame, text, r, g, b, ...)
-        if not self.db or not self.db.enabled then return text, r, g, b, ... end
-        if type(text) ~= "string" or text == "" then return text, r, g, b, ... end
+local function InteractionTimestampTransformer(frame, text, r, g, b, ...)
+    if not addon.db or not addon.db.enabled then return text, r, g, b, ... end
+    if type(text) ~= "string" or text == "" then return text, r, g, b, ... end
 
-        -- Skip if already processed
-        if text:find("|Htinychat:copy:") then return text, r, g, b, ... end
+    -- Skip if already processed
+    if text:find("|Htinychat:copy:") then return text, r, g, b, ... end
 
-        -- Match timestamp at start: [HH:MM] or [HH:MM:SS]
-        local start, finish, ts = text:find("^(%[?%d+:%d+:?%d*%]?)")
+    -- Match timestamp at start: [HH:MM] or [HH:MM:SS]
+    local _, finish, ts = text:find("^(%[?%d+:%d+:?%d*%]?)")
 
-        if not ts or not ts:find("%d+:%d+") then
-            return text, r, g, b, ...
-        end
+    if not ts or not ts:find("%d+:%d+") then
+        return text, r, g, b, ...
+    end
 
-        -- Check for trailing |r (color reset)
-        if text:sub(finish + 1, finish + 2) == "|r" then
-            ts = ts .. "|r"
-            finish = finish + 2
-        end
+    -- Check for trailing |r (color reset)
+    if text:sub(finish + 1, finish + 2) == "|r" then
+        ts = ts .. "|r"
+        finish = finish + 2
+    end
 
-        -- Get the rest of the message
-        local rest = text:sub(finish + 1)
-        local needsSpace = rest:sub(1, 1) ~= " "
+    -- Get the rest of the message
+    local rest = text:sub(finish + 1)
+    local needsSpace = rest:sub(1, 1) ~= " "
 
-        -- Create clickable timestamp
-        -- 1. Generate standard formatted timestamp (with color)
-        local formattedTs = addon.MessageFormatter.GetTimestamp(GetTime(), {r=r, g=g, b=b})
+    -- Keep timestamp color consistent with formatter rules.
+    local color = addon.MessageFormatter.ResolveTimestampColor({r = r, g = g, b = b})
+    local linkified = addon:CreateClickableTimestamp(ts, ts .. (needsSpace and " " or "") .. rest, color)
 
-        -- 2. Wrap in functionality
-        local linkified, _ = self:CreateClickableTimestamp(ts, nil, nil) -- We only need the ID generation part really, but let's see.
+    return linkified .. rest, r, g, b, ...
+end
 
-        -- Refactor CreateClickableTimestamp first?
-        -- Actually, CreateClickableTimestamp does too much (cache pruning + ID gen + string format).
-        -- Let's stick to using CreateClickableTimestamp but pass the color we resolved via Formatter?
-        -- No, Formatter returns specific string.
+function addon:EnableInteractionTimestamp()
+    self:RegisterChatFrameTransformer("interaction_timestamp", InteractionTimestampTransformer)
 
-        -- Let's use the Formatter's color resolution to keep it consistent.
-        local color = addon.MessageFormatter.ResolveTimestampColor({r=r, g=g, b=b})
+    if itemRefHooked then
+        return
+    end
+    itemRefHooked = true
 
-        -- Override CreateClickableTimestamp call to use the resolved color
-        -- Re-using the existing function for now to minimize churn, but using centralized color logic.
-        linkified = self:CreateClickableTimestamp(ts, ts .. (needsSpace and " " or "") .. rest, color)
-
-        return linkified .. rest, r, g, b, ...
-    end)
-
-    -- Handle clicks
+    -- SetItemRef is not unhookable; keep a one-time hook and gate behavior by capability+feature.
     hooksecurefunc("SetItemRef", function(link, text, button, chatFrame)
-        if InCombatLockdown() then return end
+        if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then
+            return
+        end
+        if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("InteractionTimestamp") then
+            return
+        end
         if not link or type(link) ~= "string" then return end
 
         local id = link:match("^tinychat:copy:(.+)$")
@@ -115,7 +113,7 @@ function addon:InitInteractionTimestamp()
         end
 
         if id then
-            local entry = self.messageCache[id]
+            local entry = addon.messageCache[id]
             if entry and entry.msg then
                 local editBox = ChatEdit_ChooseBoxForSend()
                 if not editBox:HasFocus() then ChatEdit_ActivateChat(editBox) end
@@ -123,6 +121,26 @@ function addon:InitInteractionTimestamp()
             end
         end
     end)
+end
+
+function addon:DisableInteractionTimestamp()
+    addon.chatFrameTransformers["interaction_timestamp"] = nil
+end
+
+function addon:InitInteractionTimestamp()
+    if addon.RegisterFeature then
+        addon:RegisterFeature("InteractionTimestamp", {
+            requires = { "MUTATE_CHAT_DISPLAY" },
+            onEnable = function()
+                addon:EnableInteractionTimestamp()
+            end,
+            onDisable = function()
+                addon:DisableInteractionTimestamp()
+            end,
+        })
+    else
+        addon:EnableInteractionTimestamp()
+    end
 end
 
 -- P0: Register Module

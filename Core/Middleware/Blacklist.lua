@@ -93,12 +93,14 @@ function addon.Filters.BlacklistProcess(chatData)
     local cache = GetRuleCache()
     if not cache then return false end
 
+    local authorName = chatData.name and string.lower(chatData.name) or ""
+
     -- 1. Check Names
     if cache.names then
         for _, rule in ipairs(cache.names) do
             -- Match against raw author or pure name
             if MatchRule(chatData.author, chatData.authorLower, rule) or
-               MatchRule(chatData.name, string.lower(chatData.name), rule) then
+               MatchRule(chatData.name or "", authorName, rule) then
                 return true -- Block
             end
         end
@@ -120,4 +122,28 @@ local function BlacklistMiddleware(chatData)
     return addon.Filters.BlacklistProcess(chatData)
 end
 
-addon.EventDispatcher:RegisterMiddleware("FILTER", 20, "Blacklist", BlacklistMiddleware)
+function addon:InitBlacklistMiddleware()
+    local function EnableBlacklist()
+        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("FILTER", "Blacklist") then
+            addon.EventDispatcher:RegisterMiddleware("FILTER", 20, "Blacklist", BlacklistMiddleware)
+        end
+    end
+
+    local function DisableBlacklist()
+        if addon.EventDispatcher then
+            addon.EventDispatcher:UnregisterMiddleware("FILTER", "Blacklist")
+        end
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("Blacklist", {
+            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+            onEnable = EnableBlacklist,
+            onDisable = DisableBlacklist,
+        })
+    else
+        EnableBlacklist()
+    end
+end
+
+addon:RegisterModule("BlacklistMiddleware", addon.InitBlacklistMiddleware)

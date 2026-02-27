@@ -125,7 +125,8 @@ end
 --- @param name string Original channel name
 --- @return string Normalized channel name
 function addon.Utils.NormalizeChannelBaseName(name)
-    if not name or name == "" then return name end
+    if type(name) ~= "string" then return name end
+    if name == "" then return name end
     return name:match("^%s*(.-)%s*%-%s*.+$") or name
 end
 
@@ -158,6 +159,21 @@ end
 -- Replaces O(n) iteration with O(1) lookup
 addon.ChannelIndex = {}
 local isChannelIndexBuilt = false
+local dynamicStreamIndexByChannelId = {}
+local joinedChannelNameByIdCache = {}
+local joinedChannelNameByIdCacheStamp = 0
+local JOINED_CHANNEL_NAME_CACHE_TTL = 1
+
+function addon.Utils.InvalidateChannelCaches()
+    addon.ChannelIndex = {}
+    table.wipe(dynamicStreamIndexByChannelId)
+    table.wipe(joinedChannelNameByIdCache)
+    joinedChannelNameByIdCacheStamp = 0
+    isChannelIndexBuilt = false
+    if addon.InvalidateChannelKeyCache then
+        addon:InvalidateChannelKeyCache()
+    end
+end
 
 --- Build the channel reverse index
 function addon.Utils.BuildChannelIndex()
@@ -204,11 +220,56 @@ function addon.Utils.FindChannelByKey(key)
     return addon.ChannelIndex[key]
 end
 
+function addon.Utils.GetJoinedChannelNameById(id)
+    if not id then return nil end
+    local now = GetTime and GetTime() or 0
+    if (now - joinedChannelNameByIdCacheStamp) > JOINED_CHANNEL_NAME_CACHE_TTL then
+        table.wipe(joinedChannelNameByIdCache)
+        joinedChannelNameByIdCacheStamp = now
+    end
+    if joinedChannelNameByIdCache[id] ~= nil then
+        return joinedChannelNameByIdCache[id] or nil
+    end
+
+    local list = { GetChannelList() }
+    for i = 1, #list, 3 do
+        local channelId = list[i]
+        local channelName = list[i + 1]
+        if channelId and channelName then
+            joinedChannelNameByIdCache[channelId] = channelName
+        end
+    end
+
+    if joinedChannelNameByIdCache[id] == nil then
+        joinedChannelNameByIdCache[id] = false
+    end
+    return joinedChannelNameByIdCache[id] or nil
+end
+
+function addon.Utils.FindDynamicStreamByChannelId(channelId)
+    if not channelId then return nil end
+    if dynamicStreamIndexByChannelId[channelId] ~= nil then
+        return dynamicStreamIndexByChannelId[channelId] or nil
+    end
+
+    local foundStream = nil
+    for _, stream, _, subKey in addon:IterateAllStreams() do
+        if subKey == "DYNAMIC" and stream.mappingKey then
+            local realName = addon.L[stream.mappingKey]
+            if realName and GetChannelName(realName) == channelId then
+                foundStream = stream
+                break
+            end
+        end
+    end
+
+    dynamicStreamIndexByChannelId[channelId] = foundStream or false
+    return foundStream
+end
+
 -- Find registry item by various inputs
 local function FindRegistryItem(input)
     if not input then return nil end
-    local L = addon.L
-
     -- input can be: { chatType, channelId, channelName, registryKey }
     local registryKey = input.registryKey
 
@@ -229,6 +290,12 @@ local function FindRegistryItem(input)
         local cached = addon.Utils.FindChannelByKey(normalizedName)
         if cached then return cached end
     end
+    if chatType == "CHANNEL" and channelId then
+        local dynamicStream = addon.Utils.FindDynamicStreamByChannelId(channelId)
+        if dynamicStream then
+            return dynamicStream
+        end
+    end
 
     for _, stream, catKey, subKey in addon:IterateAllStreams() do
         -- 3. Try by chatType for system channels
@@ -236,15 +303,7 @@ local function FindRegistryItem(input)
             return stream
         end
 
-        -- 4. Try by channelId for dynamic channels (reverse lookup)
-        if chatType == "CHANNEL" and channelId and subKey == "DYNAMIC" and stream.mappingKey then
-            local realName = L[stream.mappingKey]
-            if realName and GetChannelName(realName) == channelId then
-                return stream
-            end
-        end
-
-        -- 5. Try by channelName for dynamic channels (Partial Matches that might be missed by cache)
+        -- 4. Try by channelName for dynamic channels (partial matches missed by cache)
         if normalizedName and MatchChannelName(stream, normalizedName) then
              -- Add to index for future O(1) lookup
              if not isChannelIndexBuilt then addon.Utils.BuildChannelIndex() end
@@ -290,26 +349,12 @@ function addon.Utils.ResolveChannelDisplay(input, format)
     return "", nil
 end
 
--- Helper for GetJoinedChannelNameById (used by ShortenChannelString)
-local function GetJoinedChannelNameById(id)
-    if not id then return nil end
-    local list = { GetChannelList() }
-    for i = 1, #list, 3 do
-        if list[i] == id then
-            return list[i + 1]
-        end
-    end
-    return nil
-end
-
 --- Shorten channel string based on format
 --- @param str string Channel string (e.g., "1. General")
 --- @param fmt string Format: "NUMBER", "SHORT", "NUMBER_SHORT", "FULL"
 --- @return string Shortened channel name
 function addon.Utils.ShortenChannelString(str, fmt)
     if not str or type(str) ~= "string" or str == "" then return str end
-
-    local L = addon.L
 
     -- Parse numeric ID and name (e.g., "1. General" -> num="1", name="General")
     -- Also handle "1." format (number with trailing dot but no name)
@@ -328,7 +373,7 @@ function addon.Utils.ShortenChannelString(str, fmt)
     if id and (not name or name == "" or name:match("^%d+$")) then
         local _, resolvedName = GetChannelName(id)
         if not resolvedName or resolvedName == "" then
-            resolvedName = GetJoinedChannelNameById(id)
+            resolvedName = addon.Utils.GetJoinedChannelNameById(id)
         end
         if resolvedName and resolvedName ~= "" then
             name = addon.Utils.NormalizeChannelBaseName(resolvedName)
@@ -340,27 +385,20 @@ function addon.Utils.ShortenChannelString(str, fmt)
     -- This is the most reliable method when we only have a number
     local item
     if id then
-        for _, stream, catKey, subKey in addon:IterateAllStreams() do
-            if subKey == "DYNAMIC" and stream.mappingKey then
-                local realName = L[stream.mappingKey]
-                if realName then
-                    local chanId = GetChannelName(realName)
-                    if chanId == id then
-                        item = stream
-                        break
-                    end
-                end
-            end
-        end
+        item = addon.Utils.FindDynamicStreamByChannelId(id)
     end
 
     -- If reverse lookup failed and we have a name, try name matching
     if not item and name and name ~= "" then
         local normalizedName = addon.Utils.NormalizeChannelBaseName(name)
-        for _, stream, catKey, subKey in addon:IterateAllStreams() do
-            if MatchChannelName(stream, normalizedName) then
-                item = stream
-                break
+        item = addon.Utils.FindChannelByKey(normalizedName)
+        if not item then
+            for _, stream in addon:IterateAllStreams() do
+                if MatchChannelName(stream, normalizedName) then
+                    item = stream
+                    addon.ChannelIndex[normalizedName] = stream
+                    break
+                end
             end
         end
     end

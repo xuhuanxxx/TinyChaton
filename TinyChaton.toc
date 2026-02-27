@@ -41,9 +41,14 @@ Libs\MultiDropdown\Core.lua
 Libs\TinyReactor\TinyReactor.xml
 
 Config.lua
+Core\SnapshotKeys.lua
 Core.lua
 Modules\Utils.lua
 Modules\Pool.lua
+Core\PolicyEngine.lua
+Core\Gateway.lua
+Core\EnvironmentService.lua
+Core\FeatureRegistry.lua
 Core\EventDispatcher.lua
 Core\Pipeline\MessageFormatter.lua
 Core\Pipeline\ChatData.lua

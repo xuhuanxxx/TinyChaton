@@ -70,6 +70,9 @@ end
 
 function addon:ApplyAutomationSettings()
     if not self.db or not self.db.plugin.automation then return end
+    if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
+        return
+    end
 
     -- Auto Join Channels
     local ajc = self.db.plugin.automation.autoJoinChannels
@@ -94,7 +97,21 @@ function addon:ApplyAutomationSettings()
 end
 
 function addon:InitAutoJoinHelper()
-    addon:ApplyAutomationSettings()
+    local function EnableAutoJoin()
+        addon:ApplyAutomationSettings()
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("AutoJoinHelper", {
+            requires = { "EMIT_CHAT_ACTION" },
+            onEnable = EnableAutoJoin,
+            -- Intentionally no teardown for joined channels:
+            -- this feature controls auto-join behavior only and does not roll back player channel state.
+            onDisable = function() end,
+        })
+    else
+        EnableAutoJoin()
+    end
 end
 
 -- P0: Register Module

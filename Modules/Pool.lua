@@ -12,6 +12,7 @@ function addon.Pool:Create(name, factory, reset)
     pools[name] = {
         available = {},
         inUse = {}, -- Optional: Track in-use objects for debugging/leak detection
+        totalCreated = 0,
         factory = factory,
         reset = reset
     }
@@ -27,6 +28,7 @@ function addon.Pool:Acquire(name)
     local obj = table.remove(pool.available)
     if not obj then
         obj = pool.factory()
+        pool.totalCreated = pool.totalCreated + 1
     end
     
     -- In a strict pool, we might track inUse, but for simplicity/perf we skip detailed tracking unless debugging
@@ -55,5 +57,5 @@ end
 function addon.Pool:GetStats(name)
     local pool = pools[name]
     if not pool then return 0, 0 end
-    return #pool.available, #pool.available -- approximation since we don't track total created count perfectly without inUse
+    return #pool.available, pool.totalCreated
 end

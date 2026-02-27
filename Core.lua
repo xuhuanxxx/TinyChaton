@@ -59,15 +59,9 @@ local function SetupChatFrameAddMessageHook(frame)
     -- Save original AddMessage for direct access (used by history restore)
     frame._TinyChatonOrigAddMessage = orig
     frame.AddMessage = function(self, msg, ...)
-        if type(msg) ~= "string" then
-            return orig(self, msg, ...)
-        end
-        for _, name in ipairs(addon.TRANSFORMER_ORDER) do
-            local fn = addon.chatFrameTransformers[name]
-            if fn then
-                local ok, result = pcall(fn, self, msg, ...)
-                if ok and result ~= nil then msg = result end
-            end
+        if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
+            local transformed = { addon.Gateway.Display:Transform(self, msg, ...) }
+            return orig(self, unpack(transformed))
         end
         return orig(self, msg, ...)
     end
@@ -145,6 +139,10 @@ function addon:OnInitialize()
         return
     end
 
+    if addon.InitPolicyEngine then addon:InitPolicyEngine() end
+    if addon.InitEnvironmentService then addon:InitEnvironmentService() end
+    if addon.InitFeatureRegistry then addon:InitFeatureRegistry() end
+
     if addon.InitEvents then addon:InitEvents() end
 
     if addon.RegisterSettings then
@@ -173,6 +171,10 @@ function addon:OnInitialize()
         if not ok then
             addon:Error("Failed to init module %s: %s", mod.name, tostring(err))
         end
+    end
+
+    if addon.ReconcileFeatures then
+        addon:ReconcileFeatures()
     end
 
     addon:ApplyAllSettings()
@@ -244,8 +246,6 @@ end
 -- Recursive synchronization with dynamic default support
 local function RecursiveSync(target, source, isReset, path)
     if type(target) ~= "table" or type(source) ~= "table" then return end
-    
-    local sourceIsEmpty = (next(source) == nil)
 
     for k, v in pairs(source) do
         if isReset or target[k] == nil then
@@ -271,7 +271,11 @@ local function RecursiveSync(target, source, isReset, path)
     -- Pruning: Remove keys in target that are not in source
     -- CRITICAL CHANGE: Only prune if isReset is TRUE (and source is not empty)
     -- This protects user data from being deleted during normal loading
-    if isReset and not sourceIsEmpty then
+    if isReset then
+        local sourceIsEmpty = (next(source) == nil)
+        if sourceIsEmpty then
+            return
+        end
         for k, v in pairs(target) do
             if source[k] == nil and type(k) == "string" then
                 target[k] = nil
@@ -281,12 +285,6 @@ local function RecursiveSync(target, source, isReset, path)
 end
 
 local currentProfileCache = nil
-
-function addon:GetCharacterKey()
-    local name = UnitName("player")
-    local realm = GetRealmName()
-    return string.format("%s-%s", name, realm)
-end
 
 function addon:GetCurrentProfile()
     if not TinyChatonDB.profileKeys then return addon.CONSTANTS.PROFILE_DEFAULT_NAME end

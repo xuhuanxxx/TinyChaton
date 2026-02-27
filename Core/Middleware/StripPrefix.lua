@@ -37,4 +37,28 @@ local function StripPrefixMiddleware(chatData)
     end
 end
 
-addon.EventDispatcher:RegisterMiddleware("PRE_PROCESS", 10, "StripPrefix", StripPrefixMiddleware)
+function addon:InitStripPrefix()
+    local function EnableStripPrefix()
+        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("PRE_PROCESS", "StripPrefix") then
+            addon.EventDispatcher:RegisterMiddleware("PRE_PROCESS", 10, "StripPrefix", StripPrefixMiddleware)
+        end
+    end
+
+    local function DisableStripPrefix()
+        if addon.EventDispatcher then
+            addon.EventDispatcher:UnregisterMiddleware("PRE_PROCESS", "StripPrefix")
+        end
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("StripPrefix", {
+            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+            onEnable = EnableStripPrefix,
+            onDisable = DisableStripPrefix,
+        })
+    else
+        EnableStripPrefix()
+    end
+end
+
+addon:RegisterModule("StripPrefix", addon.InitStripPrefix)

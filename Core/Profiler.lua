@@ -27,7 +27,7 @@ end
 function addon.Profiler:Report()
     print("|cff00ffff[TinyChaton]|r Profiler Report:")
     for label, d in pairs(self.data) do
-        local avg = d.total / d.count
+        local avg = (d.count > 0) and (d.total / d.count) or 0
         print(string.format("  %s: %d calls, total %.2fms, avg %.3fms, max %.3fms", 
             label, d.count, d.total, avg, d.max))
     end

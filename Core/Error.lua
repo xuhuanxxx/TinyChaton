@@ -12,7 +12,26 @@ local MAX_ERRORS = 100
 --- @param msg string The error message (can contain format specifiers)
 --- @param ... any Arguments for string.format
 function addon:Error(msg, ...)
-    local formatted = string.format(msg, ...)
+    local formatted
+    if type(msg) ~= "string" then
+        formatted = tostring(msg)
+    else
+        local ok, result = pcall(string.format, msg, ...)
+        if ok then
+            formatted = result
+        else
+            local argc = select("#", ...)
+            if argc > 0 then
+                local parts = {}
+                for i = 1, argc do
+                    parts[#parts + 1] = tostring(select(i, ...))
+                end
+                formatted = msg .. " | args: " .. table.concat(parts, ", ")
+            else
+                formatted = msg
+            end
+        end
+    end
     local timestamp = GetTime()
 
     -- Add to internal log

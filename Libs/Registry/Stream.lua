@@ -287,6 +287,14 @@ addon.STREAM_REGISTRY = {
 -- Action Implementation Helpers
 -- 这些函数被 Libs/Registry/Actions.lua 中的 ACTION_DEFINITIONS 调用
 -- 它们封装了底层的 WoW API 调用逻辑
+--
+-- Action Semantics (Do not regress):
+-- 1) User-triggered channel actions from Shelf are ALWAYS available:
+--    - ActionSend: open chat input for a stream/channel
+--    - ActionJoin: manual join channel
+--    - ActionLeave: manual leave channel
+-- 2) Policy capability EMIT_CHAT_ACTION gates AUTOMATED emissions only
+--    (e.g., AutoWelcome / AutoJoinHelper / background sends), not manual Shelf actions.
 -- =========================================================================
 
 local SLASH_COMMANDS = {
@@ -303,6 +311,9 @@ local SLASH_COMMANDS = {
 }
 
 function addon:ActionSend(chatType, channelKey, channelName)
+    -- User-triggered channel switch from Shelf should remain available in all modes.
+    -- This action only opens chat input (or routes to a joined channel), and is not
+    -- treated as background/automated emission.
     if chatType == "CHANNEL" and channelName then
         local id = GetChannelName(channelName)
         if id and id > 0 then
@@ -319,9 +330,11 @@ function addon:ActionSend(chatType, channelKey, channelName)
 end
 
 function addon:ActionJoin(channelName)
+    -- User-triggered channel management from Shelf should remain available in all modes.
     if channelName then JoinChannelByName(channelName) end
 end
 
 function addon:ActionLeave(channelName)
+    -- User-triggered channel management from Shelf should remain available in all modes.
     if channelName then LeaveChannelByName(channelName) end
 end

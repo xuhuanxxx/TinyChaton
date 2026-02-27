@@ -12,7 +12,6 @@ local RAID_DIFFICULTIES = {
     [15] = true,  -- Heroic Raid
     [16] = true,  -- Mythic Raid
     [17] = true,  -- LFR
-    [23] = true,  -- Mythic (legacy alias)
     [33] = true,  -- Timewalking Raid
 }
 
@@ -38,7 +37,10 @@ function Env:ResolveBaseMode()
     if instanceType == "party" then
         local _, _, difficultyID = GetInstanceInfo()
         if IsMPlusDifficulty(difficultyID) then
-            return addon.POLICY_MODES.INSTANCE_LOCKDOWN
+            if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive and C_ChallengeMode.IsChallengeModeActive() then
+                return addon.POLICY_MODES.INSTANCE_LOCKDOWN
+            end
+            return addon.POLICY_MODES.INSTANCE_RELAXED
         end
         return addon.POLICY_MODES.INSTANCE_RELAXED
     end

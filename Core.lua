@@ -230,6 +230,7 @@ function addon:ApplyAllSettings()
     if not addon.db.enabled then
         if addon.Shelf and addon.Shelf.frame then addon.Shelf.frame:Hide() end
         addon:Shutdown()
+        if addon.FireEvent then addon:FireEvent("SETTINGS_APPLIED") end
         return
     end
 
@@ -239,6 +240,7 @@ function addon:ApplyAllSettings()
     if addon.ApplyAutomationSettings then addon:ApplyAutomationSettings() end
     if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
     if addon.RefreshShelf then addon:RefreshShelf() end
+    if addon.FireEvent then addon:FireEvent("SETTINGS_APPLIED") end
 end
 
 -- ============================================

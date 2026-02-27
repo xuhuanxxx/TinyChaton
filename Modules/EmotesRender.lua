@@ -154,9 +154,28 @@ function addon:UpdateEmoteTickerState()
 end
 
 function addon:InitEmotesRender()
+    local function ReconcileEmoteTickerState()
+        if not addon.db or not addon.db.enabled then
+            addon:StopBubbleTicker()
+            return
+        end
+
+        if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("EmotesRender") then
+            addon:StopBubbleTicker()
+            return
+        end
+
+        if addon.Can and addon.CAPABILITIES and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then
+            addon:StopBubbleTicker()
+            return
+        end
+
+        addon:UpdateEmoteTickerState()
+    end
+
     local function EnableEmotesRender()
         addon:RegisterChatFrameTransformer("visual_emotes", EmoteTransformer)
-        addon:UpdateEmoteTickerState()
+        ReconcileEmoteTickerState()
     end
 
     local function DisableEmotesRender()
@@ -172,6 +191,11 @@ function addon:InitEmotesRender()
         })
     else
         EnableEmotesRender()
+    end
+
+    if addon.RegisterCallback then
+        addon:RegisterCallback("SETTINGS_APPLIED", ReconcileEmoteTickerState, "EmotesRender")
+        addon:RegisterCallback("POLICY_MODE_CHANGED", ReconcileEmoteTickerState, "EmotesRender")
     end
 end
 

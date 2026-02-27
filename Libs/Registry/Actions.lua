@@ -43,8 +43,8 @@ addon.ACTION_DEFINITIONS = {
     -- =====================================================================
     {
         key = "toggle",
-        label = L["ACTION_TOGGLE"] or "Toggle",
-        category = "join",
+        label = L["ACTION_TOGGLE"],
+        category = "channel",
         appliesTo = {
             streamPaths = { "CHANNEL.DYNAMIC" }
         },
@@ -52,16 +52,29 @@ addon.ACTION_DEFINITIONS = {
             local stream = addon:GetStreamByKey(streamKey)
             if stream and stream.mappingKey then
                 local realName = L[stream.mappingKey]
+                if type(realName) ~= "string" or realName == "" then
+                    return
+                end
+
                 local isJoined = false
                 local channelList = { GetChannelList() }
                 for i = 1, #channelList, 3 do
                     local name = channelList[i + 1]
-                    if name and (name == realName or name:sub(1, #realName) == realName) then
-                        isJoined = true
-                        break
+                    if name then
+                        if name == realName then
+                            isJoined = true
+                            break
+                        end
+                        if name:sub(1, #realName) == realName then
+                            local nextChar = name:sub(#realName + 1, #realName + 1)
+                            if nextChar == "" or nextChar == " " or nextChar == "-" then
+                                isJoined = true
+                                break
+                            end
+                        end
                     end
                 end
-                
+
                 if isJoined then
                     addon:ActionLeave(realName)
                 else
@@ -71,10 +84,13 @@ addon.ACTION_DEFINITIONS = {
         end,
         getLabel = function(streamKey)
             local stream = addon:GetStreamByKey(streamKey)
-            return stream and string.format((L["ACTION_TOGGLE"] or "Toggle") .. " %s", stream.label or "") or (L["ACTION_TOGGLE"] or "Toggle")
+            if stream and stream.label then
+                return L["ACTION_TOGGLE"] .. " " .. stream.label
+            end
+            return L["ACTION_TOGGLE"]
         end,
         getTooltip = function()
-            return L["TOOLTIP_TOGGLE"] or "Join or Leave this channel"
+            return L["TOOLTIP_TOGGLE"]
         end
     },
 

@@ -249,21 +249,17 @@ function addon.CreateSelectionRibbon(name, parent)
     end
 
     -- Fixed Categories for now
-    local CATEGORY_ORDER = { "channel", "join", "leave", "kit" }
+    local CATEGORY_ORDER = { "channel", "kit" }
 
     -- Compact Labels
     local L = addon.L
     local COMPACT_LABELS = {
         channel = "发言",
-        join = "进入",
-        leave = "退出",
         kit = "工具",
     }
     if GetLocale() ~= "zhCN" then
         COMPACT_LABELS = {
             channel = "Say",
-            join = "Join",
-            leave = "Leave",
             kit = "Tools",
         }
     end

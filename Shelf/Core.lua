@@ -126,10 +126,8 @@ function addon.Shelf:GetItemConfig(key)
                 else
                     return "send_" .. itemKey
                 end
-            elseif actionKey == "join" then
-                return "join_" .. itemKey
-            elseif actionKey == "leave" then
-                return "leave_" .. itemKey
+            elseif actionKey == "toggle" then
+                return "toggle_" .. itemKey
             else
                 return "channel_" .. itemKey .. "_" .. actionKey
             end

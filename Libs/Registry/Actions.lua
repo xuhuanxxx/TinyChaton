@@ -39,11 +39,11 @@ addon.ACTION_DEFINITIONS = {
     },
 
     -- =====================================================================
-    -- [JOIN] 加入动态频道
+    -- [TOGGLE] 动态频道加入/离开切换
     -- =====================================================================
     {
-        key = "join",
-        label = L["ACTION_JOIN"],
+        key = "toggle",
+        label = L["ACTION_TOGGLE"] or "Toggle",
         category = "join",
         appliesTo = {
             streamPaths = { "CHANNEL.DYNAMIC" }
@@ -51,40 +51,30 @@ addon.ACTION_DEFINITIONS = {
         execute = function(streamKey)
             local stream = addon:GetStreamByKey(streamKey)
             if stream and stream.mappingKey then
-                addon:ActionJoin(L[stream.mappingKey])
+                local realName = L[stream.mappingKey]
+                local isJoined = false
+                local channelList = { GetChannelList() }
+                for i = 1, #channelList, 3 do
+                    local name = channelList[i + 1]
+                    if name and (name == realName or name:sub(1, #realName) == realName) then
+                        isJoined = true
+                        break
+                    end
+                end
+                
+                if isJoined then
+                    addon:ActionLeave(realName)
+                else
+                    addon:ActionJoin(realName)
+                end
             end
         end,
         getLabel = function(streamKey)
             local stream = addon:GetStreamByKey(streamKey)
-            return stream and string.format(L["ACTION_JOIN"], stream.label or "") or L["ACTION_JOIN"]
+            return stream and string.format((L["ACTION_TOGGLE"] or "Toggle") .. " %s", stream.label or "") or (L["ACTION_TOGGLE"] or "Toggle")
         end,
         getTooltip = function()
-            return L["TOOLTIP_JOIN"]
-        end
-    },
-
-    -- =====================================================================
-    -- [LEAVE] 离开动态频道
-    -- =====================================================================
-    {
-        key = "leave",
-        label = L["ACTION_LEAVE"],
-        category = "leave",
-        appliesTo = {
-            streamPaths = { "CHANNEL.DYNAMIC" }
-        },
-        execute = function(streamKey)
-            local stream = addon:GetStreamByKey(streamKey)
-            if stream and stream.mappingKey then
-                addon:ActionLeave(L[stream.mappingKey])
-            end
-        end,
-        getLabel = function(streamKey)
-            local stream = addon:GetStreamByKey(streamKey)
-            return stream and string.format(L["ACTION_LEAVE"], stream.label or "") or L["ACTION_LEAVE"]
-        end,
-        getTooltip = function()
-            return L["TOOLTIP_LEAVE"]
+            return L["TOOLTIP_TOGGLE"] or "Join or Leave this channel"
         end
     },
 

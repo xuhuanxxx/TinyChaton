@@ -343,10 +343,12 @@ function addon.Shelf:Render()
 
             if actionLeft or actionRight then
                 if actionLeft then
-                    tt:AddLine(L["LABEL_BINDING_LEFT"] .. "  " .. actionLeft.label, 1, 1, 1, 1, true)
+                    local leftLabel = type(actionLeft.getLabel) == "function" and actionLeft.getLabel(item.key) or actionLeft.label
+                    tt:AddLine(L["LABEL_BINDING_LEFT"] .. "  " .. leftLabel, 1, 1, 1, 1, true)
                 end
                 if actionRight then
-                    tt:AddLine(L["LABEL_BINDING_RIGHT"] .. "  " .. actionRight.label, 1, 1, 1, 1, true)
+                    local rightLabel = type(actionRight.getLabel) == "function" and actionRight.getLabel(item.key) or actionRight.label
+                    tt:AddLine(L["LABEL_BINDING_RIGHT"] .. "  " .. rightLabel, 1, 1, 1, 1, true)
                 end
             end
         end
@@ -368,7 +370,7 @@ function addon.Shelf:Render()
             end,
             onRightClick = rightActionKey and function(btnSelf)
                 addon.Shelf:ExecuteAction(rightActionKey, btnSelf, item)
-                if rightActionKey and rightActionKey:match("leave_") then
+                if rightActionKey and rightActionKey:match("toggle_") then
                     C_Timer.After(0.1, function()
                         addon.Shelf:Render()
                     end)

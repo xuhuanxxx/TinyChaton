@@ -99,7 +99,7 @@ end
 --- Execute middlewares for a specific stage
 --- @param stage string Stage name
 --- @param chatData table ChatData object
---- @return boolean True if message should be blocked (FILTER stage only)
+--- @return boolean True if any FILTER middleware marked a match
 function Dispatcher:RunMiddlewares(stage, chatData)
     if addon.Can then
         local caps = addon.CAPABILITIES or {}
@@ -125,13 +125,11 @@ function Dispatcher:RunMiddlewares(stage, chatData)
                     stage, middleware.name, tostring(result)))
             end
         elseif result == true and stage == "FILTER" then
-            -- Only FILTER stage can block messages
             chatData.isBlocked = true
-            return true
         end
     end
 
-    return false
+    return chatData.isBlocked == true and stage == "FILTER"
 end
 
 --- Core event handler with middleware pipeline
@@ -160,27 +158,28 @@ function Dispatcher:OnChatEvent(frame, event, ...)
     self:RunMiddlewares("PRE_PROCESS", chatData)
 
     -- Stage 2: FILTER
-    -- Filtering stage (can block message)
-    -- Stage 2: FILTER
-    -- Filtering stage (can block message)
-    if self:RunMiddlewares("FILTER", chatData) then
-        addon.ChatData:Release(chatData)
-        return true
-    end
+    -- Filtering stage now only marks metadata (display decision is centralized).
+    self:RunMiddlewares("FILTER", chatData)
 
     -- Stage 3: ENRICH
     -- Enrichment stage (internal metadata only; no argument repacking)
     self:RunMiddlewares("ENRICH", chatData)
 
-    -- Stage 4: LOG
-    -- Logging stage (side effects only, e.g., history recording)
-    if not chatData.isBlocked then
-        self:RunMiddlewares("LOG", chatData)
+    local shouldHide = false
+    if addon.VisibilityPolicy and addon.VisibilityPolicy.IsVisibleRealtime then
+        local ok, visible = pcall(addon.VisibilityPolicy.IsVisibleRealtime, addon.VisibilityPolicy, chatData)
+        if ok and visible == false then
+            shouldHide = true
+        end
     end
+
+    -- Stage 4: LOG
+    -- Logging stage always runs to keep snapshot/data ingestion complete.
+    self:RunMiddlewares("LOG", chatData)
 
     -- EventFilter path never repacks/returns modified varargs.
     addon.ChatData:Release(chatData)
-    return false
+    return shouldHide
 end
 
 --- Register event filters for all chat events

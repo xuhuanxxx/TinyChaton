@@ -39,7 +39,7 @@ local function StripPrefixTransformer(frame, text, ...)
     return addon.StripPrefix.Apply(text), ...
 end
 
-function addon:InitStripPrefix()
+function addon:InitDisplayStripPrefix()
     local function EnableStripPrefix()
         addon:RegisterChatFrameTransformer("display_strip_prefix", StripPrefixTransformer)
     end
@@ -59,4 +59,4 @@ function addon:InitStripPrefix()
     end
 end
 
-addon:RegisterModule("StripPrefix", addon.InitStripPrefix)
+addon:RegisterModule("DisplayStripPrefix", addon.InitDisplayStripPrefix)

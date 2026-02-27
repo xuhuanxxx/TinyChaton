@@ -16,7 +16,6 @@ Locales\enUS.lua
 Locales\zhCN.lua
 Locales\zhTW.lua
 
-
 Libs\Ribbon.lua
 Libs\Registry\Stream.lua
 Libs\Registry\Actions.lua
@@ -24,62 +23,62 @@ Libs\Registry\Colors.lua
 Libs\Registry\Anchors.lua
 Libs\Registry\Kits.lua
 Libs\Registry\Themes.lua
-Libs\Registry\Settings.lua
 Libs\UI\UI.lua
 Libs\MultiDropdown\MultiDropdown.xml
 Libs\MultiDropdown\Core.lua
-
 Libs\TinyReactor\TinyReactor.xml
 
 Config.lua
+
 Core\SnapshotKeys.lua
 Core.lua
-Modules\Utils.lua
-Modules\Pool.lua
+Core\Utils.lua
+Core\Pool.lua
 Core\PolicyEngine.lua
 Core\Gateway.lua
+Core\VisibilityPolicy.lua
 Core\EnvironmentService.lua
 Core\FeatureRegistry.lua
-Core\EventDispatcher.lua
-Core\Pipeline\MessageFormatter.lua
 Core\Pipeline\ChatData.lua
+Core\Pipeline\MessageFormatter.lua
+Core\Pipeline\EventDispatcher.lua
 Core\Tests.lua
 Core\Profiler.lua
 
-Core\Middleware\StripPrefix.lua
-Core\Middleware\Blacklist.lua
-Core\Middleware\Whitelist.lua
-Core\Middleware\DuplicateFilter.lua
-Core\Middleware\Timestamp.lua
-Core\Middleware\SnapshotLogger.lua
+Core\Pipeline\Middleware\Blacklist.lua
+Core\Pipeline\Middleware\Whitelist.lua
+Core\Pipeline\Middleware\DuplicateFilter.lua
+Core\Pipeline\Middleware\SystemTimestampSync.lua
+Core\Pipeline\Middleware\SnapshotLogger.lua
 
 Events.lua
 
-
-
-Modules\ChannelFormatter.lua
+Modules\DisplayStripPrefix.lua
+Modules\DisplayChannelFormatter.lua
 Modules\ChatFont.lua
 Modules\StickyChannels.lua
 Modules\SnapshotManager.lua
-Modules\CleanMessage.lua
-Modules\InteractionTimestamp.lua
-Modules\EmotesRender.lua
+Modules\DisplayCleanMessage.lua
+Modules\TimestampInteraction.lua
+Modules\DisplayEmotesRender.lua
 Modules\EmotesPanel.lua
 Modules\AutoWelcome.lua
 Modules\AutoJoinHelper.lua
 Modules\LinkHover.lua
 Modules\TabCycle.lua
-Modules\ChatHighlight.lua
+Modules\DisplayHighlight.lua
 
 Shelf\Core.lua
 Shelf\Themes.lua
 Shelf\Render.lua
+Shelf\SelectionDialog.lua
 
-Settings\Option.lua
+Settings\Schema.lua
+Settings\Controls.lua
 Settings\Pages\General.lua
 Settings\Pages\Filters.lua
 Settings\Pages\Shelf.lua
 Settings\Pages\Chat.lua
 Settings\Pages\Automation.lua
 Settings\Pages\Profile.lua
-Settings.lua
+Settings\Core.lua

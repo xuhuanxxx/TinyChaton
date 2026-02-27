@@ -201,64 +201,54 @@ function addon:InitSnapshotManager()
             return (a.time or 0) < (b.time or 0)
         end)
 
-        local mockChatData = {}
         for _, line in ipairs(allLines) do
             if line and type(line) == "table" and line.text then
                 local frame = line.frameName and _G[line.frameName] or ChatFrame1
                 if frame and frame.AddMessage then
+                    local visible = true
+                    if addon.VisibilityPolicy and addon.VisibilityPolicy.IsVisibleSnapshotLine then
+                        local ok, result = pcall(addon.VisibilityPolicy.IsVisibleSnapshotLine, addon.VisibilityPolicy, line, frame)
+                        if ok and result == false then
+                            visible = false
+                        end
+                    end
+                    if not visible then
+                        goto continue
+                    end
+
                     local channelTag = addon.MessageFormatter.GetChannelTag(line)
                     local authorTag = addon.MessageFormatter.GetAuthorTag(line)
                     -- DELAYED: local timestamp = FormatTimestamp(line)
                     
                     local finalText = line.text
-
-                    -- Apply Filters (Blacklist/Whitelist)
-                    -- Reuse mockChatData to reduce GC
-                    table.wipe(mockChatData)
-                    mockChatData.text = finalText
-                    mockChatData.author = line.authorName or "?"
-                    mockChatData.name = line.authorName or "?" 
-                    mockChatData.authorLower = string.lower(line.authorName or "?")
-                    mockChatData.textLower = string.lower(finalText)
+                    -- Now we have the final content, generate timestamp
+                    -- Construct the full message (minus timestamp) for the copy payload
+                    local contentForCopy = string.format("%s%s%s", channelTag, authorTag, finalText)
+                    local timestamp = FormatTimestamp(line, contentForCopy)
                     
-                    local isBlocked = false
-                    if addon.Filters and addon.Filters.BlacklistProcess then
-                         if addon.Filters.BlacklistProcess(mockChatData) then isBlocked = true end
+                    local displayLine = string.format("%s%s", timestamp, contentForCopy)
+
+                    -- Determine color
+                    local chatTypeForColor = line.chatType
+                    if line.chatType == "CHANNEL" and line.channelId then
+                        chatTypeForColor = "CHANNEL" .. line.channelId
                     end
                     
-                    if not isBlocked and addon.Filters and addon.Filters.WhitelistProcess then
-                         if addon.Filters.WhitelistProcess(mockChatData) then isBlocked = true end
+                    local r, g, b = 1, 1, 1
+                    if ChatTypeInfo and ChatTypeInfo[chatTypeForColor] then
+                        local info = ChatTypeInfo[chatTypeForColor]
+                        r, g, b = info.r or 1, info.g or 1, info.b or 1
                     end
 
-                    if not isBlocked then
-                        -- Now we have the final content, generate timestamp
-                        -- Construct the full message (minus timestamp) for the copy payload
-                        local contentForCopy = string.format("%s%s%s", channelTag, authorTag, finalText)
-                        local timestamp = FormatTimestamp(line, contentForCopy)
-                        
-                        local displayLine = string.format("%s%s", timestamp, contentForCopy)
-
-                        -- Determine color
-                        local chatTypeForColor = line.chatType
-                        if line.chatType == "CHANNEL" and line.channelId then
-                            chatTypeForColor = "CHANNEL" .. line.channelId
-                        end
-                        
-                        local r, g, b = 1, 1, 1
-                        if ChatTypeInfo and ChatTypeInfo[chatTypeForColor] then
-                            local info = ChatTypeInfo[chatTypeForColor]
-                            r, g, b = info.r or 1, info.g or 1, info.b or 1
-                        end
-
-                        if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
-                            displayLine = addon.Gateway.Display:Transform(frame, displayLine, r, g, b)
-                        end
-
-                        local addMessageFn = frame._TinyChatonOrigAddMessage or frame.AddMessage
-                        addMessageFn(frame, displayLine, r, g, b)
+                    if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
+                        displayLine = addon.Gateway.Display:Transform(frame, displayLine, r, g, b)
                     end
+
+                    local addMessageFn = frame._TinyChatonOrigAddMessage or frame.AddMessage
+                    addMessageFn(frame, displayLine, r, g, b)
                 end
             end
+            ::continue::
         end
 
         restored = true

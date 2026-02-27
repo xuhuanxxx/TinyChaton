@@ -127,7 +127,7 @@ function addon:DisableInteractionTimestamp()
     addon.chatFrameTransformers["interaction_timestamp"] = nil
 end
 
-function addon:InitInteractionTimestamp()
+function addon:InitTimestampInteraction()
     if addon.RegisterFeature then
         addon:RegisterFeature("InteractionTimestamp", {
             requires = { "MUTATE_CHAT_DISPLAY" },
@@ -144,4 +144,4 @@ function addon:InitInteractionTimestamp()
 end
 
 -- P0: Register Module
-addon:RegisterModule("InteractionTimestamp", addon.InitInteractionTimestamp)
+addon:RegisterModule("TimestampInteraction", addon.InitTimestampInteraction)

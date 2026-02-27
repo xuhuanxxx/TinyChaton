@@ -39,58 +39,32 @@ addon.ACTION_DEFINITIONS = {
     },
 
     -- =====================================================================
-    -- [TOGGLE] 动态频道加入/离开切换
+    -- [MUTE_TOGGLE] Dynamic channel visibility toggle
     -- =====================================================================
     {
-        key = "toggle",
-        label = L["ACTION_TOGGLE"],
+        key = "mute_toggle",
+        label = L["ACTION_MUTE_TOGGLE"],
         category = "channel",
         appliesTo = {
             streamPaths = { "CHANNEL.DYNAMIC" }
         },
         execute = function(streamKey)
-            local stream = addon:GetStreamByKey(streamKey)
-            if stream and stream.mappingKey then
-                local realName = L[stream.mappingKey]
-                if type(realName) ~= "string" or realName == "" then
-                    return
-                end
-
-                local isJoined = false
-                local channelList = { GetChannelList() }
-                for i = 1, #channelList, 3 do
-                    local name = channelList[i + 1]
-                    if name then
-                        if name == realName then
-                            isJoined = true
-                            break
-                        end
-                        if name:sub(1, #realName) == realName then
-                            local nextChar = name:sub(#realName + 1, #realName + 1)
-                            if nextChar == "" or nextChar == " " or nextChar == "-" then
-                                isJoined = true
-                                break
-                            end
-                        end
-                    end
-                end
-
-                if isJoined then
-                    addon:ActionLeave(realName)
-                else
-                    addon:ActionJoin(realName)
-                end
+            if addon.VisibilityPolicy and addon.VisibilityPolicy.ToggleDynamicChannelMute then
+                addon.VisibilityPolicy:ToggleDynamicChannelMute(streamKey)
+            end
+            if addon.RefreshShelf then
+                addon:RefreshShelf()
             end
         end,
         getLabel = function(streamKey)
             local stream = addon:GetStreamByKey(streamKey)
             if stream and stream.label then
-                return L["ACTION_TOGGLE"] .. " " .. stream.label
+                return L["ACTION_MUTE_TOGGLE"] .. " " .. stream.label
             end
-            return L["ACTION_TOGGLE"]
+            return L["ACTION_MUTE_TOGGLE"]
         end,
         getTooltip = function()
-            return L["TOOLTIP_TOGGLE"]
+            return L["TOOLTIP_MUTE_TOGGLE"]
         end
     },
 

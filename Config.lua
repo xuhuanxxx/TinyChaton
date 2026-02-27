@@ -285,6 +285,7 @@ addon.DEFAULTS = {
             direction = "horizontal",
             savedPoint = false,
             dynamicMode = "mark",
+            mutedDynamicChannels = {},
             channelPins = BuildChannelPins(),
             kitPins = BuildKitPins(),
             shelfOrder = nil,
@@ -356,7 +357,7 @@ addon.DEFAULTS = {
     },
 }
 
--- SETTING_REGISTRY moved to Libs/Registry/Settings.lua
+-- SETTING_REGISTRY moved to Settings/Schema.lua
 
 function addon:GetSettingInfo(key)
     return addon.SETTING_REGISTRY[key]

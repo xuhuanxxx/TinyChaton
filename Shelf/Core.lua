@@ -126,8 +126,8 @@ function addon.Shelf:GetItemConfig(key)
                 else
                     return "send_" .. itemKey
                 end
-            elseif actionKey == "toggle" then
-                return "toggle_" .. itemKey
+            elseif actionKey == "mute_toggle" then
+                return "mute_toggle_" .. itemKey
             else
                 return "channel_" .. itemKey .. "_" .. actionKey
             end
@@ -283,6 +283,11 @@ function addon.Shelf:GetVisibleItems()
                     local btnKey = channelNumber and tostring(channelNumber) or item.key
                     local displayText = isChannel and addon:GetChannelLabel(item, channelNumber, "SHORT") or (item.short or item.label or key)
 
+                    local isMuted = false
+                    if item.isDynamic and addon.VisibilityPolicy and addon.VisibilityPolicy.IsDynamicChannelMuted then
+                        isMuted = addon.VisibilityPolicy:IsDynamicChannelMuted(item.key)
+                    end
+
                     table.insert(visibleItems, {
                         key = btnKey,
                         itemKey = item.key,
@@ -294,6 +299,7 @@ function addon.Shelf:GetVisibleItems()
                         isActive = (not isChannel) or isJoined,
                         isChannel = isChannel,
                         isKit = isKit,
+                        isMuted = isMuted,
                         item = item,
                         channelNumber = channelNumber,
                     })

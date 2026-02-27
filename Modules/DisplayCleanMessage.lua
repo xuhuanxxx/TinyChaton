@@ -2,7 +2,7 @@ local addonName, addon = ...
 local L = addon.L
 
 -- =========================================================================
--- CleanMessage Module (was CleanChat)
+-- Display Module: CleanMessage
 -- Description: Cleans up real-time chat messages for better aesthetics.
 --              Primarily removes the space after the full-width colon in zhCN.
 -- =========================================================================
@@ -27,7 +27,7 @@ function addon.CleanMessage.Process(frame, text, r, g, b, ...)
     return text, r, g, b, ...
 end
 
-function addon:InitCleanMessage()
+function addon:InitDisplayCleanMessage()
     local function EnableCleanMessage()
         addon:RegisterChatFrameTransformer("clean_message", addon.CleanMessage.Process)
     end
@@ -48,4 +48,4 @@ function addon:InitCleanMessage()
 end
 
 -- P1: Register Module
-addon:RegisterModule("CleanMessage", addon.InitCleanMessage)
+addon:RegisterModule("DisplayCleanMessage", addon.InitDisplayCleanMessage)

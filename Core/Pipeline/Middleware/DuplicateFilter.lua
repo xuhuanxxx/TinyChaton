@@ -45,7 +45,9 @@ local function BuildNormalizedMessage(msg)
     return cleanMsg
 end
 
-local function DuplicateFilterBlockMiddleware(chatData)
+addon.Filters = addon.Filters or {}
+
+function addon.Filters.DuplicateProcess(chatData)
     if not addon.db or not addon.db.enabled then return end
     local filterSettings = addon.db.plugin and addon.db.plugin.filter
     if not filterSettings or not filterSettings.repeatFilter then return end
@@ -74,6 +76,13 @@ local function DuplicateFilterBlockMiddleware(chatData)
     lastMessage[author] = { msg = normalizedMsg, time = t }
     lastAccess[author] = t
 
+    return false
+end
+
+local function DuplicateFilterBlockMiddleware(chatData)
+    if not chatData then return false end
+    chatData.metadata = chatData.metadata or {}
+    chatData.metadata.duplicateBlocked = addon.Filters.DuplicateProcess(chatData) == true
     return false
 end
 

@@ -119,7 +119,10 @@ function addon.Filters.BlacklistProcess(chatData)
 end
 
 local function BlacklistMiddleware(chatData)
-    return addon.Filters.BlacklistProcess(chatData)
+    if not chatData then return false end
+    chatData.metadata = chatData.metadata or {}
+    chatData.metadata.blacklistMatched = addon.Filters.BlacklistProcess(chatData) == true
+    return false
 end
 
 function addon:InitBlacklistMiddleware()

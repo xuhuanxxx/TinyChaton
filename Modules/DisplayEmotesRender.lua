@@ -153,7 +153,7 @@ function addon:UpdateEmoteTickerState()
     end
 end
 
-function addon:InitEmotesRender()
+function addon:InitDisplayEmotesRender()
     local function ReconcileEmoteTickerState()
         if not addon.db or not addon.db.enabled then
             addon:StopBubbleTicker()
@@ -200,4 +200,4 @@ function addon:InitEmotesRender()
 end
 
 -- P0: Register Module
-addon:RegisterModule("EmotesRender", addon.InitEmotesRender)
+addon:RegisterModule("DisplayEmotesRender", addon.InitDisplayEmotesRender)

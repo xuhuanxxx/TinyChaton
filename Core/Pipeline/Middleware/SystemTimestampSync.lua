@@ -26,7 +26,7 @@ local function SyncTimestampSetting()
     addon.db.plugin.chat.interaction.timestampEnabled = IsSystemTimestampEnabled()
 end
 
-function addon:InitTimestampMiddleware()
+function addon:InitSystemTimestampSyncMiddleware()
     if addon.RegisterEvent then
         addon:RegisterEvent("CVAR_UPDATE", function(_, ...)
             local cvarName
@@ -77,4 +77,4 @@ function addon:InitTimestampMiddleware()
     end
 end
 
-addon:RegisterModule("TimestampMiddleware", addon.InitTimestampMiddleware)
+addon:RegisterModule("SystemTimestampSyncMiddleware", addon.InitSystemTimestampSyncMiddleware)

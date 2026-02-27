@@ -2,7 +2,7 @@ local addonName, addon = ...
 local L = addon.L
 
 -- =========================================================================
--- Module: ChannelFormatter (was ContentChannel/ChannelAbbreviation)
+-- Display Module: ChannelFormatter (was ContentChannel/ChannelAbbreviation)
 -- Handles all channel name shortening and formatting logic
 -- Decoupled from Visual.lua to prevent conflicts and recursion issues
 -- =========================================================================
@@ -302,9 +302,9 @@ function CF:Init()
     end
 end
 
-function addon:InitChannelFormatter()
+function addon:InitDisplayChannelFormatter()
     CF:Init()
 end
 
 -- P0: Register Module
-addon:RegisterModule("ChannelFormatter", addon.InitChannelFormatter)
+addon:RegisterModule("DisplayChannelFormatter", addon.InitDisplayChannelFormatter)

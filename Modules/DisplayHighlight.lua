@@ -1,10 +1,8 @@
 local addonName, addon = ...
 
 -- =========================================================================
--- Module: ChatHighlight
--- Moved from Core/Middleware/Highlight
--- Stage: ENRICH (via EventDispatcher)
--- Priority: 40
+-- Display Module: ChatHighlight
+-- Stage: Display Transformer
 -- Description: Adds color codes to names and keywords in chat messages
 -- =========================================================================
 
@@ -121,7 +119,7 @@ local function HighlightTransformer(frame, text, ...)
     return addon.ChatHighlight.ApplyToDisplayText(text), ...
 end
 
-function addon:InitChatHighlight()
+function addon:InitDisplayHighlight()
     local function EnableChatHighlight()
         addon:RegisterChatFrameTransformer("display_highlight", HighlightTransformer)
     end
@@ -142,4 +140,4 @@ function addon:InitChatHighlight()
 end
 
 -- P0: Register Module
-addon:RegisterModule("ChatHighlight", addon.InitChatHighlight)
+addon:RegisterModule("DisplayHighlight", addon.InitDisplayHighlight)

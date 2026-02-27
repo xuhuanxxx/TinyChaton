@@ -122,7 +122,7 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 order = 90,
-                defaultBindings = { left = "send", right = "toggle" },
+                defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "trade",
@@ -133,7 +133,7 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 order = 91,
-                defaultBindings = { left = "send", right = "toggle" },
+                defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "localdefense",
@@ -145,7 +145,7 @@ addon.STREAM_REGISTRY = {
                 events = { "CHAT_MSG_CHANNEL" },
                 order = 92,
                 defaultPinned = false,
-                defaultBindings = { left = "send", right = "toggle" },
+                defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "lfg",
@@ -156,7 +156,7 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 order = 93,
-                defaultBindings = { left = "send", right = "toggle" },
+                defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "services",
@@ -168,7 +168,7 @@ addon.STREAM_REGISTRY = {
                 events = { "CHAT_MSG_CHANNEL" },
                 order = 94,
                 defaultPinned = false,
-                defaultBindings = { left = "send", right = "toggle" },
+                defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "world",
@@ -179,7 +179,7 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 order = 100,
-                defaultBindings = { left = "send", right = "toggle" },
+                defaultBindings = { left = "send", right = "mute_toggle" },
             },
         },
 

@@ -360,7 +360,7 @@ function addon.Shelf:Render()
             key = info.key,
             text = info.text,
             item = item,
-            isActive = info.isActive, -- Pass active state
+            isActive = info.isActive and not info.isMuted,
             size = btnSize,
             theme = currentTheme, -- Pass the theme!
 
@@ -370,7 +370,7 @@ function addon.Shelf:Render()
             end,
             onRightClick = rightActionKey and function(btnSelf)
                 addon.Shelf:ExecuteAction(rightActionKey, btnSelf, item)
-                if rightActionKey and rightActionKey:match("toggle_") then
+                if rightActionKey and rightActionKey:match("mute_toggle_") then
                     C_Timer.After(0.1, function()
                         addon.Shelf:Render()
                     end)

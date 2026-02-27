@@ -123,7 +123,10 @@ function addon.Filters.WhitelistProcess(chatData)
 end
 
 local function WhitelistMiddleware(chatData)
-    return addon.Filters.WhitelistProcess(chatData)
+    if not chatData then return false end
+    chatData.metadata = chatData.metadata or {}
+    chatData.metadata.whitelistBlocked = addon.Filters.WhitelistProcess(chatData) == true
+    return false
 end
 
 function addon:InitWhitelistMiddleware()

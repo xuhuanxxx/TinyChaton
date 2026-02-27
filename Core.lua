@@ -43,6 +43,8 @@ function addon:RegisterChatFrameTransformer(name, fn)
 end
 
 addon.TRANSFORMER_ORDER = {
+    "display_strip_prefix",
+    "display_highlight",
     "clean_message",
     "channel_formatter",
     "interaction_timestamp",

@@ -138,13 +138,13 @@ end
 --- @param frame table ChatFrame object
 --- @param event string Event name
 --- @param ... Event arguments
---- @return boolean|nil, ... Whether to block message, modified arguments
+--- @return boolean Whether to block message
 function Dispatcher:OnChatEvent(frame, event, ...)
     if addon.Gateway and addon.Gateway.Inbound and not addon.Gateway.Inbound:Allow(event, frame, ...) then
-        return false, ...
+        return false
     end
     if not addon.Gateway and (not addon.db or not addon.db.enabled) then
-        return false, ...
+        return false
     end
 
     -- Create ChatData object
@@ -152,7 +152,7 @@ function Dispatcher:OnChatEvent(frame, event, ...)
 
     -- Skip if chatData is nil (e.g., secret value from Blizzard)
     if not chatData then
-        return false, ...
+        return false
     end
 
     -- Stage 1: PRE_PROCESS
@@ -169,7 +169,7 @@ function Dispatcher:OnChatEvent(frame, event, ...)
     end
 
     -- Stage 3: ENRICH
-    -- Enrichment stage (can modify content/args)
+    -- Enrichment stage (internal metadata only; no argument repacking)
     self:RunMiddlewares("ENRICH", chatData)
 
     -- Stage 4: LOG
@@ -178,31 +178,9 @@ function Dispatcher:OnChatEvent(frame, event, ...)
         self:RunMiddlewares("LOG", chatData)
     end
 
-    -- optimization: if text and author are not modified, return false (pass through)
-    -- This prevents us from breaking message formatting (like class colors) due to
-    -- potential argument repacking issues if we don't strictly need to modify args.
-
-    if chatData.text == chatData.rawText and chatData.author == chatData.rawAuthor then
-        addon.ChatData:Release(chatData)
-        return false
-    end
-
-    -- Safety: never repack CHAT_MSG_CHANNEL args.
-    -- In modern clients these varargs may contain protected/secret sentinel values
-    -- that are safe in pass-through mode but unsafe after Lua table repacking.
-    if event == "CHAT_MSG_CHANNEL" then
-        addon.ChatData:Release(chatData)
-        return false
-    end
-
-    -- Get modified arguments
-    local result = {addon.ChatData:GetArgs(chatData)}
-    
-    -- Release object
+    -- EventFilter path never repacks/returns modified varargs.
     addon.ChatData:Release(chatData)
-    
-    -- Return modified arguments
-    return false, unpack(result)
+    return false
 end
 
 --- Register event filters for all chat events

@@ -81,9 +81,26 @@ local function HighlightMiddleware(chatData)
 end
 
 function addon:InitChatHighlight()
-    -- Register as middleware in ENRICH stage
-    if addon.EventDispatcher then
-        addon.EventDispatcher:RegisterMiddleware("ENRICH", 40, "ChatHighlight", HighlightMiddleware)
+    local function EnableChatHighlight()
+        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("ENRICH", "ChatHighlight") then
+            addon.EventDispatcher:RegisterMiddleware("ENRICH", 40, "ChatHighlight", HighlightMiddleware)
+        end
+    end
+
+    local function DisableChatHighlight()
+        if addon.EventDispatcher then
+            addon.EventDispatcher:UnregisterMiddleware("ENRICH", "ChatHighlight")
+        end
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("ChatHighlight", {
+            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+            onEnable = EnableChatHighlight,
+            onDisable = DisableChatHighlight,
+        })
+    else
+        EnableChatHighlight()
     end
 end
 

@@ -38,6 +38,9 @@ end
 
 local function trySendWelcome(playerName, scene)
     if not addon.db or not addon.db.enabled then return end
+    if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
+        return
+    end
     local c = addon.db.plugin.automation
     local cfg = scene == "guild" and c.welcomeGuild or scene == "party" and c.welcomeParty or c.welcomeRaid
     if not cfg or not cfg.enabled then return end
@@ -69,6 +72,10 @@ local function trySendWelcome(playerName, scene)
     local timerKey = playerName .. "_" .. scene
     local timer = C_Timer.NewTimer(math.random(2, 5), function()
         pendingWelcomeTimers[timerKey] = nil
+        -- Belt-and-suspenders for delayed callback: policy may change after timer creation.
+        if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
+            return
+        end
         -- Re-check settings before sending (user may have disabled)
         if not addon.db or not addon.db.plugin.automation then return end
         local cfgNow = scene == "guild" and addon.db.plugin.automation.welcomeGuild or scene == "party" and addon.db.plugin.automation.welcomeParty or addon.db.plugin.automation.welcomeRaid
@@ -82,13 +89,13 @@ local function trySendWelcome(playerName, scene)
         end
 
         if chatType == "WHISPER" then
-            SendChatMessage(text, "WHISPER", nil, playerName)
+            addon:EmitChatMessage(text, "WHISPER", nil, playerName)
         elseif scene == "guild" and IsInGuild() then
-            SendChatMessage(text, "GUILD")
+            addon:EmitChatMessage(text, "GUILD")
         elseif scene == "party" and IsInGroup() and not IsInRaid() then
-            SendChatMessage(text, "PARTY")
+            addon:EmitChatMessage(text, "PARTY")
         elseif scene == "raid" and IsInRaid() then
-            SendChatMessage(text, "RAID")
+            addon:EmitChatMessage(text, "RAID")
         else
             return
         end
@@ -110,9 +117,19 @@ end
 --- Greeting Middleware (PRE_PROCESS stage)
 --- Detects player join messages and sends automated greetings
 local function OnSystemMessage(self, event, msg)
+    if addon.Can then
+        -- Belt-and-suspenders: listener is managed by FeatureRegistry,
+        -- but keep runtime checks for safety under async/policy drift.
+        if not addon:Can(addon.CAPABILITIES.READ_CHAT_EVENT) then
+            return
+        end
+        if not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
+            return
+        end
+    end
     -- P0: Config Access
     if not addon:GetConfig("plugin.automation", true) then return end
-    if not msg then return end
+    if type(msg) ~= "string" or msg == "" then return end
 
     -- Check each scene
     local player = getJoinedPlayer(msg, "guild")
@@ -135,13 +152,33 @@ local function OnSystemMessage(self, event, msg)
 end
 
 function addon:InitAutoWelcome()
-    if addon.AutoWelcomeListener then return end
-    
-    local listener = CreateFrame("Frame")
-    listener:RegisterEvent("CHAT_MSG_SYSTEM")
-    listener:SetScript("OnEvent", OnSystemMessage)
-    
-    addon.AutoWelcomeListener = listener
+    local function EnableAutoWelcomeListener()
+        if not addon.AutoWelcomeListener then
+            addon.AutoWelcomeListener = CreateFrame("Frame")
+            addon.AutoWelcomeListener:SetScript("OnEvent", OnSystemMessage)
+        end
+
+        if not addon.AutoWelcomeListener:IsEventRegistered("CHAT_MSG_SYSTEM") then
+            addon.AutoWelcomeListener:RegisterEvent("CHAT_MSG_SYSTEM")
+        end
+    end
+
+    local function DisableAutoWelcomeListener()
+        if addon.AutoWelcomeListener and addon.AutoWelcomeListener:IsEventRegistered("CHAT_MSG_SYSTEM") then
+            addon.AutoWelcomeListener:UnregisterEvent("CHAT_MSG_SYSTEM")
+        end
+        addon:CancelPendingWelcomeTimers()
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("AutoWelcome", {
+            requires = { "READ_CHAT_EVENT", "EMIT_CHAT_ACTION" },
+            onEnable = EnableAutoWelcomeListener,
+            onDisable = DisableAutoWelcomeListener,
+        })
+    else
+        EnableAutoWelcomeListener()
+    end
 end
 
 -- P0: Register Module

@@ -154,18 +154,24 @@ function addon:UpdateEmoteTickerState()
 end
 
 function addon:InitEmotesRender()
-    -- Register as a Transformer (Visual Layer)
-    addon:RegisterChatFrameTransformer("visual_emotes", EmoteTransformer)
+    local function EnableEmotesRender()
+        addon:RegisterChatFrameTransformer("visual_emotes", EmoteTransformer)
+        addon:UpdateEmoteTickerState()
+    end
 
-    -- Transformer order is centralized in Core.lua
+    local function DisableEmotesRender()
+        addon.chatFrameTransformers["visual_emotes"] = nil
+        addon:StopBubbleTicker()
+    end
 
-    HookChatBubbles()
-
-    -- Hook into settings application to toggle ticker
-    local origApply = addon.ApplyAllSettings
-    addon.ApplyAllSettings = function(self)
-        if origApply then origApply(self) end
-        self:UpdateEmoteTickerState()
+    if addon.RegisterFeature then
+        addon:RegisterFeature("EmotesRender", {
+            requires = { "MUTATE_CHAT_DISPLAY" },
+            onEnable = EnableEmotesRender,
+            onDisable = DisableEmotesRender,
+        })
+    else
+        EnableEmotesRender()
     end
 end
 

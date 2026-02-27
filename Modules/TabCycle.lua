@@ -13,7 +13,7 @@ local systemCycleOrder = {
     "SAY", "PARTY", "RAID", "INSTANCE_CHAT", "GUILD", "YELL"
 }
 
--- Normalize chatType：PARTY_LEADER -> PARTY, INSTANCE_CHAT_LEADER -> INSTANCE_CHAT
+-- Normalize chatType: PARTY_LEADER -> PARTY, INSTANCE_CHAT_LEADER -> INSTANCE_CHAT
 local function NormalizeChatType(t)
     if not t then return "SAY" end
     if t == "PARTY_LEADER" then return "PARTY" end
@@ -93,6 +93,8 @@ local function GetNextChannel(currentType, currentTarget)
 end
 
 local function OnTabPressed(self)
+    if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("TabCycle") then return end
+    if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then return end
     if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction or not addon.db.plugin.chat.interaction.tabCycle then return end
     local text = self:GetText()
     if text:sub(1, 1) ~= "/" then return end
@@ -119,7 +121,7 @@ local function OnTabPressed(self)
     end
 
     ChatEdit_UpdateHeader(self)
-    self:SetText("")  -- Clear input, keep channel switch
+    self:SetText("")  -- Clear input while keeping the target channel.
 end
 
 -- Store delayed timer reference for cancellation
@@ -132,35 +134,46 @@ function addon:InitTabCycle()
         editBox:HookScript("OnTabPressed", OnTabPressed)
     end
 
-    -- Prioritize ChatFrame1EditBox (Retail shared EditBox)
-    if ChatFrame1EditBox then
-        HookEditBox(ChatFrame1EditBox)
-    end
-
-    -- Compatibility loop: ChatFrame.editBox and ChatFrame*EditBox
-    for i = 1, NUM_CHAT_WINDOWS do
-        local cf = _G["ChatFrame"..i]
-        if cf and cf.editBox then
-            HookEditBox(cf.editBox)
-        end
-        local eb = _G["ChatFrame"..i.."EditBox"]
-        if eb then
-            HookEditBox(eb)
-        end
-    end
-
-    -- Retry with delay (EditBox might not be created yet)
-    delayedHookTimer = C_Timer.NewTimer(1, function()
-        delayedHookTimer = nil
-        if ChatFrame1EditBox and not ChatFrame1EditBox._TinyChatonTabCycleHooked then
+    local function HookAllEditBoxes()
+        -- Prioritize ChatFrame1EditBox (Retail shared EditBox).
+        if ChatFrame1EditBox then
             HookEditBox(ChatFrame1EditBox)
         end
+
+        -- Compatibility loop: ChatFrame.editBox and ChatFrame*EditBox.
         for i = 1, NUM_CHAT_WINDOWS do
             local cf = _G["ChatFrame"..i]
-            if cf and cf.editBox and not cf.editBox._TinyChatonTabCycleHooked then
+            if cf and cf.editBox then
                 HookEditBox(cf.editBox)
             end
+            local eb = _G["ChatFrame"..i.."EditBox"]
+            if eb then
+                HookEditBox(eb)
+            end
         end
+    end
+    local function EnableTabCycle()
+        HookAllEditBoxes()
+    end
+
+    local function DisableTabCycle()
+        -- HookScript is not reversible, so disable via runtime guards in callbacks.
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("TabCycle", {
+            requires = { "MUTATE_CHAT_DISPLAY" },
+            onEnable = EnableTabCycle,
+            onDisable = DisableTabCycle,
+        })
+    else
+        EnableTabCycle()
+    end
+
+    -- Retry with delay in case edit boxes were created late.
+    delayedHookTimer = C_Timer.NewTimer(1, function()
+        delayedHookTimer = nil
+        HookAllEditBoxes()
     end)
 end
 

@@ -38,33 +38,48 @@ local COMBAT_PROTECTED_CHAT_TYPES = {
 -- Helper Functions
 -- -------------------------------------------------------------------------
 
-local function GetJoinedChannelNameById(id)
-    if not id then return nil end
-    local list = { GetChannelList() }
-    for i = 1, #list, 3 do
-        if list[i] == id then
-            return list[i + 1]
-        end
+local shortLabelByNameCache = {}
+local shortLabelByChannelIdCache = {}
+
+function CF:InvalidateCaches()
+    table.wipe(shortLabelByNameCache)
+    table.wipe(shortLabelByChannelIdCache)
+    if addon.Utils and addon.Utils.InvalidateChannelCaches then
+        addon.Utils.InvalidateChannelCaches()
     end
-    return nil
 end
 
 -- Resolve channel name to short label using our registry
 local function GetChannelShortLabel(name)
     if not name then return nil end
+    if shortLabelByNameCache[name] ~= nil then
+        return shortLabelByNameCache[name] or nil
+    end
+
+    local byKey = addon.Utils and addon.Utils.FindChannelByKey and addon.Utils.FindChannelByKey(name)
+    if byKey then
+        local label = addon:GetChannelLabel(byKey, nil)
+        shortLabelByNameCache[name] = label
+        return label
+    end
 
     for _, stream, catKey, subKey in addon:IterateAllStreams() do
         if stream.label == name then
-            return addon:GetChannelLabel(stream, nil)
+            local label = addon:GetChannelLabel(stream, nil)
+            shortLabelByNameCache[name] = label
+            return label
         end
         if stream.mappingKey then
             local realName = L[stream.mappingKey]
             if realName == name or (realName and (name:find(realName, 1, true) == 1 or realName:find(name, 1, true) == 1)) then
-                return addon:GetChannelLabel(stream, nil)
+                local label = addon:GetChannelLabel(stream, nil)
+                shortLabelByNameCache[name] = label
+                return label
             end
         end
     end
 
+    shortLabelByNameCache[name] = false
     return nil
 end
 
@@ -74,6 +89,8 @@ end
 
 -- 1. Modify Global Strings (e.g. CHAT_GUILD_GET)
 function CF:ApplyShortChannelGlobals()
+    self:InvalidateCaches()
+
     -- Restore original values first (if previously modified)
     -- But skip protected globals to avoid crashes
     if addon.ChatTypeFormatBackup then
@@ -100,6 +117,17 @@ function CF:ApplyShortChannelGlobals()
             if type(base) == "string" and base:match("%[([^%]]+)%]") then
                 _G[key] = base:gsub("()%[([^%]]+)%]", function(_, _inner) return "[" .. shortTag .. "]" end, 1)
             end
+        end
+    end
+end
+
+function CF:RestoreShortChannelGlobals()
+    if not addon.ChatTypeFormatBackup then
+        return
+    end
+    for key, _ in pairs(CHAT_TYPE_TO_LKEY) do
+        if not COMBAT_PROTECTED_CHAT_TYPES[key] and addon.ChatTypeFormatBackup[key] ~= nil then
+            _G[key] = addon.ChatTypeFormatBackup[key]
         end
     end
 end
@@ -149,25 +177,27 @@ function CF:ResolveShortPrefixed(communityChannel)
         if prefix then
             local id = tonumber(prefix)
             if id then
-                local name = GetJoinedChannelNameById(id)
+                if shortLabelByChannelIdCache[id] ~= nil then
+                    return shortLabelByChannelIdCache[id]
+                end
+
+                local name = addon.Utils.GetJoinedChannelNameById(id)
                 if name then
                     local normalized = addon.Utils.NormalizeChannelBaseName(name)
                     local short = GetChannelShortLabel(normalized)
-                    if short then return short end
-                end
-
-                -- Reverse lookup in streams
-                for _, stream, catKey, subKey in addon:IterateAllStreams() do
-                    if subKey == "DYNAMIC" and stream.mappingKey then
-                        local realName = L[stream.mappingKey]
-                        if realName then
-                            local chanId = GetChannelName(realName)
-                            if chanId == id then
-                                return addon:GetChannelLabel(stream, nil)
-                            end
-                        end
+                    if short then
+                        shortLabelByChannelIdCache[id] = short
+                        return short
                     end
                 end
+
+                local stream = addon.Utils.FindDynamicStreamByChannelId(id)
+                if stream then
+                    local short = addon:GetChannelLabel(stream, nil)
+                    shortLabelByChannelIdCache[id] = short
+                    return short
+                end
+                shortLabelByChannelIdCache[id] = communityChannel
             end
         end
 
@@ -184,7 +214,7 @@ function CF:ResolveShortPrefixed(communityChannel)
         if prefix then
             local id = tonumber(prefix)
             if id then
-                local name = GetJoinedChannelNameById(id)
+                local name = addon.Utils.GetJoinedChannelNameById(id)
                 if name then
                     local normalized = addon.Utils.NormalizeChannelBaseName(name)
                     local short = GetChannelShortLabel(normalized)
@@ -237,14 +267,39 @@ end
 
 -- Initialize
 function CF:Init()
-    -- Apply global strings modification (e.g. CHAT_GUILD_GET = "[G]")
-    -- This is generally safe as it just changes string constants
-    CF:ApplyShortChannelGlobals()
+    self:InvalidateCaches()
 
-    -- Register as a ChatFrame Transformer (Visual Layer)
-    addon:RegisterChatFrameTransformer("channel_formatter", ChannelFormatterTransformer)
+    if addon.RegisterEvent then
+        addon:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+            CF:InvalidateCaches()
+        end)
+        addon:RegisterEvent("CHANNEL_UI_UPDATE", function()
+            CF:InvalidateCaches()
+        end)
+        addon:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE", function()
+            CF:InvalidateCaches()
+        end)
+    end
 
-    -- Transformer order is now centralized in Core.lua
+    local function EnableChannelFormatter()
+        CF:ApplyShortChannelGlobals()
+        addon:RegisterChatFrameTransformer("channel_formatter", ChannelFormatterTransformer)
+    end
+
+    local function DisableChannelFormatter()
+        addon.chatFrameTransformers["channel_formatter"] = nil
+        CF:RestoreShortChannelGlobals()
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("ChannelFormatter", {
+            requires = { "MUTATE_CHAT_DISPLAY" },
+            onEnable = EnableChannelFormatter,
+            onDisable = DisableChannelFormatter,
+        })
+    else
+        EnableChannelFormatter()
+    end
 end
 
 function addon:InitChannelFormatter()

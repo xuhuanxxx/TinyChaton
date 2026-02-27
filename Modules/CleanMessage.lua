@@ -28,14 +28,23 @@ function addon.CleanMessage.Process(frame, text, r, g, b, ...)
 end
 
 function addon:InitCleanMessage()
-    -- Register as a transformer
-    -- We want this to run BEFORE visual processors but AFTER copy/link logic?
-    -- Actually, it changes the text content length/indices.
-    -- If ClickToCopy relies on indices (it does somewhat), we should clean FIRST?
-    -- ClickToCopy (copy transformer) runs looking for timestamps.
-    -- If we remove space, it shouldn't affect timestamp at the start.
+    local function EnableCleanMessage()
+        addon:RegisterChatFrameTransformer("clean_message", addon.CleanMessage.Process)
+    end
 
-    addon:RegisterChatFrameTransformer("clean_message", addon.CleanMessage.Process)
+    local function DisableCleanMessage()
+        addon.chatFrameTransformers["clean_message"] = nil
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("CleanMessage", {
+            requires = { "MUTATE_CHAT_DISPLAY" },
+            onEnable = EnableCleanMessage,
+            onDisable = DisableCleanMessage,
+        })
+    else
+        EnableCleanMessage()
+    end
 end
 
 -- P1: Register Module

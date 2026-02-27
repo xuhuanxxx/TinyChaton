@@ -35,12 +35,10 @@ end
 function Dispatcher:RegisterMiddleware(stage, priority, name, fn)
     if not self.middlewares[stage] then
         error("Invalid middleware stage: " .. tostring(stage))
-        return
     end
 
     if type(fn) ~= "function" then
         error("Middleware function must be a function")
-        return
     end
 
     table.insert(self.middlewares[stage], {
@@ -103,6 +101,17 @@ end
 --- @param chatData table ChatData object
 --- @return boolean True if message should be blocked (FILTER stage only)
 function Dispatcher:RunMiddlewares(stage, chatData)
+    if addon.Can then
+        local caps = addon.CAPABILITIES or {}
+        if (stage == "PRE_PROCESS" or stage == "FILTER" or stage == "ENRICH")
+            and not addon:Can(caps.PROCESS_CHAT_DATA or "PROCESS_CHAT_DATA") then
+            return false
+        end
+        if stage == "LOG" and not addon:Can(caps.PERSIST_CHAT_DATA or "PERSIST_CHAT_DATA") then
+            return false
+        end
+    end
+
     local middlewares = self.middlewares[stage]
     if not middlewares then return false end
 
@@ -131,9 +140,10 @@ end
 --- @param ... Event arguments
 --- @return boolean|nil, ... Whether to block message, modified arguments
 function Dispatcher:OnChatEvent(frame, event, ...)
-    -- Skip if addon is disabled or in combat (to prevent taint)
-    if InCombatLockdown() then return false, ... end
-    if not addon.db or not addon.db.enabled then
+    if addon.Gateway and addon.Gateway.Inbound and not addon.Gateway.Inbound:Allow(event, frame, ...) then
+        return false, ...
+    end
+    if not addon.Gateway and (not addon.db or not addon.db.enabled) then
         return false, ...
     end
 
@@ -189,10 +199,17 @@ end
 
 --- Register event filters for all chat events
 function Dispatcher:RegisterFilters()
-    local events = addon.CHAT_EVENTS or {}
-
-    -- Add CHAT_MSG_SYSTEM for Greeting middleware
-    table.insert(events, "CHAT_MSG_SYSTEM")
+    local events = {}
+    local seen = {}
+    for _, eventName in ipairs(addon.CHAT_EVENTS or {}) do
+        if not seen[eventName] then
+            events[#events + 1] = eventName
+            seen[eventName] = true
+        end
+    end
+    if not seen["CHAT_MSG_SYSTEM"] then
+        events[#events + 1] = "CHAT_MSG_SYSTEM"
+    end
 
     for _, event in ipairs(events) do
         if not self.registeredFilters[event] then

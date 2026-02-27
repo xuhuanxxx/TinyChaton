@@ -14,8 +14,20 @@ local ruleCache = {
     version = 0,
 }
 
+local function IsPatternSafe(pattern)
+    if not pattern then return false end
+    local len = #pattern
+    if len > 100 then return false end
+
+    local _, count = pattern:gsub("[%%%(%)%.%[%]%*%+%-%?%$%^]", "")
+    if count > 20 then return false end
+
+    return true
+end
+
 local function IsLuaPattern(pattern)
     if not pattern or pattern == "" then return false end
+    if not IsPatternSafe(pattern) then return false end
     if not string.find(pattern, "[%^%$%(%)%%%.%[%]%*%+%-%?]") then return false end
     local success = pcall(function() return string.match("", pattern) end)
     return success
@@ -79,12 +91,13 @@ function addon.Filters.WhitelistProcess(chatData)
     if not cache then return false end
 
     local matched = false
+    local authorName = chatData.name and string.lower(chatData.name) or ""
 
     -- 1. Check Names
     if cache.names then
         for _, rule in ipairs(cache.names) do
             if MatchRule(chatData.author, chatData.authorLower, rule) or
-               MatchRule(chatData.name, string.lower(chatData.name), rule) then
+               MatchRule(chatData.name or "", authorName, rule) then
                 matched = true
                 break
             end
@@ -113,4 +126,28 @@ local function WhitelistMiddleware(chatData)
     return addon.Filters.WhitelistProcess(chatData)
 end
 
-addon.EventDispatcher:RegisterMiddleware("FILTER", 21, "Whitelist", WhitelistMiddleware)
+function addon:InitWhitelistMiddleware()
+    local function EnableWhitelist()
+        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("FILTER", "Whitelist") then
+            addon.EventDispatcher:RegisterMiddleware("FILTER", 21, "Whitelist", WhitelistMiddleware)
+        end
+    end
+
+    local function DisableWhitelist()
+        if addon.EventDispatcher then
+            addon.EventDispatcher:UnregisterMiddleware("FILTER", "Whitelist")
+        end
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("Whitelist", {
+            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+            onEnable = EnableWhitelist,
+            onDisable = DisableWhitelist,
+        })
+    else
+        EnableWhitelist()
+    end
+end
+
+addon:RegisterModule("WhitelistMiddleware", addon.InitWhitelistMiddleware)

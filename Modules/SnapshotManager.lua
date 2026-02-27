@@ -1,86 +1,5 @@
 local addonName, addon = ...
 
-local EVENT_TO_CHANNEL_KEY = {
-    ["CHAT_MSG_GUILD"] = "GUILD",
-    ["CHAT_MSG_OFFICER"] = "OFFICER",
-    ["CHAT_MSG_SAY"] = "SAY",
-    ["CHAT_MSG_YELL"] = "YELL",
-    ["CHAT_MSG_PARTY"] = "PARTY",
-    ["CHAT_MSG_PARTY_LEADER"] = "PARTY",
-    ["CHAT_MSG_RAID"] = "RAID",
-    ["CHAT_MSG_RAID_LEADER"] = "RAID",
-    ["CHAT_MSG_INSTANCE_CHAT"] = "INSTANCE_CHAT",
-    ["CHAT_MSG_INSTANCE_CHAT_LEADER"] = "INSTANCE_CHAT",
-    ["CHAT_MSG_WHISPER"] = "WHISPER",
-    ["CHAT_MSG_WHISPER_INFORM"] = "WHISPER",
-    ["CHAT_MSG_EMOTE"] = "EMOTE",
-    ["CHAT_MSG_TEXT_EMOTE"] = "EMOTE",
-    ["CHAT_MSG_SYSTEM"] = "SYSTEM",
-    ["CHAT_MSG_RAID_WARNING"] = "RAID_WARNING",
-}
-
--- Default timestamp color for restored messages (gray)
-local DEFAULT_SNAPSHOT_TIMESTAMP_COLOR = "FF888888"
-
-local function GetCharKey()
-    local name = UnitName("player")
-    local realm = GetRealmName()
-    -- Ensure we have valid data, otherwise fallback to "Default" to avoid "?" keys
-    if not name or name == "" or not realm or realm == "" or realm == "?" then
-        return "Default"
-    end
-    return name .. "-" .. realm
-end
-
--- Find registry key by channel ID (for dynamic channels)
--- Uses addon.Utils.NormalizeChannelBaseName for normalization
-
--- Cache for channel name lookups to avoid repeated linear searches
-local channelNameCache = {}
-
-local function FindRegistryKeyByChannelBaseName(baseName)
-    if not baseName then return nil end
-
-    -- Check cache first
-    if channelNameCache[baseName] ~= nil then
-        return channelNameCache[baseName]
-    end
-
-    local L = addon.L
-    local normalized = addon.Utils.NormalizeChannelBaseName(baseName)
-
-    for _, stream, catKey, subKey in addon:IterateAllStreams() do
-        if subKey == "DYNAMIC" and stream.mappingKey then
-            local realName = L[stream.mappingKey]
-            if realName then
-                if realName == normalized or normalized:find(realName, 1, true) == 1 or realName:find(normalized, 1, true) == 1 then
-                    channelNameCache[baseName] = stream.key
-                    return stream.key
-                end
-            end
-        end
-    end
-
-    -- Cache negative result to avoid repeated lookups for unknown channels
-    channelNameCache[baseName] = false
-    return nil
-end
-
-local function GetChannelKey(event, ...)
-    local key = EVENT_TO_CHANNEL_KEY[event]
-    if key then
-        if key == "INSTANCE_CHAT" then return "instance" end
-        return string.lower(key)
-    end
-    if event == "CHAT_MSG_CHANNEL" then
-        local channelBaseName = select(7, ...)
-        local registryKey = FindRegistryKeyByChannelBaseName(channelBaseName)
-        if registryKey then return registryKey end
-        return "channel_" .. (channelBaseName and string.lower(tostring(channelBaseName)) or "?")
-    end
-    return string.lower(event or "?")
-end
-
 local function CountTotalStoredLines()
     if not addon.db or not addon.db.global or type(addon.db.global.chatSnapshot) ~= "table" then return 0 end
     local total = 0
@@ -191,7 +110,7 @@ end
 function addon:ClearHistory()
     local L = addon.L
     if not addon.db or not addon.db.global.chatSnapshot then return end
-    local charKey = GetCharKey()
+    local charKey = addon:GetCharacterKey()
     local perChannel = addon.db.global.chatSnapshot[charKey]
     if perChannel and type(perChannel) == "table" then
         local n = 0
@@ -241,15 +160,30 @@ function addon:InitSnapshotManager()
     local L = addon.L
     local restored
 
+    if addon.RegisterEvent and addon.Utils and addon.Utils.InvalidateChannelCaches then
+        addon:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+            addon.Utils.InvalidateChannelCaches()
+        end)
+        addon:RegisterEvent("CHANNEL_UI_UPDATE", function()
+            addon.Utils.InvalidateChannelCaches()
+        end)
+        addon:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE", function()
+            addon.Utils.InvalidateChannelCaches()
+        end)
+    end
+
     local function RestoreChannelContent()
         if restored then return end
         if not addon.db or not addon.db.enabled then return end
+        if addon.Can and not addon:Can(addon.CAPABILITIES.PERSIST_CHAT_DATA) then
+            return
+        end
         
         local snapshotEnabled = addon:GetConfig("plugin.chat.content.snapshotEnabled", true)
         if not snapshotEnabled then return end
 
         if not addon.db.global or not addon.db.global.chatSnapshot or type(addon.db.global.chatSnapshot) ~= "table" then return end
-        local charKey = GetCharKey()
+        local charKey = addon:GetCharacterKey()
         local perChannel = addon.db.global.chatSnapshot[charKey]
         if not perChannel or type(perChannel) ~= "table" then return end
 

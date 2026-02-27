@@ -10,8 +10,8 @@ local addonName, addon = ...
 local lastMessage = {}
 local lastAccess = {}
 local cleanupCounter = 0
-local CLEANUP_INTERVAL = 100  -- 每100条消息清理一次
-local MAX_IDLE_TIME = 300     -- 5分钟未活动的玩家数据将被清理
+local CLEANUP_INTERVAL = 100  -- Cleanup every 100 messages.
+local MAX_IDLE_TIME = 300     -- Drop idle sender cache after 5 minutes.
 
 -- Cleanup old entries to prevent memory leak
 local function CleanupOldEntries()
@@ -31,7 +31,21 @@ local function CleanupOldEntries()
     end
 end
 
-local function DuplicateFilterMiddleware(chatData)
+local function BuildNormalizedMessage(msg)
+    if type(msg) ~= "string" then
+        return msg
+    end
+    if #msg <= 4 then
+        return msg
+    end
+
+    local cleanMsg = msg
+    cleanMsg = cleanMsg:gsub("([^%s]+)%s+%1", "%1")
+    cleanMsg = cleanMsg:gsub("([^%s]+)%s+%1", "%1")
+    return cleanMsg
+end
+
+local function DuplicateFilterBlockMiddleware(chatData)
     if not addon.db or not addon.db.enabled then return end
     local filterSettings = addon.db.plugin and addon.db.plugin.filter
     if not filterSettings or not filterSettings.repeatFilter then return end
@@ -40,46 +54,70 @@ local function DuplicateFilterMiddleware(chatData)
     local msg = chatData.text
     local t = GetTime()
 
-    -- 定期清理
+    -- Periodic cleanup.
     cleanupCounter = cleanupCounter + 1
     if cleanupCounter >= CLEANUP_INTERVAL then
         CleanupOldEntries()
         cleanupCounter = 0
     end
 
+    local normalizedMsg = BuildNormalizedMessage(msg)
     local last = lastMessage[author]
     local window = addon.REPEAT_FILTER_WINDOW or 10
 
-    -- 1. Exact match check
-    if last and last.msg == msg and (t - last.time) < window then
-        lastAccess[author] = t  -- 更新访问时间
-        return true -- Block duplicate
+    -- Exact match check after normalization.
+    if last and last.msg == normalizedMsg and (t - last.time) < window then
+        lastAccess[author] = t
+        return true
     end
 
-    -- 2. Clean repeated characters (spam reduction)
-    local len = #msg
-    if len > 4 then
-        local cleanMsg = msg
-        -- Replace repetitive sequences of non-space characters
-        cleanMsg = cleanMsg:gsub("([^%s]+)%s+%1", "%1")
-        cleanMsg = cleanMsg:gsub("([^%s]+)%s+%1", "%1")
-
-        if cleanMsg ~= msg then
-            -- Update text in pipeline
-            chatData.text = cleanMsg
-
-            -- Store as last message with current time
-            lastMessage[author] = { msg = cleanMsg, time = t }
-            lastAccess[author] = t
-            return false
-        end
+    if normalizedMsg ~= msg then
+        chatData.metadata.duplicateFilterCleanedText = normalizedMsg
     end
-
-    -- Update history
-    lastMessage[author] = { msg = msg, time = t }
+    lastMessage[author] = { msg = normalizedMsg, time = t }
     lastAccess[author] = t
 
     return false
 end
 
-addon.EventDispatcher:RegisterMiddleware("FILTER", 30, "DuplicateFilter", DuplicateFilterMiddleware)
+local function DuplicateFilterEnrichMiddleware(chatData)
+    if not addon.db or not addon.db.enabled then return end
+    local filterSettings = addon.db.plugin and addon.db.plugin.filter
+    if not filterSettings or not filterSettings.repeatFilter then return end
+
+    local cleaned = chatData.metadata and chatData.metadata.duplicateFilterCleanedText
+    if cleaned and cleaned ~= chatData.text then
+        chatData.text = cleaned
+        chatData.textLower = string.lower(cleaned)
+    end
+end
+
+function addon:InitDuplicateFilterMiddleware()
+    local function EnableDuplicateFilter()
+        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("FILTER", "DuplicateFilterBlock") then
+            addon.EventDispatcher:RegisterMiddleware("FILTER", 30, "DuplicateFilterBlock", DuplicateFilterBlockMiddleware)
+        end
+        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("ENRICH", "DuplicateFilterEnrich") then
+            addon.EventDispatcher:RegisterMiddleware("ENRICH", 30, "DuplicateFilterEnrich", DuplicateFilterEnrichMiddleware)
+        end
+    end
+
+    local function DisableDuplicateFilter()
+        if addon.EventDispatcher then
+            addon.EventDispatcher:UnregisterMiddleware("FILTER", "DuplicateFilterBlock")
+            addon.EventDispatcher:UnregisterMiddleware("ENRICH", "DuplicateFilterEnrich")
+        end
+    end
+
+    if addon.RegisterFeature then
+        addon:RegisterFeature("DuplicateFilter", {
+            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+            onEnable = EnableDuplicateFilter,
+            onDisable = DisableDuplicateFilter,
+        })
+    else
+        EnableDuplicateFilter()
+    end
+end
+
+addon:RegisterModule("DuplicateFilterMiddleware", addon.InitDuplicateFilterMiddleware)

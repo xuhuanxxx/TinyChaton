@@ -363,6 +363,10 @@ addon.DEFAULTS = {
         chatSnapshot = {},
         chatSnapshotLineCount = 0,
         chatSnapshotMaxTotal = addon.CONSTANTS.SNAPSHOT_MAX_TOTAL_DEFAULT,
+        policy = {
+            mplusPostCompleteMode = "INSTANCE_RELAXED",
+            raidOutOfCombatMode = "INSTANCE_RELAXED",
+        },
     },
 }
 

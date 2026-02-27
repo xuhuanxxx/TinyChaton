@@ -2,18 +2,15 @@ local addonName, addon = ...
 local L = addon.L
 
 -- =========================================================================
--- Middleware: StripPrefix
--- Stage: PRE_PROCESS
+-- Display Transformer: StripPrefix
 -- Priority: 10
 -- Description: Removes redundant sender prefix like "[[1] Player] says:"
 -- =========================================================================
 
-local function StripPrefixMiddleware(chatData)
-    -- Skip if disabled (using global switch for simplified logic, or could be a specific setting)
-    if not addon.db or not addon.db.enabled then return end
+addon.StripPrefix = addon.StripPrefix or {}
 
-    local msg = chatData.text
-    if not msg or msg == "" then return end
+function addon.StripPrefix.Apply(msg)
+    if type(msg) ~= "string" or msg == "" then return msg end
 
     -- Check for standard chat frames patterns
     -- "[[1] Player] says: Message" -> "Message"
@@ -25,34 +22,35 @@ local function StripPrefixMiddleware(chatData)
     -- Pattern 1: "[[123] Player] says: ..."
     local rest = msg:match("^%[%[%d+%] [^%]]+%]" .. sayColon .. " ?(.*)$")
     if rest then
-        chatData.text = rest
-        return
+        return rest
     end
 
     -- Pattern 2: "[[123] Player]: ..."
     rest = msg:match("^%[%[%d+%] [^%]]+%]" .. colon .. " ?(.*)$")
     if rest then
-        chatData.text = rest
-        return
+        return rest
     end
+
+    return msg
+end
+
+local function StripPrefixTransformer(frame, text, ...)
+    if not addon.db or not addon.db.enabled then return text, ... end
+    return addon.StripPrefix.Apply(text), ...
 end
 
 function addon:InitStripPrefix()
     local function EnableStripPrefix()
-        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("PRE_PROCESS", "StripPrefix") then
-            addon.EventDispatcher:RegisterMiddleware("PRE_PROCESS", 10, "StripPrefix", StripPrefixMiddleware)
-        end
+        addon:RegisterChatFrameTransformer("display_strip_prefix", StripPrefixTransformer)
     end
 
     local function DisableStripPrefix()
-        if addon.EventDispatcher then
-            addon.EventDispatcher:UnregisterMiddleware("PRE_PROCESS", "StripPrefix")
-        end
+        addon.chatFrameTransformers["display_strip_prefix"] = nil
     end
 
     if addon.RegisterFeature then
         addon:RegisterFeature("StripPrefix", {
-            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+            requires = { "MUTATE_CHAT_DISPLAY" },
             onEnable = EnableStripPrefix,
             onDisable = DisableStripPrefix,
         })

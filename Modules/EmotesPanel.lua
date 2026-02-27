@@ -5,6 +5,26 @@ local panel
 local buttons = {}
 local currentPage = 1
 local maxPage = 1
+local lastBlockedNoticeAt = 0
+
+local function CanInsertEmote()
+    if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
+        return false
+    end
+    return true
+end
+
+local function NotifyInsertBlocked()
+    local now = GetTime()
+    if (now - lastBlockedNoticeAt) < 1 then
+        return
+    end
+    lastBlockedNoticeAt = now
+
+    local prefix = (L and L["LABEL_ADDON_NAME"]) or "TinyChaton"
+    local msg = (L and L["MSG_EMOTE_INSERT_BLOCKED"]) or "Cannot insert emote in current mode."
+    print("|cff00ff00" .. prefix .. "|r: " .. msg)
+end
 
 local function GetPageSize()
     return addon.CONSTANTS and addon.CONSTANTS.EMOTE_PAGE_SIZE or 40
@@ -89,6 +109,11 @@ function addon:ToggleEmotePanel(anchorFrame)
             btn:SetScript("OnClick", function(self, button)
                 if button == "RightButton" then
                     panel:Hide()
+                    return
+                end
+
+                if not CanInsertEmote() then
+                    NotifyInsertBlocked()
                     return
                 end
 

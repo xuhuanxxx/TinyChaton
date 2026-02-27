@@ -107,29 +107,3 @@ if addon.Pool then
         end
     )
 end
-
---- Get the final modified arguments to pass to WoW API
---- @return ... Modified event arguments
-function addon.ChatData:GetArgs(chatData)
-    -- Create a copy of args to avoid side effects
-    local original = chatData.args
-    local n = original.n or #original
-
-    -- Create a new args table (copy all arguments)
-    local args = {}
-    for i = 1, n do
-        args[i] = original[i]
-    end
-
-    -- Replace text, author, and channelString with potentially modified versions
-    args[1] = chatData.text
-    args[2] = chatData.author
-
-    -- Update channelString (arg4) if available
-    -- This allows middleware to modify channel names directly
-    if n >= 4 and chatData.channelString then
-        args[4] = chatData.channelString
-    end
-
-    return unpack(args, 1, n)
-end

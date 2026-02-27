@@ -76,26 +76,63 @@ function addon.ChatHighlight.Process(chatData)
     return false
 end
 
-local function HighlightMiddleware(chatData)
-    addon.ChatHighlight.Process(chatData)
+local function ParseDisplayLine(text)
+    if type(text) ~= "string" or text == "" then
+        return "", text, nil
+    end
+
+    local startPos, endPos, author = text:find("|Hplayer:([^|]+)|h%[[^%]]+%]|h")
+    if not startPos then
+        return "", text, nil
+    end
+
+    local separator = addon.L["CHAT_MESSAGE_SEPARATOR"] or ":"
+    local bodyStart = endPos + 1
+    if text:sub(bodyStart, bodyStart + #separator - 1) == separator then
+        bodyStart = bodyStart + #separator
+    end
+    if text:sub(bodyStart, bodyStart) == " " then
+        bodyStart = bodyStart + 1
+    end
+
+    return text:sub(1, bodyStart - 1), text:sub(bodyStart), author
+end
+
+function addon.ChatHighlight.ApplyToDisplayText(text)
+    local prefix, body, author = ParseDisplayLine(text)
+    local pureName = author and author:match("([^%-]+)") or author
+    local chatData = {
+        text = body,
+        name = pureName,
+        authorLower = pureName and string.lower(pureName) or "",
+    }
+
+    if addon.ChatHighlight.Process(chatData) then
+        return prefix .. chatData.text
+    end
+
+    return text
+end
+
+local function HighlightTransformer(frame, text, ...)
+    if not addon.db or not addon.db.enabled then
+        return text, ...
+    end
+    return addon.ChatHighlight.ApplyToDisplayText(text), ...
 end
 
 function addon:InitChatHighlight()
     local function EnableChatHighlight()
-        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("ENRICH", "ChatHighlight") then
-            addon.EventDispatcher:RegisterMiddleware("ENRICH", 40, "ChatHighlight", HighlightMiddleware)
-        end
+        addon:RegisterChatFrameTransformer("display_highlight", HighlightTransformer)
     end
 
     local function DisableChatHighlight()
-        if addon.EventDispatcher then
-            addon.EventDispatcher:UnregisterMiddleware("ENRICH", "ChatHighlight")
-        end
+        addon.chatFrameTransformers["display_highlight"] = nil
     end
 
     if addon.RegisterFeature then
         addon:RegisterFeature("ChatHighlight", {
-            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+            requires = { "MUTATE_CHAT_DISPLAY" },
             onEnable = EnableChatHighlight,
             onDisable = DisableChatHighlight,
         })

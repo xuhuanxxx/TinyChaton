@@ -206,6 +206,7 @@ if GetLocale() == "zhCN" then
     L["MSG_CATEGORY_ERROR"] = "分类错误："
     L["MSG_DISABLED"] = " 已禁用。输入 /tinychat 启用。"
     L["MSG_HISTORY_CLEARED"] = "聊天历史已清空。"
+    L["MSG_EMOTE_INSERT_BLOCKED"] = "当前模式下不允许插入表情。"
     L["MSG_LOADED"] = " 已加载。输入 /tinychat 查看选项。"
     L["MSG_SETTINGS_ERROR"] = "设置错误："
     L["MSG_SETTINGS_NOT_LOADED"] = ": 设置面板尚未加载。"

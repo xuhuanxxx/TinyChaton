@@ -71,25 +71,10 @@ local function DuplicateFilterBlockMiddleware(chatData)
         return true
     end
 
-    if normalizedMsg ~= msg then
-        chatData.metadata.duplicateFilterCleanedText = normalizedMsg
-    end
     lastMessage[author] = { msg = normalizedMsg, time = t }
     lastAccess[author] = t
 
     return false
-end
-
-local function DuplicateFilterEnrichMiddleware(chatData)
-    if not addon.db or not addon.db.enabled then return end
-    local filterSettings = addon.db.plugin and addon.db.plugin.filter
-    if not filterSettings or not filterSettings.repeatFilter then return end
-
-    local cleaned = chatData.metadata and chatData.metadata.duplicateFilterCleanedText
-    if cleaned and cleaned ~= chatData.text then
-        chatData.text = cleaned
-        chatData.textLower = string.lower(cleaned)
-    end
 end
 
 function addon:InitDuplicateFilterMiddleware()
@@ -97,15 +82,11 @@ function addon:InitDuplicateFilterMiddleware()
         if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("FILTER", "DuplicateFilterBlock") then
             addon.EventDispatcher:RegisterMiddleware("FILTER", 30, "DuplicateFilterBlock", DuplicateFilterBlockMiddleware)
         end
-        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("ENRICH", "DuplicateFilterEnrich") then
-            addon.EventDispatcher:RegisterMiddleware("ENRICH", 30, "DuplicateFilterEnrich", DuplicateFilterEnrichMiddleware)
-        end
     end
 
     local function DisableDuplicateFilter()
         if addon.EventDispatcher then
             addon.EventDispatcher:UnregisterMiddleware("FILTER", "DuplicateFilterBlock")
-            addon.EventDispatcher:UnregisterMiddleware("ENRICH", "DuplicateFilterEnrich")
         end
     end
 

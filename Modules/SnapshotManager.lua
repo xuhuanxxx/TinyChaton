@@ -211,9 +211,6 @@ function addon:InitSnapshotManager()
                     -- DELAYED: local timestamp = FormatTimestamp(line)
                     
                     local finalText = line.text
-                    if addon.VisualEmotes and addon.VisualEmotes.Parse then
-                        finalText = addon.VisualEmotes.Parse(finalText)
-                    end
 
                     -- Apply Filters (Blacklist/Whitelist)
                     -- Reuse mockChatData to reduce GC
@@ -234,14 +231,6 @@ function addon:InitSnapshotManager()
                     end
 
                     if not isBlocked then
-                        -- Apply Highlight
-                        if addon.ChatHighlight and addon.ChatHighlight.Process then
-                            -- Process updates mockChatData.text in place
-                            if addon.ChatHighlight.Process(mockChatData) then
-                                finalText = mockChatData.text
-                            end
-                        end
-                        
                         -- Now we have the final content, generate timestamp
                         -- Construct the full message (minus timestamp) for the copy payload
                         local contentForCopy = string.format("%s%s%s", channelTag, authorTag, finalText)
@@ -259,6 +248,10 @@ function addon:InitSnapshotManager()
                         if ChatTypeInfo and ChatTypeInfo[chatTypeForColor] then
                             local info = ChatTypeInfo[chatTypeForColor]
                             r, g, b = info.r or 1, info.g or 1, info.b or 1
+                        end
+
+                        if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
+                            displayLine = addon.Gateway.Display:Transform(frame, displayLine, r, g, b)
                         end
 
                         local addMessageFn = frame._TinyChatonOrigAddMessage or frame.AddMessage

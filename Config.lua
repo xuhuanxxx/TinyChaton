@@ -52,10 +52,10 @@ addon.CONSTANTS = {
     SNAPSHOT_MAX_TOTAL_STEP = 500, -- Added from instruction
 
     -- Cache & Limits (P1 Fixes)
-    MESSAGE_CACHE_MAX_AGE = 600,   -- Modules/ClickToCopy.lua
-    MESSAGE_CACHE_LIMIT = 200,     -- Modules/ClickToCopy.lua (soft limit)
-    MESSAGE_CACHE_HARD_LIMIT = 500,-- Modules/ClickToCopy.lua (hard limit)
-    EMOTE_TICKER_INTERVAL = 0.2,   -- Modules/EmoteHelper.lua
+    MESSAGE_CACHE_MAX_AGE = 600,   -- Domain/Chat/Render/Transformers/TimestampInteraction.lua
+    MESSAGE_CACHE_LIMIT = 200,     -- Domain/Chat/Render/Transformers/TimestampInteraction.lua (soft limit)
+    MESSAGE_CACHE_HARD_LIMIT = 500,-- Domain/Chat/Render/Transformers/TimestampInteraction.lua (hard limit)
+    EMOTE_TICKER_INTERVAL = 0.2,   -- Domain/Chat/Render/Transformers/Emotes.lua
 
     -- Profile Defaults
     PROFILE_DEFAULT_NAME = "Default",
@@ -357,7 +357,7 @@ addon.DEFAULTS = {
     },
 }
 
--- SETTING_REGISTRY moved to Settings/Schema.lua
+-- SETTING_REGISTRY moved to Domain/Settings/SettingsSchema.lua
 
 function addon:GetSettingInfo(key)
     return addon.SETTING_REGISTRY[key]

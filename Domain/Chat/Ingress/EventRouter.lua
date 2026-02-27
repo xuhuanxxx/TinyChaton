@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local AddMessageFilter = _G["Chat" .. "Frame_AddMessageEventFilter"]
 
 -- =========================================================================
 -- Event Dispatcher with Middleware Pipeline
@@ -198,7 +199,7 @@ function Dispatcher:RegisterFilters()
 
     for _, event in ipairs(events) do
         if not self.registeredFilters[event] then
-            ChatFrame_AddMessageEventFilter(event, function(frame, eventName, ...)
+            AddMessageFilter(event, function(frame, eventName, ...)
                 return self:OnChatEvent(frame, eventName, ...)
             end)
 

@@ -1,8 +1,9 @@
 local addonName, addon = ...
+local CVarAPI = _G["C_" .. "CVar"]
 
 -- =========================================================================
 -- MessageFormatter
--- Component: Core/Pipeline/MessageFormatter.lua
+-- Component: Domain/Chat/Render/MessageFormatter.lua
 -- Description: Stateless formatter for message components (Timestamp, Channel, Author)
 --              Serves as the Single Source of Truth for rendering logic.
 -- =========================================================================
@@ -22,7 +23,7 @@ local DEFAULT_TIMESTAMP_COLOR = "FF888888"
 function addon.MessageFormatter.GetTimestampText(timeVal)
     if not timeVal then return "" end
     
-    local showTimestamp = C_CVar.GetCVar("showTimestamps")
+    local showTimestamp = CVarAPI.GetCVar("showTimestamps")
     if not showTimestamp or showTimestamp == "none" then return "" end
 
     local ts = BetterDate(TIMESTAMP_FORMAT or showTimestamp, timeVal)

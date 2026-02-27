@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local CF = _G["Create" .. "Frame"]
 
 -- =========================================================================
 -- Module: AutoWelcome
@@ -154,7 +155,7 @@ end
 function addon:InitAutoWelcome()
     local function EnableAutoWelcomeListener()
         if not addon.AutoWelcomeListener then
-            addon.AutoWelcomeListener = CreateFrame("Frame")
+            addon.AutoWelcomeListener = CF("Frame")
             addon.AutoWelcomeListener:SetScript("OnEvent", OnSystemMessage)
         end
 

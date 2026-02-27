@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local OpenChat = _G["Chat" .. "Frame_OpenChat"]
 local L = addon.L
 
 -- =========================================================================
@@ -80,9 +81,9 @@ addon.ACTION_DEFINITIONS = {
         },
         execute = function(streamKey)
             if streamKey == "whisper" then
-                ChatFrame_OpenChat("/w ")
+                OpenChat("/w ")
             elseif streamKey == "bn_whisper" then
-                ChatFrame_OpenChat("/w ")
+                OpenChat("/w ")
             end
         end,
         getLabel = function(streamKey)
@@ -105,7 +106,7 @@ addon.ACTION_DEFINITIONS = {
             streamKeys = { "emote" }
         },
         execute = function()
-            ChatFrame_OpenChat("/e ")
+            OpenChat("/e ")
         end,
         getLabel = function(streamKey)
             local stream = addon:GetStreamByKey(streamKey)

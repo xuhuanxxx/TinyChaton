@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local CVarAPI = _G["C_" .. "CVar"]
 local L = addon.L
 
 -- ============================================
@@ -102,16 +103,16 @@ addon.SETTING_REGISTRY = {
         category = "system",
         get = function() return addon.db.system and addon.db.system.timestampEnabled end,
         set = function(v) if addon.db.system then addon.db.system.timestampEnabled = v end end,
-        getValue = function() return C_CVar.GetCVar("showTimestamps") ~= "none" end,
+        getValue = function() return CVarAPI.GetCVar("showTimestamps") ~= "none" end,
         setValue = function(value)
             if value then
                 local fmt = addon:GetSettingValue("timestampFormat") or "%H:%M "
-                C_CVar.SetCVar("showTimestamps", fmt)
+                CVarAPI.SetCVar("showTimestamps", fmt)
             else
-                C_CVar.SetCVar("showTimestamps", "none")
+                CVarAPI.SetCVar("showTimestamps", "none")
             end
         end,
-        default = function() return C_CVar.GetCVar("showTimestamps") ~= "none" end,
+        default = function() return CVarAPI.GetCVar("showTimestamps") ~= "none" end,
         ui = { type = "checkbox", label = "LABEL_TIMESTAMP_ENABLED", page = "chat", section = "SECTION_CHAT_INTERACTION" },
     },
     timestampFormat = { -- SYSTEM CVAR MIRROR
@@ -119,21 +120,21 @@ addon.SETTING_REGISTRY = {
         get = function() return addon.db.system and addon.db.system.timestampFormat end,
         set = function(v) if addon.db.system then addon.db.system.timestampFormat = v end end,
         getValue = function()
-            local cv = C_CVar.GetCVar("showTimestamps")
+            local cv = CVarAPI.GetCVar("showTimestamps")
             return cv ~= "none" and cv or "%H:%M "
         end,
         setValue = function(value)
-            if C_CVar.GetCVar("showTimestamps") ~= "none" then
-                C_CVar.SetCVar("showTimestamps", value)
+            if CVarAPI.GetCVar("showTimestamps") ~= "none" then
+                CVarAPI.SetCVar("showTimestamps", value)
             end
         end,
         default = function()
-            local cv = C_CVar.GetCVar("showTimestamps")
+            local cv = CVarAPI.GetCVar("showTimestamps")
             return cv ~= "none" and cv or "%H:%M "
         end,
         ui = {
             type = "dropdown", label = "LABEL_FORMAT", page = "chat", section = "SECTION_CHAT_INTERACTION",
-            isEnabled = function() return C_CVar.GetCVar("showTimestamps") ~= "none" end,
+            isEnabled = function() return CVarAPI.GetCVar("showTimestamps") ~= "none" end,
             options = function()
                 local c = Settings.CreateControlTextContainer()
                 local formats = {

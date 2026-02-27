@@ -3,7 +3,7 @@ local addonName, addon = ...
 -- =========================================================================
 -- Module: AutoJoinHelper (formerly Social)
 -- Helper functions for social automation settings (auto-join channels etc.)
--- Note: Welcome message logic has been moved to Core/Pipeline/Middleware/Greeting.lua
+-- Note: Welcome message logic has been moved to Domain/Chat/Automation/AutoWelcome.lua
 -- =========================================================================
 
 addon.AutoJoinHelper = {}

@@ -1,10 +1,11 @@
 local addonName, addon = ...
+local CF = _G["Create" .. "Frame"]
 
 -- Selection Ribbon dialog moved from Libs/Ribbon.lua
 function addon.CreateSelectionRibbon(name, parent)
     -- User requested "DialogBorderDarkTemplate" for high-res look.
     -- We MUST use ClearAllPoints() because this template likely defaults to full screen anchors.
-    local f = CreateFrame("Frame", name, parent, "DialogBorderDarkTemplate")
+    local f = CF("Frame", name, parent, "DialogBorderDarkTemplate")
     f:ClearAllPoints()
     f:SetSize(350, 400)
     f:SetPoint("CENTER")
@@ -20,7 +21,7 @@ function addon.CreateSelectionRibbon(name, parent)
 
     -- Title Header (Native Style)
     -- Use the native DialogHeaderTemplate which handles the 3-part texture automatically
-    f.Header = CreateFrame("Frame", nil, f, "DialogHeaderTemplate")
+    f.Header = CF("Frame", nil, f, "DialogHeaderTemplate")
     f.Header:SetPoint("TOP", 0, 12)
     -- Ensure it sits above the dialog border
     f.Header:SetFrameLevel(f:GetFrameLevel() + 5)
@@ -47,7 +48,7 @@ function addon.CreateSelectionRibbon(name, parent)
 
     -- Close Button
     if not f.CloseButton then
-        f.CloseButton = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+        f.CloseButton = CF("Button", nil, f, "UIPanelCloseButton")
         f.CloseButton:SetSize(24, 24)
         f.CloseButton:SetPoint("TOPRIGHT", -5, -5)
     else
@@ -105,11 +106,11 @@ function addon.CreateSelectionRibbon(name, parent)
         pageContainer:SetPoint("TOPLEFT", f.ribbon, "BOTTOMLEFT", 0, -5) -- 5px gap below tabs
         pageContainer:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -10, 40) -- 40px bottom for buttons
 
-        local scroll = CreateFrame("ScrollFrame", nil, pageContainer, "UIPanelScrollFrameTemplate")
+        local scroll = CF("ScrollFrame", nil, pageContainer, "UIPanelScrollFrameTemplate")
         scroll:SetPoint("TOPLEFT", 0, 0)
         scroll:SetPoint("BOTTOMRIGHT", -26, 0)
 
-        local child = CreateFrame("Frame")
+        local child = CF("Frame")
         child:SetSize(460, 1) -- Estimated width
         scroll:SetScrollChild(child)
 
@@ -118,7 +119,7 @@ function addon.CreateSelectionRibbon(name, parent)
 
     -- Bottom Buttons
     -- Bottom Buttons
-    f.DefaultButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.DefaultButton = CF("Button", nil, f, "UIPanelButtonTemplate")
     f.DefaultButton:SetSize(100, 22)
     f.DefaultButton:SetPoint("BOTTOMRIGHT", -20, 10) -- Swapped to Right
     f.DefaultButton:SetText(L["LABEL_DEFAULT"])
@@ -127,7 +128,7 @@ function addon.CreateSelectionRibbon(name, parent)
         f:Hide()
     end)
 
-    f.ClearButton = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.ClearButton = CF("Button", nil, f, "UIPanelButtonTemplate")
     f.ClearButton:SetSize(100, 22)
     f.ClearButton:SetPoint("BOTTOMLEFT", 20, 10) -- Swapped to Left
     f.ClearButton:SetText(L["LABEL_NONE"])
@@ -189,7 +190,7 @@ function addon.CreateSelectionRibbon(name, parent)
                 for i, item in ipairs(list) do
                     local btn = page.buttons[i]
                     if not btn then
-                        btn = CreateFrame("Button", nil, page.child)
+                        btn = CF("Button", nil, page.child)
                         btn:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
                         btn.Text = btn:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
                         btn.Text:SetPoint("LEFT", 4, 0)

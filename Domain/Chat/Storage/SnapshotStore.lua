@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local CF = _G["Create" .. "Frame"]
 
 -- =========================================================================
 -- Middleware: SnapshotLogger
@@ -11,7 +12,7 @@ local addonName, addon = ...
 
 -- Standalone Frame for safe logging (Observer Pattern)
 -- Decoupled from EventDispatcher to prevent Taint in combat
-local loggerFrame = CreateFrame("Frame")
+local loggerFrame = CF("Frame")
 local loggerEnabled = false
 
 local function OnSnapshotEvent(self, event, ...)

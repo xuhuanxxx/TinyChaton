@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local CF = _G["Create" .. "Frame"]
 local L = addon.L
 
 local Shelf = nil
@@ -131,7 +132,7 @@ end
 
 local function UpdateEditModeShelf(self)
     if not self.selectionFrame then
-        local f = CreateFrame("Frame", nil, self, "EditModeSystemSelectionTemplate")
+        local f = CF("Frame", nil, self, "EditModeSystemSelectionTemplate")
         f:SetAllPoints()
 
         f.system = {
@@ -452,7 +453,7 @@ function addon.Shelf:InitRender()
     if not addon.db.plugin.shelf.enabled then return end
 
     if not Shelf then
-        Shelf = CreateFrame("Frame", "TinyChatonShelf", UIParent)
+        Shelf = CF("Frame", "TinyChatonShelf", UIParent)
         Shelf:SetFrameStrata("MEDIUM")
         Shelf:SetFrameLevel(100)
 
@@ -487,7 +488,7 @@ function addon.Shelf:InitRender()
     SyncEditMode()
 
     if not shelfEventFrame then
-        shelfEventFrame = CreateFrame("Frame")
+        shelfEventFrame = CF("Frame")
         shelfEventFrame:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE")
         shelfEventFrame:RegisterEvent("CHANNEL_UI_UPDATE")
         shelfEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")

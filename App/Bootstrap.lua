@@ -51,62 +51,6 @@ addon.TRANSFORMER_ORDER = {
     "visual_emotes"
 }
 
--- Track hooked frames for unhook support
-local hookedFrames = {}
-
-local function SetupChatFrameAddMessageHook(frame)
-    if frame._TinyChatonAddMessageHooked then return end
-    frame._TinyChatonAddMessageHooked = true
-    local orig = frame.AddMessage
-    -- Save original AddMessage for direct access (used by history restore)
-    frame._TinyChatonOrigAddMessage = orig
-    frame.AddMessage = function(self, msg, ...)
-        if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
-            local transformed = { addon.Gateway.Display:Transform(self, msg, ...) }
-            return orig(self, unpack(transformed))
-        end
-        return orig(self, msg, ...)
-    end
-    table.insert(hookedFrames, frame)
-end
-
--- Unhook all chat frames (restore original AddMessage)
-function addon:UnhookChatFrames()
-    for _, frame in ipairs(hookedFrames) do
-        if frame._TinyChatonOrigAddMessage then
-            frame.AddMessage = frame._TinyChatonOrigAddMessage
-            frame._TinyChatonOrigAddMessage = nil
-            frame._TinyChatonAddMessageHooked = nil
-        end
-    end
-    hookedFrames = {}
-end
-
-function addon:SetupChatFrameHooks()
-    for i = 1, NUM_CHAT_WINDOWS do
-        local cf = _G["ChatFrame" .. i]
-        if cf and cf.AddMessage then
-            SetupChatFrameAddMessageHook(cf)
-        end
-    end
-    if FCF_OpenTemporaryWindow then
-        hooksecurefunc("FCF_OpenTemporaryWindow", function(chatFrame)
-            if not chatFrame or chatFrame._TinyChatonAddMessageHooked then return end
-            if chatFrame.AddMessage then
-                SetupChatFrameAddMessageHook(chatFrame)
-            else
-                -- Fallback: Hook OnShow for late initialization
-                chatFrame:HookScript("OnShow", function(self)
-                    if not self._TinyChatonAddMessageHooked and self.AddMessage then
-                        SetupChatFrameAddMessageHook(self)
-                    end
-                end)
-            end
-        end)
-    end
-end
-
-
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, ...)
@@ -134,6 +78,7 @@ function addon:RegisterModule(name, initFn)
 end
 
 function addon:OnInitialize()
+    if addon.InitServiceContainer then addon:InitServiceContainer() end
     if addon.InitConfig then addon:InitConfig() end
 
     if not addon.db then

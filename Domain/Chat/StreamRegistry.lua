@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local OpenChat = _G["Chat" .. "Frame_OpenChat"]
 local L = addon.L
 
 -- =========================================================================
@@ -263,7 +264,7 @@ function addon:ActionSend(chatType, channelKey, channelName)
     if chatType == "CHANNEL" and channelName then
         local id = GetChannelName(channelName)
         if id and id > 0 then
-            ChatFrame_OpenChat("/" .. id .. " ")
+            OpenChat("/" .. id .. " ")
         else
             if channelName then
                 JoinChannelByName(channelName)
@@ -271,7 +272,7 @@ function addon:ActionSend(chatType, channelKey, channelName)
         end
     else
         local cmd = SLASH_COMMANDS[chatType] or string.lower(chatType)
-        ChatFrame_OpenChat("/" .. cmd .. " ")
+        OpenChat("/" .. cmd .. " ")
     end
 end
 

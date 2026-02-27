@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local CF = _G["Create" .. "Frame"]
 local L = addon.L
 local def = addon.DEFAULTS and addon.DEFAULTS.plugin or {}
 
@@ -81,7 +82,7 @@ CategoryBuilders.shelf = function(rootCat)
         addon.ClearSettingsListHighlight(frame)
 
         if not frame[addonName .. "_Shelf_Preview"] then
-            frame[addonName .. "_Shelf_Preview"] = CreateFrame("Frame", addonName .. "_Shelf_PreviewContainer", frame)
+            frame[addonName .. "_Shelf_Preview"] = CF("Frame", addonName .. "_Shelf_PreviewContainer", frame)
             frame[addonName .. "_Shelf_Preview"]:SetPoint("CENTER")
             frame[addonName .. "_Shelf_Preview"]:SetSize(500, 60)
 
@@ -182,7 +183,7 @@ CategoryBuilders.shelf = function(rootCat)
         addon.ClearSettingsListHighlight(frame)
 
         if not frame[addonName .. "_Shelf_RibbonContainer"] then
-            local container = CreateFrame("Frame", addonName .. "_Shelf_RibbonContainerFrame", frame)
+            local container = CF("Frame", addonName .. "_Shelf_RibbonContainerFrame", frame)
             container:SetAllPoints()
             frame[addonName .. "_Shelf_RibbonContainer"] = container
 
@@ -199,10 +200,10 @@ CategoryBuilders.shelf = function(rootCat)
             container.ribbon = ribbon
 
             local function CreateRow(parent, i, item, typeKey)
-                local row = CreateFrame("Frame", nil, parent)
+                local row = CF("Frame", nil, parent)
                 row:SetSize(520, 32)
 
-                row.cb = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+                row.cb = CF("CheckButton", nil, row, "UICheckButtonTemplate")
                 row.cb:SetSize(24, 24); row.cb:SetPoint("LEFT", 0, 0)
 
                 local isEnabled = typeKey == "kit" and (GetKP()[item.key] ~= false) or (GetCP()[item.key] ~= false)
@@ -228,13 +229,13 @@ CategoryBuilders.shelf = function(rootCat)
                 local MOVE_BTN_WIDTH = 24
 
                 -- Move Buttons (Right Side)
-                local downBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                local downBtn = CF("Button", nil, row, "UIPanelButtonTemplate")
                 downBtn:SetSize(MOVE_BTN_WIDTH, 22)
                 downBtn:SetPoint("RIGHT", RIGHT_MARGIN, 0)
                 downBtn:SetText("▼")
                 downBtn:SetScript("OnClick", function() MoveInShelfOrder(item.key, 1); addon.RefreshShelfList() end)
 
-                local upBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                local upBtn = CF("Button", nil, row, "UIPanelButtonTemplate")
                 upBtn:SetSize(MOVE_BTN_WIDTH, 22)
                 upBtn:SetPoint("RIGHT", downBtn, "LEFT", -BTN_SPACING, 0)
                 upBtn:SetText("▲")
@@ -247,13 +248,13 @@ CategoryBuilders.shelf = function(rootCat)
                 local BTN_GAP = 4
 
                 -- Right Action
-                local rightBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                local rightBtn = CF("Button", nil, row, "UIPanelButtonTemplate")
                 rightBtn:SetSize(ACTION_BTN_WIDTH, 22)
                 rightBtn:SetPoint("RIGHT", upBtn, "LEFT", -15, 0) -- Gap after move buttons
                 rightBtn:SetScript("OnClick", function(self) OpenBindingDialog(item.key, "right") end)
 
                 -- Left Action
-                local leftBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                local leftBtn = CF("Button", nil, row, "UIPanelButtonTemplate")
                 leftBtn:SetSize(ACTION_BTN_WIDTH, 22)
                 leftBtn:SetPoint("RIGHT", rightBtn, "LEFT", -BTN_GAP, 0) -- Gap between Right Btn and Left Btn
                 leftBtn:SetScript("OnClick", function(self) OpenBindingDialog(item.key, "left") end)

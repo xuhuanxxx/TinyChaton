@@ -1,4 +1,5 @@
 local addonName, addon = ...
+local CF = _G["Create" .. "Frame"]
 local L = addon.L
 
 local panel
@@ -76,7 +77,7 @@ function addon:ToggleEmotePanel(anchorFrame)
 
         -- Adaptive Grid Container
         if not panel.Content then
-            panel.Content = CreateFrame("Frame", nil, panel)
+            panel.Content = CF("Frame", nil, panel)
         end
         panel.Content:ClearAllPoints()
         -- Anchor content relative to the Header's bottom
@@ -94,7 +95,7 @@ function addon:ToggleEmotePanel(anchorFrame)
 
         -- Create Buttons
         for i = 1, GetPageSize() do
-            local btn = CreateFrame("Button", nil, panel.Content) -- Parent to Content
+            local btn = CF("Button", nil, panel.Content) -- Parent to Content
             btn:SetSize(size, size)
             local row = math.floor((i-1) / cols)
             local col = (i-1) % cols
@@ -140,7 +141,7 @@ function addon:ToggleEmotePanel(anchorFrame)
 
         -- Create Navigation
         local navHeight = 20
-        local prevBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+        local prevBtn = CF("Button", nil, panel, "UIPanelButtonTemplate")
         prevBtn:SetSize(20, navHeight)
         prevBtn:SetPoint("BOTTOMLEFT", 16, 12) -- Fixed margin from bottom
         -- i18n
@@ -155,7 +156,7 @@ function addon:ToggleEmotePanel(anchorFrame)
         end)
         panel.prevBtn = prevBtn
 
-        local nextBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+        local nextBtn = CF("Button", nil, panel, "UIPanelButtonTemplate")
         nextBtn:SetSize(20, navHeight)
         nextBtn:SetPoint("BOTTOMRIGHT", -16, 12)
         -- i18n

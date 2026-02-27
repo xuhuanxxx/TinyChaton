@@ -499,6 +499,9 @@ function addon.Shelf:InitRender()
         end
         channelRefreshTimer = C_Timer.NewTimer(0.5, function()
             channelRefreshTimer = nil
+            if addon.Shelf and addon.Shelf.InvalidateChannelListCache then
+                addon.Shelf:InvalidateChannelListCache()
+            end
             addon.Shelf:Render()
         end)
     end
@@ -510,6 +513,9 @@ function addon.Shelf:InitRender()
                 DebouncedRefresh()
             end
         else
+            if addon.Shelf and addon.Shelf.InvalidateChannelListCache then
+                addon.Shelf:InvalidateChannelListCache()
+            end
             addon.Shelf:Render()
         end
     end)

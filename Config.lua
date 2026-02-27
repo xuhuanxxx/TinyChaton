@@ -136,13 +136,11 @@ function addon:GetStreamDefaults(key)
     if path:match("^CHANNEL%.") then
         defaults.defaultPinned = true
         defaults.defaultSnapshotted = true
-        defaults.defaultAutoJoin = false
     end
 
     if path:match("^NOTICE%.") then
         defaults.defaultPinned = false
         defaults.defaultSnapshotted = false
-        defaults.defaultAutoJoin = false
     end
 
     return defaults
@@ -270,18 +268,6 @@ local function BuildSnapshotChannels()
     return channels
 end
 
-local function BuildAutoJoinChannels()
-    local channels = {}
-
-    if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL and addon.STREAM_REGISTRY.CHANNEL.DYNAMIC then
-        for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.DYNAMIC) do
-            channels[stream.key] = addon:GetStreamProperty(stream, "defaultAutoJoin", false)
-        end
-    end
-
-    return channels
-end
-
 addon.DEFAULTS = {
     __version = 10,
     enabled = true,
@@ -356,7 +342,7 @@ addon.DEFAULTS = {
             welcomeGuild  = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("guild") end },
             welcomeParty  = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("party") end },
             welcomeRaid   = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("raid") end },
-            autoJoinChannels = BuildAutoJoinChannels(),
+            customAutoJoinChannels = {},
         },
     },
     global = {

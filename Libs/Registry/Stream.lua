@@ -93,7 +93,6 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_OFFICER_LABEL"],
 
                 events = { "CHAT_MSG_OFFICER" },
-                requiresAvailabilityCheck = true,
                 order = 80,
                 defaultPinned = false,
                 defaultBindings = { left = "send" },
@@ -112,6 +111,7 @@ addon.STREAM_REGISTRY = {
         },
 
         -- [DYNAMIC] 动态加入频道（需要服务器ID）
+        -- Shelf availability detection is intentionally scoped to this group only.
         DYNAMIC = {
             {
                 key = "general",
@@ -121,9 +121,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_GENERAL_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
                 order = 90,
-                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
             {
@@ -134,9 +132,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_TRADE_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
                 order = 91,
-                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
             {
@@ -147,10 +143,8 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_LOCALDEFENSE_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
                 order = 92,
                 defaultPinned = false,
-                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
             {
@@ -161,9 +155,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_LFG_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
                 order = 93,
-                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
             {
@@ -174,10 +166,8 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_SERVICES_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
                 order = 94,
                 defaultPinned = false,
-                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
             {
@@ -188,51 +178,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_WORLD_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
                 order = 100,
-                defaultAutoJoin = true,
-                defaultBindings = { left = "send", right = "leave" },
-            },
-            {
-                key = "worlddefense",
-                chatType = "CHANNEL",
-                mappingKey = "STREAM_WORLDDEFENSE_MAPPING",
-                shortKey = "STREAM_WORLDDEFENSE_SHORT",
-                label = L["STREAM_WORLDDEFENSE_LABEL"],
-
-                events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
-                order = 101,
-                defaultPinned = false,
-                defaultAutoJoin = true,
-                defaultBindings = { left = "send", right = "leave" },
-            },
-            {
-                key = "beginner",
-                chatType = "CHANNEL",
-                mappingKey = "STREAM_BEGINNER_MAPPING",
-                shortKey = "STREAM_BEGINNER_SHORT",
-                label = L["STREAM_BEGINNER_LABEL"],
-
-                events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
-                order = 102,
-                defaultPinned = false,
-                defaultAutoJoin = true,
-                defaultBindings = { left = "send", right = "leave" },
-            },
-            {
-                key = "guildrecruit",
-                chatType = "CHANNEL",
-                mappingKey = "STREAM_GUILDRECRUITMENT_MAPPING",
-                shortKey = "STREAM_GUILDRECRUITMENT_SHORT",
-                label = L["STREAM_GUILDRECRUITMENT_LABEL"],
-
-                events = { "CHAT_MSG_CHANNEL" },
-                requiresAvailabilityCheck = true,
-                order = 103,
-                defaultPinned = false,
-                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "leave" },
             },
         },

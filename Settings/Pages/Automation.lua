@@ -100,26 +100,20 @@ CategoryBuilders.automation = function(rootCat)
     -- 2. Auto Join Channels
     addon.AddSectionHeader(cat, L["SECTION_AUTO_JOIN_CHANNELS"])
 
-    addon.AddProxyMultiDropdown(cat, P .. "autoJoinChannels",
-        L["LABEL_AUTO_JOIN_CHANNELS"],
-        function() return addon:GetAutoJoinChannelsItems() end,
-        function() return addon:GetAutoJoinChannelSelection() end,
-        function(sel) addon:SetAutoJoinChannelSelection(sel) end,
-        L["TOOLTIP_AUTO_JOIN_CHANNELS"])
+    addon.AddNativeButton(cat, L["LABEL_AUTO_JOIN_CUSTOM_PLACEHOLDER"], L["ACTION_EDIT"], function()
+        local prefix = (L and L["LABEL_ADDON_NAME"]) or "TinyChaton"
+        local msg = (L and L["MSG_AUTO_JOIN_CUSTOM_PLACEHOLDER"]) or "Custom auto-join channel editor is not available yet."
+        print("|cff00ff00" .. prefix .. "|r: " .. msg)
+    end, L["TOOLTIP_AUTO_JOIN_CUSTOM_PLACEHOLDER"])
 
 
     local function ResetAutomationData()
-        autoDB.autoJoinChannels = addon.Utils.DeepCopy(autoDef.autoJoinChannels)
+        autoDB.customAutoJoinChannels = addon.Utils.DeepCopy(autoDef.customAutoJoinChannels)
         autoDB.welcomeGuild = addon.Utils.DeepCopy(autoDef.welcomeGuild)
         autoDB.welcomeParty = addon.Utils.DeepCopy(autoDef.welcomeParty)
         autoDB.welcomeRaid = addon.Utils.DeepCopy(autoDef.welcomeRaid)
 
         if addon.ApplyAllSettings then addon:ApplyAllSettings() end
-
-        local setting = Settings.GetSetting(P .. "autoJoinChannels")
-        if setting and setting.SetValue and setting.GetValue then
-            setting:SetValue(setting:GetValue())
-        end
     end
 
     addon.RegisterPageReset(cat, ResetAutomationData)

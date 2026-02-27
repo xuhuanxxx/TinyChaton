@@ -25,6 +25,11 @@ local function GetCachedChannelList()
     return channelListCache.data
 end
 
+function addon.Shelf:InvalidateChannelListCache()
+    channelListCache.data = nil
+    channelListCache.timestamp = 0
+end
+
 -- Configuration Generation
 
 function addon.Shelf:GetThemeProperty(prop)
@@ -211,6 +216,8 @@ function addon.Shelf:GetVisibleItems()
     local shelfOrder = self:GetOrder()
     local channelPins = addon.db.plugin.shelf.channelPins or {}
     local kitPins = addon.db.plugin.shelf.kitPins or {}
+    -- IMPORTANT: dynamicMode applies to CHANNEL.DYNAMIC only.
+    -- System channels are not availability-checked and remain pin-driven.
     local dynamicMode = addon.db.plugin.shelf.dynamicMode or "hide"
 
     local channelList = GetCachedChannelList()
@@ -262,6 +269,8 @@ function addon.Shelf:GetVisibleItems()
                 local channelNumber = nil
                 local shouldShow = true
 
+                -- Availability detection is intentionally scoped to dynamic channels only.
+                -- System channels do not have a unified joined/available API in this layer.
                 if isChannel and item.isDynamic then
                     local realName = item.mappingKey and L[item.mappingKey]
                     channelNumber = realName and findChannelByBaseName(realName) or nil

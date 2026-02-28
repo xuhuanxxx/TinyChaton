@@ -18,7 +18,7 @@ local function ApplyChatFontSettings()
     -- Use registry value for managed toggle
     if not addon:GetSettingValue("fontManaged") then return end
 
-    local font = addon.db.plugin.chat.font.font
+    local font = addon.db.profile.chat.font.font
     local size = addon:GetSettingValue("fontSize")
     local outline = addon:GetSettingValue("fontOutline")
 

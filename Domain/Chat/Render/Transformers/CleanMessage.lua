@@ -7,9 +7,9 @@ local L = addon.L
 
 addon.CleanMessage = {}
 
-function addon.CleanMessage.Process(frame, text, r, g, b, ...)
-    if not addon.db or not addon.db.enabled then return text, r, g, b, ... end
-    if type(text) ~= "string" or text == "" then return text, r, g, b, ... end
+function addon.CleanMessage.Process(frame, text, r, g, b, extraArgs)
+    if not addon.db or not addon.db.enabled then return text, r, g, b, extraArgs end
+    if type(text) ~= "string" or text == "" then return text, r, g, b, extraArgs end
 
     -- Use localized keys for cleaning
     local dirty = L["CHAT_MESSAGE_SEPARATOR_DIRTY"]
@@ -22,7 +22,7 @@ function addon.CleanMessage.Process(frame, text, r, g, b, ...)
         text = text:gsub(dirty, clean)
     end
 
-    return text, r, g, b, ...
+    return text, r, g, b, extraArgs
 end
 
 function addon:InitDisplayCleanMessage()

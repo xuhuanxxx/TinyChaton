@@ -1,5 +1,6 @@
 local addonName, addon = ...
 local AddMessageFilter = _G["Chat" .. "Frame_AddMessageEventFilter"]
+local RemoveMessageFilter = _G["Chat" .. "Frame_RemoveMessageEventFilter"]
 
 -- =========================================================================
 -- Event Dispatcher with Middleware Pipeline
@@ -20,10 +21,14 @@ Dispatcher.middlewares = {
 
 -- Registered event filters
 Dispatcher.registeredFilters = {}
+Dispatcher.filterCallbacks = Dispatcher.filterCallbacks or {}
+Dispatcher.isFiltersRegistered = Dispatcher.isFiltersRegistered or false
 
 --- Initialize event dispatcher
 function Dispatcher:Initialize()
-    self.registeredFilters = {}
+    self.registeredFilters = self.registeredFilters or {}
+    self.filterCallbacks = self.filterCallbacks or {}
+    self.isFiltersRegistered = self.isFiltersRegistered or false
 
     if not addon.STREAM_REGISTRY then return end
 end
@@ -185,6 +190,10 @@ end
 
 --- Register event filters for all chat events
 function Dispatcher:RegisterFilters()
+    if self.isFiltersRegistered then
+        return
+    end
+
     local events = {}
     local seen = {}
     for _, eventName in ipairs(addon.CHAT_EVENTS or {}) do
@@ -199,13 +208,35 @@ function Dispatcher:RegisterFilters()
 
     for _, event in ipairs(events) do
         if not self.registeredFilters[event] then
-            AddMessageFilter(event, function(frame, eventName, ...)
-                return self:OnChatEvent(frame, eventName, ...)
-            end)
+            local callback = self.filterCallbacks[event]
+            if not callback then
+                callback = function(frame, eventName, ...)
+                    return self:OnChatEvent(frame, eventName, ...)
+                end
+                self.filterCallbacks[event] = callback
+            end
 
+            AddMessageFilter(event, callback)
             self.registeredFilters[event] = true
         end
     end
+
+    self.isFiltersRegistered = true
+end
+
+function Dispatcher:UnregisterFilters()
+    if not self.isFiltersRegistered then
+        return
+    end
+
+    for event, callback in pairs(self.filterCallbacks or {}) do
+        if self.registeredFilters[event] and callback and RemoveMessageFilter then
+            RemoveMessageFilter(event, callback)
+            self.registeredFilters[event] = nil
+        end
+    end
+
+    self.isFiltersRegistered = false
 end
 
 

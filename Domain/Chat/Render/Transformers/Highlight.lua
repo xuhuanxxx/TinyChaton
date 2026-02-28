@@ -14,7 +14,7 @@ addon.ChatHighlight = addon.ChatHighlight or {}
 function addon.ChatHighlight.Process(chatData)
     if not addon.db or not addon.db.enabled then return false end
 
-    local config = addon.db.plugin and addon.db.plugin.filter and addon.db.plugin.filter.highlight
+    local config = addon.db.profile and addon.db.profile.filter and addon.db.profile.filter.highlight
     if not config or not config.enabled then return false end
 
     local body = chatData.text
@@ -110,11 +110,11 @@ function addon.ChatHighlight.ApplyToDisplayText(text)
     return text
 end
 
-local function HighlightTransformer(frame, text, ...)
+local function HighlightTransformer(frame, text, r, g, b, extraArgs)
     if not addon.db or not addon.db.enabled then
-        return text, ...
+        return text, r, g, b, extraArgs
     end
-    return addon.ChatHighlight.ApplyToDisplayText(text), ...
+    return addon.ChatHighlight.ApplyToDisplayText(text), r, g, b, extraArgs
 end
 
 function addon:InitDisplayHighlight()

@@ -1,172 +1,301 @@
 local addonName, addon = ...
 
--- Generic tab ribbon component used by settings/shelf pages.
-function addon.CreateRibbon(parent, tabsConfig, options)
-    options = options or {}
-    local tabWidth = options.tabWidth or 120
-    local tabHeight = options.tabHeight or 28
-    local tabSpacing = options.tabSpacing or 12
-    local startX = options.startX or 20
-    local startY = options.startY or -10
+local function Clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+local function ApplyTabStyle(tab)
+    if tab.disabled then
+        tab.Left:Show()
+        tab.Middle:Show()
+        tab.Right:Show()
+        tab.LeftActive:Hide()
+        tab.MiddleActive:Hide()
+        tab.RightActive:Hide()
+        tab:Disable()
+        tab:SetDisabledFontObject(GameFontDisableSmall)
+        tab.Text:ClearAllPoints()
+        tab.Text:SetPoint("LEFT", tab, "LEFT", 14, tab.deselectedTextY or -3)
+        tab.Text:SetPoint("RIGHT", tab, "RIGHT", -12, tab.deselectedTextY or -3)
+        return
+    end
+
+    if tab.selected then
+        tab.Left:Hide()
+        tab.Middle:Hide()
+        tab.Right:Hide()
+        tab.LeftActive:Show()
+        tab.MiddleActive:Show()
+        tab.RightActive:Show()
+        tab:Disable()
+        tab:SetDisabledFontObject(GameFontHighlightSmall)
+        tab.Text:ClearAllPoints()
+        tab.Text:SetPoint("LEFT", tab, "LEFT", 14, tab.selectedTextY or -3)
+        tab.Text:SetPoint("RIGHT", tab, "RIGHT", -12, tab.selectedTextY or -3)
+        return
+    end
+
+    tab.Left:Show()
+    tab.Middle:Show()
+    tab.Right:Show()
+    tab.LeftActive:Hide()
+    tab.MiddleActive:Hide()
+    tab.RightActive:Hide()
+    tab:Enable()
+    tab.Text:ClearAllPoints()
+    tab.Text:SetPoint("LEFT", tab, "LEFT", 14, tab.deselectedTextY or -3)
+    tab.Text:SetPoint("RIGHT", tab, "RIGHT", -12, tab.deselectedTextY or -3)
+end
+
+local function SetTabWidth(tab, width)
+    local middleWidth = width - 40
+    if middleWidth < 1 then middleWidth = 1 end
+
+    tab.Middle:SetWidth(middleWidth)
+    tab.MiddleActive:SetWidth(middleWidth)
+
+    tab:SetWidth(middleWidth + 40)
+
+    if tab.HighlightTexture then
+        tab.HighlightTexture:SetWidth(tab:GetWidth())
+    end
+end
+
+local function CreateTabButton(container, tabConfig, layout)
+    local tab = CreateFrame("Button", nil, container)
+    tab:SetHeight(layout.height)
+
+    tab.id = tabConfig.id
+    tab.config = tabConfig
+    tab.label = tabConfig.label or tostring(tabConfig.id or "")
+    tab.disabled = tabConfig.disabled == true
+    tab.selected = false
+    tab.deselectedTextY = -3
+    local activeHeightBoost = layout.activeTabHeightBoost or 3
+    local activeTextLiftRatio = layout.activeTextLiftRatio or 0.4
+    local activeTextLiftPx = math.max(1, math.floor((activeHeightBoost * activeTextLiftRatio) + 0.5))
+    tab.selectedTextY = tab.deselectedTextY + activeTextLiftPx
+
+    tab.Left = tab:CreateTexture(nil, "BORDER")
+    tab.Left:SetTexture("Interface\\OptionsFrame\\UI-OptionsFrame-InActiveTab")
+    tab.Left:SetWidth(20)
+    tab.Left:SetPoint("TOPLEFT", tab, "TOPLEFT", 0, 0)
+    tab.Left:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", 0, 0)
+    tab.Left:SetTexCoord(0, 0.15625, 0, 1)
+
+    tab.Middle = tab:CreateTexture(nil, "BORDER")
+    tab.Middle:SetTexture("Interface\\OptionsFrame\\UI-OptionsFrame-InActiveTab")
+    tab.Middle:SetPoint("TOPLEFT", tab.Left, "TOPRIGHT")
+    tab.Middle:SetPoint("BOTTOMLEFT", tab.Left, "BOTTOMRIGHT")
+    tab.Middle:SetTexCoord(0.15625, 0.84375, 0, 1)
+
+    tab.Right = tab:CreateTexture(nil, "BORDER")
+    tab.Right:SetTexture("Interface\\OptionsFrame\\UI-OptionsFrame-InActiveTab")
+    tab.Right:SetWidth(20)
+    tab.Right:SetPoint("TOPLEFT", tab.Middle, "TOPRIGHT")
+    tab.Right:SetPoint("BOTTOMLEFT", tab.Middle, "BOTTOMRIGHT")
+    tab.Right:SetTexCoord(0.84375, 1, 0, 1)
+
+    tab.LeftActive = tab:CreateTexture(nil, "BORDER")
+    tab.LeftActive:SetTexture("Interface\\OptionsFrame\\UI-OptionsFrame-ActiveTab")
+    tab.LeftActive:SetWidth(20)
+    tab.LeftActive:SetPoint("TOPLEFT", tab, "TOPLEFT", 0, 0)
+    tab.LeftActive:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", 0, 0)
+    tab.LeftActive:SetTexCoord(0, 0.15625, 0, 1)
+    tab.LeftActive:Hide()
+
+    tab.MiddleActive = tab:CreateTexture(nil, "BORDER")
+    tab.MiddleActive:SetTexture("Interface\\OptionsFrame\\UI-OptionsFrame-ActiveTab")
+    tab.MiddleActive:SetPoint("TOPLEFT", tab.LeftActive, "TOPRIGHT")
+    tab.MiddleActive:SetPoint("BOTTOMLEFT", tab.LeftActive, "BOTTOMRIGHT")
+    tab.MiddleActive:SetTexCoord(0.15625, 0.84375, 0, 1)
+    tab.MiddleActive:Hide()
+
+    tab.RightActive = tab:CreateTexture(nil, "BORDER")
+    tab.RightActive:SetTexture("Interface\\OptionsFrame\\UI-OptionsFrame-ActiveTab")
+    tab.RightActive:SetWidth(20)
+    tab.RightActive:SetPoint("TOPLEFT", tab.MiddleActive, "TOPRIGHT")
+    tab.RightActive:SetPoint("BOTTOMLEFT", tab.MiddleActive, "BOTTOMRIGHT")
+    tab.RightActive:SetTexCoord(0.84375, 1, 0, 1)
+    tab.RightActive:Hide()
+
+    tab.Text = tab:CreateFontString(nil, "OVERLAY")
+    tab:SetFontString(tab.Text)
+    tab:SetNormalFontObject(GameFontNormalSmall)
+    tab:SetHighlightFontObject(GameFontHighlightSmall)
+    tab:SetDisabledFontObject(GameFontHighlightSmall)
+    tab:SetText(tab.label)
+    tab.Text:SetWordWrap(false)
+    tab.Text:ClearAllPoints()
+    tab.Text:SetPoint("LEFT", tab, "LEFT", 14, tab.deselectedTextY)
+    tab.Text:SetPoint("RIGHT", tab, "RIGHT", -12, tab.deselectedTextY)
+
+    tab:SetHighlightTexture("Interface\\PaperDollInfoFrame\\UI-Character-Tab-Highlight", "ADD")
+    tab.HighlightTexture = tab:GetHighlightTexture()
+    if tab.HighlightTexture then
+        tab.HighlightTexture:ClearAllPoints()
+        tab.HighlightTexture:SetPoint("LEFT", tab, "LEFT", 10, -4)
+        tab.HighlightTexture:SetPoint("RIGHT", tab, "RIGHT", -10, -4)
+    end
+
+    local textWidth = tab:GetFontString():GetStringWidth()
+    local totalWidth = Clamp(textWidth + 64, layout.minTabWidth, layout.maxTabWidth)
+    SetTabWidth(tab, totalWidth)
+
+    tab:SetScript("OnClick", function(self)
+        container:SelectTabById(self.id, true)
+    end)
+
+    ApplyTabStyle(tab)
+    return tab
+end
+
+function addon.CreateRibbon(parent, config)
+    config = config or {}
+
+    local tabs = config.tabs or {}
+    local layoutConfig = config.layout or {}
+    local behaviorConfig = config.behavior or {}
+    local contentConfig = config.content or {}
+
+    local layout = {
+        startX = layoutConfig.startX or 0,
+        startY = layoutConfig.startY or -10,
+        spacing = layoutConfig.spacing or -10,
+        minTabWidth = layoutConfig.minTabWidth or 60,
+        maxTabWidth = layoutConfig.maxTabWidth or 150,
+        height = layoutConfig.height or 24,
+        activeTabHeightBoost = layoutConfig.activeTabHeightBoost or 3,
+        activeTextLiftRatio = layoutConfig.activeTextLiftRatio or 0.4,
+    }
+
+    local behavior = {
+        defaultTabId = behaviorConfig.defaultTabId,
+        playClickSound = behaviorConfig.playClickSound ~= false,
+        onTabChanged = behaviorConfig.onTabChanged,
+    }
+
+    local defaultInset = contentConfig.pageInset or { top = 50, bottom = 20, left = 20, right = 20 }
 
     local container = CreateFrame("Frame", nil, parent)
-    container:SetPoint("TOPLEFT", parent, "TOPLEFT", startX, startY)
-    container:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -startX, startY)
-    container:SetHeight(tabHeight + 3)
+    container:SetPoint("TOPLEFT", parent, "TOPLEFT", layout.startX, layout.startY)
+    container:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -layout.startX, layout.startY)
+    container:SetHeight(layout.height + 3)
 
-    container.activeTabIndex = 1
     container.tabButtons = {}
+    container.tabsById = {}
     container.contentPages = {}
-    container.onTabChanged = options.onTabChanged
-
-    local COLOR_TEXT_ACTIVE = { 1, 1, 1, 1 }
-    local COLOR_TEXT_INACTIVE = { 1, 1, 1, 0.35 }
-    local COLOR_TEXT_HOVER = { 0.7, 0.7, 0.7, 1 }
-    local COLOR_BG = { 0, 0, 0, 0.4 }
-    local COLOR_BORDER = { 0.25, 0.25, 0.25, 1 }
-    local COLOR_DIVIDER = { 0.2, 0.2, 0.2, 1 }
-    local COLOR_INDICATOR = { 1, 0.843, 0, 1 }
-
-    container.baseHeight = tabHeight
-    container.activeHeight = tabHeight + 3
-    container.inactiveHeight = tabHeight * 0.95
-
-    for i, tab in ipairs(tabsConfig) do
-        local btn = CreateFrame("Button", nil, container)
-        btn:SetSize(tabWidth, container.inactiveHeight)
-
-        if i == 1 then
-            btn:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0)
-        else
-            btn:SetPoint("BOTTOMLEFT", container.tabButtons[i - 1], "BOTTOMRIGHT", tabSpacing, 0)
-        end
-
-        btn.Bg = btn:CreateTexture(nil, "BACKGROUND")
-        btn.Bg:SetAllPoints()
-        btn.Bg:SetColorTexture(unpack(COLOR_BG))
-
-        btn.Glow = btn:CreateTexture(nil, "BORDER")
-        btn.Glow:SetAllPoints()
-        btn.Glow:SetGradient("VERTICAL",
-            CreateColor(0.4, 0.4, 0.4, 0.2),
-            CreateColor(0.4, 0.4, 0.4, 0)
-        )
-        btn.Glow:SetColorTexture(1, 1, 1, 1)
-        btn.Glow:Hide()
-
-        btn.BorderTop = btn:CreateTexture(nil, "BORDER")
-        btn.BorderTop:SetHeight(1)
-        btn.BorderTop:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
-        btn.BorderTop:SetPoint("TOPRIGHT", btn, "TOPRIGHT", 0, 0)
-        btn.BorderTop:SetColorTexture(unpack(COLOR_BORDER))
-
-        btn.BorderLeft = btn:CreateTexture(nil, "BORDER")
-        btn.BorderLeft:SetWidth(1)
-        btn.BorderLeft:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
-        btn.BorderLeft:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 0, 1)
-        btn.BorderLeft:SetColorTexture(unpack(COLOR_BORDER))
-
-        btn.BorderRight = btn:CreateTexture(nil, "BORDER")
-        btn.BorderRight:SetWidth(1)
-        btn.BorderRight:SetPoint("TOPRIGHT", btn, "TOPRIGHT", 0, 0)
-        btn.BorderRight:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 0, 1)
-        btn.BorderRight:SetColorTexture(unpack(COLOR_BORDER))
-
-        if i < #tabsConfig then
-            btn.VertDivider = btn:CreateTexture(nil, "ARTWORK")
-            btn.VertDivider:SetWidth(1)
-            btn.VertDivider:SetPoint("TOPRIGHT", btn, "TOPRIGHT", math.floor(tabSpacing / 2), 0)
-            btn.VertDivider:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", math.floor(tabSpacing / 2), 0)
-            btn.VertDivider:SetColorTexture(1, 1, 1, 0.1)
-        end
-
-        btn.Indicator = btn:CreateTexture(nil, "OVERLAY")
-        btn.Indicator:SetHeight(2)
-        btn.Indicator:SetPoint("BOTTOMLEFT", btn, "BOTTOMLEFT", 0, 0)
-        btn.Indicator:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 0, 0)
-        btn.Indicator:SetColorTexture(unpack(COLOR_INDICATOR))
-        btn.Indicator:Hide()
-
-        btn.Text = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        btn.Text:SetPoint("CENTER", btn, "CENTER", 0, 0)
-        btn.Text:SetText(tab.label)
-
-        btn:SetScript("OnClick", function(self)
-            container:SetActiveTab(self.tabIndex)
-        end)
-
-        btn:SetScript("OnEnter", function(self)
-            if self.tabIndex ~= container.activeTabIndex then
-                self.Text:SetTextColor(unpack(COLOR_TEXT_HOVER))
-            end
-        end)
-
-        btn:SetScript("OnLeave", function(self)
-            if self.tabIndex ~= container.activeTabIndex then
-                self.Text:SetTextColor(unpack(COLOR_TEXT_INACTIVE))
-            end
-        end)
-
-        btn.tabIndex = i
-        table.insert(container.tabButtons, btn)
-    end
+    container.activeTabId = nil
 
     local bottomDivider = container:CreateTexture(nil, "ARTWORK")
     bottomDivider:SetHeight(1)
     bottomDivider:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0)
     bottomDivider:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0)
-    bottomDivider:SetColorTexture(unpack(COLOR_DIVIDER))
+    bottomDivider:SetColorTexture(0.2, 0.2, 0.2, 1)
 
-    container.SetActiveTab = function(self, index)
-        self.activeTabIndex = index
+    local function UpdatePages()
+        for tabId, page in pairs(container.contentPages) do
+            page:SetShown(tabId == container.activeTabId)
+        end
+    end
 
-        for i, btn in ipairs(self.tabButtons) do
-            if i == index then
-                btn:SetAlpha(1.0)
-                btn:EnableMouse(false)
-                btn:SetHeight(self.activeHeight)
-                btn.Glow:Show()
-                btn.Indicator:Show()
-                btn.Text:SetTextColor(unpack(COLOR_TEXT_ACTIVE))
-                btn.Text:SetFontObject("GameFontHighlightSmall")
+    local function ResolveDefaultTabId()
+        if behavior.defaultTabId and container.tabsById[behavior.defaultTabId] and not container.tabsById[behavior.defaultTabId].disabled then
+            return behavior.defaultTabId
+        end
+        for _, button in ipairs(container.tabButtons) do
+            if not button.disabled then
+                return button.id
+            end
+        end
+        return nil
+    end
+
+    function container:SelectTabById(tabId, fromClick)
+        local target = self.tabsById[tabId]
+        if not target or target.disabled then
+            return false
+        end
+        if self.activeTabId == tabId then
+            return false
+        end
+
+        if fromClick and behavior.playClickSound then
+            PlaySound(841)
+        end
+
+        self.activeTabId = tabId
+        for _, button in ipairs(self.tabButtons) do
+            button.selected = (button.id == tabId)
+            ApplyTabStyle(button)
+        end
+        UpdatePages()
+
+        if behavior.onTabChanged then
+            behavior.onTabChanged(tabId, target.config or target)
+        end
+        return true
+    end
+
+    function container:GetActiveTabId()
+        return self.activeTabId
+    end
+
+    function container:SetTabDisabled(tabId, disabled)
+        local tab = self.tabsById[tabId]
+        if not tab then return end
+        tab.disabled = disabled == true
+        if tab.disabled and self.activeTabId == tabId then
+            self.activeTabId = nil
+        end
+        ApplyTabStyle(tab)
+        if not self.activeTabId then
+            local fallback = ResolveDefaultTabId()
+            if fallback then
+                self:SelectTabById(fallback, false)
             else
-                btn:SetAlpha(0.75)
-                btn:EnableMouse(true)
-                btn:SetHeight(self.inactiveHeight)
-                btn.Glow:Hide()
-                btn.Indicator:Hide()
-                btn.Text:SetTextColor(unpack(COLOR_TEXT_INACTIVE))
-                btn.Text:SetFontObject("GameFontNormalSmall")
+                UpdatePages()
             end
-        end
-
-        for i, page in ipairs(self.contentPages) do
-            if page then
-                page:SetShown(i == index)
-            end
-        end
-
-        if self.onTabChanged then
-            self.onTabChanged(index, tabsConfig[index])
         end
     end
 
-    container.GetActiveTab = function(self)
-        return self.activeTabIndex
-    end
+    function container:CreatePage(tabId, parentFrame, inset)
+        if not self.tabsById[tabId] then
+            return nil
+        end
 
-    container.CreateContentPage = function(self, index, parentFrame, inset)
-        inset = inset or { top = 50, bottom = 20, left = 20, right = 20 }
-
+        local pageInset = inset or defaultInset
         local page = CreateFrame("Frame", nil, parentFrame)
-        page:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", inset.left, -inset.top)
-        page:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", -inset.right, inset.bottom)
+        page:SetPoint("TOPLEFT", parentFrame, "TOPLEFT", pageInset.left, -pageInset.top)
+        page:SetPoint("BOTTOMRIGHT", parentFrame, "BOTTOMRIGHT", -pageInset.right, pageInset.bottom)
         page:Hide()
 
-        self.contentPages[index] = page
+        self.contentPages[tabId] = page
+        if self.activeTabId == tabId then
+            page:Show()
+        end
         return page
     end
 
-    container:SetActiveTab(1)
+    for i, tabConfig in ipairs(tabs) do
+        if tabConfig and tabConfig.id then
+            local button = CreateTabButton(container, tabConfig, layout)
+            table.insert(container.tabButtons, button)
+            container.tabsById[button.id] = button
+            if i == 1 then
+                button:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0)
+            else
+                button:SetPoint("LEFT", container.tabButtons[i - 1], "RIGHT", layout.spacing, 0)
+            end
+        end
+    end
+
+    local defaultTabId = ResolveDefaultTabId()
+    if defaultTabId then
+        container:SelectTabById(defaultTabId, false)
+    end
+
     return container
 end

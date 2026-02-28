@@ -53,22 +53,11 @@ addon.KIT_REGISTRY = {
         tooltip = L["KIT_ROLL_TOOLTIP"]
     },
     {
-        key = "filter",
-        label = L["KIT_FILTER"],
-        short = L["KIT_FILTER_SHORT"],
-
-        order = 50,
-        defaultPinned = false,
-        defaultBindings = { left = "filter_toggle" },
-
-        tooltip = function(tooltip, self) local enabled = addon.db and addon.db.plugin.filter and addon.db.plugin.filter.enabled or false; tooltip:AddLine(enabled and L["LABEL_STATUS_ENABLED"] or L["LABEL_STATUS_DISABLED"], 1, 1, 1) end
-    },
-    {
         key = "macro",
         label = L["KIT_MACRO"],
         short = L["KIT_MACRO_SHORT"],
 
-        order = 60,
+        order = 50,
         defaultPinned = false,
         defaultBindings = { left = "macro_toggle" },
 
@@ -79,7 +68,7 @@ addon.KIT_REGISTRY = {
         label = L["KIT_LEAVE"],
         short = L["KIT_LEAVE_SHORT"],
 
-        order = 70,
+        order = 60,
         defaultPinned = true,
         defaultBindings = { left = "leave_party" },
 
@@ -90,7 +79,7 @@ addon.KIT_REGISTRY = {
         label = L["KIT_EMOTE"],
         short = L["KIT_EMOTE_SHORT"],
 
-        order = 80,
+        order = 70,
         defaultPinned = true,
         defaultBindings = { left = "emote_panel" },
 
@@ -101,7 +90,7 @@ addon.KIT_REGISTRY = {
         label = L["KIT_RELOAD"],
         short = L["KIT_RELOAD_SHORT"],
 
-        order = 90,
+        order = 80,
         defaultPinned = true,
         defaultBindings = { left = "reload_ui" },
 

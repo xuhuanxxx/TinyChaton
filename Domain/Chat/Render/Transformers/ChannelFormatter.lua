@@ -99,7 +99,7 @@ function CF:ApplyShortChannelGlobals()
         end
     end
 
-    local format = addon.db and addon.db.enabled and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat or "SHORT"
+    local format = addon.db and addon.db.enabled and addon.db.profile.chat and addon.db.profile.chat.visual and addon.db.profile.chat.visual.channelNameFormat or "SHORT"
     if not addon.db or not addon.db.enabled or format == "NONE" then
         return
     end
@@ -142,7 +142,7 @@ local function SanitizeResult(p, s)
 end
 
 function CF:ResolveShortPrefixed(communityChannel)
-    local format = addon.db and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat or "SHORT"
+    local format = addon.db and addon.db.profile.chat and addon.db.profile.chat.visual and addon.db.profile.chat.visual.channelNameFormat or "SHORT"
 
     -- Extract parts: "1. General" -> prefix="1", rest="General"
     local prefix, rest = string.match(communityChannel, "^(%d+)%.%s*(.*)")
@@ -237,11 +237,11 @@ function CF:ResolveShortPrefixed(communityChannel)
 end
 
 -- 3. Transformer Implementation (Visual Layer - Safe)
-local function ChannelFormatterTransformer(frame, text, ...)
-    if not text or type(text) ~= "string" then return text, ... end
+local function ChannelFormatterTransformer(frame, text, r, g, b, extraArgs)
+    if not text or type(text) ~= "string" then return text, r, g, b, extraArgs end
 
-    local format = addon.db and addon.db.enabled and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat or "SHORT"
-    if format == "NONE" then return text, ... end
+    local format = addon.db and addon.db.enabled and addon.db.profile.chat and addon.db.profile.chat.visual and addon.db.profile.chat.visual.channelNameFormat or "SHORT"
+    if format == "NONE" then return text, r, g, b, extraArgs end
 
     -- Channel links look like: |Hchannel:CHANNEL_ID|h[CHANNEL_NAME]|h
     -- We want to replace CHANNEL_NAME with its abbreviation
@@ -260,7 +260,7 @@ local function ChannelFormatterTransformer(frame, text, ...)
         return prefix .. "[" .. abbr .. "]"
     end)
 
-    return newText, ...
+    return newText, r, g, b, extraArgs
 end
 
 -- Initialize
@@ -302,6 +302,10 @@ end
 
 function addon:InitDisplayChannelFormatter()
     CF:Init()
+end
+
+function addon:RestoreShortChannelGlobals()
+    CF:RestoreShortChannelGlobals()
 end
 
 addon:RegisterModule("DisplayChannelFormatter", addon.InitDisplayChannelFormatter)

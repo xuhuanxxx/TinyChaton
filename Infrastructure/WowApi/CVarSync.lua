@@ -4,7 +4,7 @@ local addonName, addon = ...
 -- Middleware: Timestamp
 -- Stage: ENRICH
 -- Priority: 35
--- Description: Mirrors system timestamp state for chat processing
+-- Description: Reads system timestamp state for chat processing
 -- =========================================================================
 
 local function IsSystemTimestampEnabled()
@@ -17,13 +17,6 @@ local function TimestampMiddleware(chatData)
     local event = chatData.event or ""
     if not event:match("^CHAT_MSG_") then return end
     chatData.metadata.systemTimestampEnabled = IsSystemTimestampEnabled()
-end
-
-local function SyncTimestampSetting()
-    if not addon.db or not addon.db.plugin or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction then
-        return
-    end
-    addon.db.plugin.chat.interaction.timestampEnabled = IsSystemTimestampEnabled()
 end
 
 function addon:InitSystemTimestampSyncMiddleware()
@@ -49,7 +42,6 @@ function addon:InitSystemTimestampSyncMiddleware()
             if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("Timestamp") then
                 return
             end
-            SyncTimestampSetting()
         end)
     end
 
@@ -57,7 +49,6 @@ function addon:InitSystemTimestampSyncMiddleware()
         if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("ENRICH", "Timestamp") then
             addon.EventDispatcher:RegisterMiddleware("ENRICH", 35, "Timestamp", TimestampMiddleware)
         end
-        SyncTimestampSetting()
     end
 
     local function DisableTimestamp()

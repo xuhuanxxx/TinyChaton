@@ -17,7 +17,7 @@ end
 
 
 
--- Storage mode switching removed - only global database is used
+-- Storage mode switching removed - one database with profile/account domains
 TinyChatonDB = TinyChatonDB or {}
 
 addon.CONSTANTS = {
@@ -46,16 +46,20 @@ addon.CONSTANTS = {
     CHAT_DEFAULT_SIZE = 16, -- Added from instruction
 
     -- Snapshot Defaults
-    SNAPSHOT_MAX_TOTAL_DEFAULT = 5000, -- Added from instruction
-    SNAPSHOT_MAX_TOTAL_MIN = 1000, -- Added from instruction
-    SNAPSHOT_MAX_TOTAL_MAX = 20000, -- Added from instruction
-    SNAPSHOT_MAX_TOTAL_STEP = 500, -- Added from instruction
+    SNAPSHOT_STORAGE_MAX_DEFAULT = 5000,
+    SNAPSHOT_STORAGE_MAX_MIN = 1000,
+    SNAPSHOT_STORAGE_MAX_MAX = 20000,
+    SNAPSHOT_STORAGE_MAX_STEP = 500,
+    SNAPSHOT_REPLAY_MAX_DEFAULT = 1000,
+    SNAPSHOT_REPLAY_MAX_MIN = 100,
+    SNAPSHOT_REPLAY_MAX_MAX = 20000,
+    SNAPSHOT_REPLAY_MAX_STEP = 100,
 
     -- Cache & Limits
     MESSAGE_CACHE_MAX_AGE = 600,   -- Domain/Chat/Render/Transformers/TimestampInteraction.lua
     MESSAGE_CACHE_LIMIT = 200,     -- Domain/Chat/Render/Transformers/TimestampInteraction.lua (soft limit)
     MESSAGE_CACHE_HARD_LIMIT = 500,-- Domain/Chat/Render/Transformers/TimestampInteraction.lua (hard limit)
-    EMOTE_TICKER_INTERVAL = 0.2,   -- Domain/Chat/Render/Transformers/Emotes.lua
+    EMOTE_TICKER_INTERVAL = 0.5,   -- Domain/Chat/Render/Transformers/Emotes.lua
 
     -- Profile Defaults
     PROFILE_DEFAULT_NAME = "Default",
@@ -65,7 +69,7 @@ addon.CONSTANTS = {
 -- Configuration Accessors
 
 --- Get a configuration value by path safely
---- @param path string Dot-separated path (e.g., "plugin.chat.content.snapshotEnabled")
+--- @param path string Dot-separated path (e.g., "profile.chat.content.snapshotEnabled")
 --- @param default any Default value if nil
 --- @return any The value or default
 function addon:GetConfig(path, default)
@@ -269,30 +273,25 @@ local function BuildSnapshotChannels()
 end
 
 addon.DEFAULTS = {
-    __version = 10,
+    __version = 11,
     enabled = true,
-    system = {
-        timestampEnabled = true,
-        timestampFormat = true,
-    },
-    plugin = {
-        shelf = {
+    profile = {
+        buttons = {
             enabled = true,
+            dynamicMode = "mark",
+            mutedDynamicChannels = {},
+            channelPins = BuildChannelPins(),
+            kitPins = BuildKitPins(),
+            buttonOrder = nil,
+            bindings = {},
+        },
+        shelf = {
             theme = addon.CONSTANTS.SHELF_DEFAULT_THEME,
             themes = {},
             colorSet = addon.CONSTANTS.SHELF_DEFAULT_COLORSET,
             anchor = addon.CONSTANTS.SHELF_DEFAULT_ANCHOR,
             direction = "horizontal",
             savedPoint = false,
-            dynamicMode = "mark",
-            mutedDynamicChannels = {},
-            channelPins = BuildChannelPins(),
-            kitPins = BuildKitPins(),
-            shelfOrder = nil,
-            bindings = {},
-            kitOptions = {
-                countdown = { primary = 10, secondary = 5 },
-            },
         },
         chat = {
             font = {
@@ -306,6 +305,7 @@ addon.DEFAULTS = {
             },
             content = {
                 emoteRender = true,
+                repeatFilter = false,
                 snapshotEnabled = true,
                 snapshotChannels = BuildSnapshotChannels(),
                 maxPerChannel = 500,
@@ -320,7 +320,6 @@ addon.DEFAULTS = {
         },
         filter = {
             mode = "disabled", -- "blacklist", "whitelist", "disabled"
-            repeatFilter = true,
             blacklist = {
                 names = {},
                 keywords = {},
@@ -337,19 +336,21 @@ addon.DEFAULTS = {
             },
         },
         automation = {
-            autoWelcome = false,
-            welcomeCooldownMinutes = 5,
+            welcome = {
+                enabled = false,
+                cooldownMinutes = 5,
+            },
             currentSocialTab = "guild",
-            welcomeGuild  = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("guild") end },
-            welcomeParty  = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("party") end },
-            welcomeRaid   = { enabled = false, sendMode = "channel", templates = function() return GetDefaultWelcomeTemplates("raid") end },
+            welcomeGuild  = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("guild") },
+            welcomeParty  = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("party") },
+            welcomeRaid   = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("raid") },
             customAutoJoinChannels = {},
+            countdown = { primarySeconds = 10, secondarySeconds = 5 },
         },
     },
-    global = {
-        chatSnapshot = {},
-        chatSnapshotLineCount = 0,
-        chatSnapshotMaxTotal = addon.CONSTANTS.SNAPSHOT_MAX_TOTAL_DEFAULT,
+    account = {
+        chatSnapshotStorageDefaultMax = addon.CONSTANTS.SNAPSHOT_STORAGE_MAX_DEFAULT,
+        chatSnapshotReplayDefaultMax = addon.CONSTANTS.SNAPSHOT_REPLAY_MAX_DEFAULT,
         policy = {
             mplusPostCompleteMode = "INSTANCE_RELAXED",
             raidOutOfCombatMode = "INSTANCE_RELAXED",
@@ -378,10 +379,11 @@ function addon:GetSettingValue(key)
     local reg = addon:GetSettingInfo(key)
     if not reg then return nil end
 
+    if reg.accessor and reg.accessor.get then return reg.accessor.get() end
     if reg.get then return reg.get() end
     if reg.getValue then return reg.getValue() end
 
-    if reg.category == "system" then return addon:GetSettingDefault(key) end
+    if reg.scope == "system_cvar" then return addon:GetSettingDefault(key) end
     return nil
 end
 
@@ -389,11 +391,12 @@ function addon:SetSettingValue(key, value)
     local reg = addon:GetSettingInfo(key)
     if not reg then return end
 
+    if reg.accessor and reg.accessor.set then reg.accessor.set(value) end
     if reg.set then reg.set(value) end
     if reg.setValue then reg.setValue(value) end
 end
 
 function addon:IsSystemSetting(key)
     local reg = addon:GetSettingInfo(key)
-    return reg and reg.category == "system"
+    return reg and reg.scope == "system_cvar"
 end

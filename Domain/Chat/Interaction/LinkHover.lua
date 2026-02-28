@@ -20,7 +20,7 @@ local linkHoverHooked = false
 local function OnHyperlinkEnter(self, linkData, link)
     if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("LinkHover") then return end
     if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then return end
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction or not addon.db.plugin.chat.interaction.linkHover then return end
+    if not addon.db or not addon.db.enabled or not addon.db.profile.chat or not addon.db.profile.chat.interaction or not addon.db.profile.chat.interaction.linkHover then return end
     local t = linkData:match("^(.-):")
     if linkTypes[t] then
         GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
@@ -32,7 +32,7 @@ end
 local function OnHyperlinkLeave(self)
     if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("LinkHover") then return end
     if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then return end
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction or not addon.db.plugin.chat.interaction.linkHover then return end
+    if not addon.db or not addon.db.enabled or not addon.db.profile.chat or not addon.db.profile.chat.interaction or not addon.db.profile.chat.interaction.linkHover then return end
     GameTooltip:Hide()
 end
 

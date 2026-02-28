@@ -1,133 +1,9 @@
 local addonName, addon = ...
 local L = addon.L
 
-_G.TinyChaton = addon
-
-addon.chatFrameTransformers = addon.chatFrameTransformers or {}
-
-addon.callbacks = {}
-
-function addon:RegisterCallback(event, func, owner)
-    if not event or not func then return end
-    if not self.callbacks[event] then self.callbacks[event] = {} end
-    table.insert(self.callbacks[event], { func = func, owner = owner })
-end
-
-function addon:UnregisterCallback(event, owner)
-    if not self.callbacks[event] or owner == nil then return end
-    for i = #self.callbacks[event], 1, -1 do
-        if self.callbacks[event][i].owner == owner then
-            table.remove(self.callbacks[event], i)
-        end
-    end
-end
-
-function addon:FireEvent(event, ...)
-    if self.callbacks[event] then
-        for _, handler in ipairs(self.callbacks[event]) do
-            if handler.func then
-                -- Use pcall to prevent one error from breaking all listeners
-                local ok, err = pcall(handler.func, ...)
-                if not ok then
-                    addon:Error("Error in event %s: %s", event, tostring(err))
-                end
-            end
-        end
-    end
-end
-
-function addon:RegisterChatFrameTransformer(name, fn)
-    if not name or not fn then return end
-    self.chatFrameTransformers[name] = fn
-end
-
-addon.TRANSFORMER_ORDER = {
-    "display_strip_prefix",
-    "display_highlight",
-    "clean_message",
-    "channel_formatter",
-    "interaction_timestamp",
-    "visual_emotes"
-}
-
-local f = CreateFrame("Frame")
-f:RegisterEvent("ADDON_LOADED")
-f:SetScript("OnEvent", function(self, event, ...)
-    if event == "ADDON_LOADED" then
-        local loadedAddon = ...
-        if loadedAddon == addonName then
-            addon:OnInitialize()
-            self:UnregisterEvent("ADDON_LOADED")
-        end
-    end
-end)
-
-addon.moduleRegistry = {}
-
---- Register a module for initialization
---- @param name string
---- @param initFn function
-function addon:RegisterModule(name, initFn)
-    if not name or not initFn then
-        addon:Error("Attempted to register invalid module: %s", tostring(name))
-        return
-    end
-    table.insert(self.moduleRegistry, { name = name, init = initFn })
-end
-
-function addon:OnInitialize()
-    if addon.InitServiceContainer then addon:InitServiceContainer() end
-    if addon.InitConfig then addon:InitConfig() end
-
-    if not addon.db then
-        print("|cFFFF0000TinyChaton:|r Failed to initialize database")
-        return
-    end
-
-    if addon.InitPolicyEngine then addon:InitPolicyEngine() end
-    if addon.InitEnvironmentService then addon:InitEnvironmentService() end
-    if addon.InitFeatureRegistry then addon:InitFeatureRegistry() end
-
-    if addon.InitEvents then addon:InitEvents() end
-
-    if addon.RegisterSettings then
-        local ok, err = pcall(addon.RegisterSettings, addon)
-        if not ok then
-            addon:Error("Settings registration failed: %s", tostring(err))
-        end
-    end
-
-    local L = addon.L
-    if not addon.db.enabled then
-        print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_DISABLED"])
-    else
-        print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_LOADED"])
-    end
-
-    addon:SetupChatFrameHooks()
-
-    if addon.InitializeEventDispatcher then
-        addon:InitializeEventDispatcher()
-    end
-
-    -- Modules are registered when their files are loaded (TOC order determines registry order)
-    for _, mod in ipairs(self.moduleRegistry) do
-        local ok, err = pcall(mod.init, addon)
-        if not ok then
-            addon:Error("Failed to init module %s: %s", mod.name, tostring(err))
-        end
-    end
-
-    if addon.ReconcileFeatures then
-        addon:ReconcileFeatures()
-    end
-
-    addon:ApplyAllSettings()
-end
-
 -- Resolve channel display name based on format setting
 function addon:GetChannelLabel(item, channelNumber, format)
-    local fmt = format or (addon.db.plugin and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat) or "SHORT"
+    local fmt = format or (addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.visual and addon.db.profile.chat.visual.channelNameFormat) or "SHORT"
 
     local id = channelNumber
     if not id and item.chatType == "CHANNEL" then
@@ -161,7 +37,6 @@ end
 
 -- Apply filter settings and invalidate cache
 function addon:ApplyFilterSettings()
-    -- Increment FilterVersion to invalidate middleware caches
     addon.FilterVersion = (addon.FilterVersion or 0) + 1
 
     if addon.Debug then
@@ -180,16 +55,15 @@ function addon:ApplyAllSettings()
     if addon.ApplyChatFontSettings then addon:ApplyChatFontSettings() end
     if addon.ApplyStickyChannelSettings then addon:ApplyStickyChannelSettings() end
     if addon.ApplyFilterSettings then addon:ApplyFilterSettings() end
-    if addon.ApplyAutomationSettings then addon:ApplyAutomationSettings() end
+    if addon.ApplyAutoJoinSettings then addon:ApplyAutoJoinSettings() end
+    if addon.ApplyAutoWelcomeSettings then addon:ApplyAutoWelcomeSettings() end
     if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
     if addon.RefreshShelf then addon:RefreshShelf() end
     if addon.FireEvent then addon:FireEvent("SETTINGS_APPLIED") end
 end
 
 -- Profile Management & Data Proxy
-
--- Recursive synchronization with dynamic default support
-local function RecursiveSync(target, source, isReset, path)
+local function RecursiveSync(target, source, isReset)
     if type(target) ~= "table" or type(source) ~= "table" then return end
 
     for k, v in pairs(source) do
@@ -203,25 +77,21 @@ local function RecursiveSync(target, source, isReset, path)
                 if type(target[k]) ~= "table" then
                     target[k] = {}
                 end
-                RecursiveSync(target[k], realValue, isReset, (path or "") .. "." .. tostring(k))
+                RecursiveSync(target[k], realValue, isReset)
             else
                 target[k] = realValue
             end
         elseif type(v) == "table" and type(target[k]) == "table" then
-             -- Recurse even if target exists, to sync nested fields
-             RecursiveSync(target[k], v, isReset, (path or "") .. "." .. tostring(k))
+            RecursiveSync(target[k], v, isReset)
         end
     end
 
-    -- Pruning: Remove keys in target that are not in source
-    -- CRITICAL CHANGE: Only prune if isReset is TRUE (and source is not empty)
-    -- This protects user data from being deleted during normal loading
     if isReset then
         local sourceIsEmpty = (next(source) == nil)
         if sourceIsEmpty then
             return
         end
-        for k, v in pairs(target) do
+        for k, _ in pairs(target) do
             if source[k] == nil and type(k) == "string" then
                 target[k] = nil
             end
@@ -244,22 +114,20 @@ end
 
 local function InitDBProxy()
     addon.db = setmetatable({}, {
-        __index = function(t, k)
-            if k == "global" then
-                return TinyChatonDB.global
+        __index = function(_, k)
+            if k == "account" then
+                return TinyChatonDB.account
             end
-            -- Use Cached Profile for performance
             if currentProfileCache then
                 return currentProfileCache[k]
             end
-            -- Fallback (should rarely happen if cache is maintained)
             local profileName = addon:GetCurrentProfile()
             local profile = TinyChatonDB.profiles[profileName]
             return profile and profile[k] or nil
         end,
-        __newindex = function(t, k, v)
-            if k == "global" then
-                TinyChatonDB.global = v
+        __newindex = function(_, k, v)
+            if k == "account" then
+                TinyChatonDB.account = v
                 return
             end
             if currentProfileCache then
@@ -285,6 +153,9 @@ function addon:SetProfile(profileName)
     TinyChatonDB.profileKeys[charKey] = profileName
 
     UpdateProfileCache()
+    if addon.RuleMatcher and addon.RuleMatcher.ClearAllCaches then
+        addon.RuleMatcher.ClearAllCaches("profile_switch")
+    end
     addon:FireEvent("PROFILE_CHANGED", profileName)
     self:ApplyAllSettings()
     self:RefreshAllSettings()
@@ -297,6 +168,9 @@ function addon:LoadProfile(profileName)
     if not profile then return end
 
     currentProfileCache = profile
+    if addon.RuleMatcher and addon.RuleMatcher.ClearAllCaches then
+        addon.RuleMatcher.ClearAllCaches("profile_load")
+    end
     self:SynchronizeConfig(false)
     addon:FireEvent("PROFILE_LOADED", profileName)
 end
@@ -317,8 +191,7 @@ function addon:CreateProfile(profileName, copyFrom)
 
     TinyChatonDB.profiles[profileName] = {
         enabled = sourceProfile.enabled,
-        plugin = addon.Utils.DeepCopy(sourceProfile.plugin) or {},
-        system = addon.Utils.DeepCopy(sourceProfile.system) or {}
+        profile = addon.Utils.DeepCopy(sourceProfile.profile) or {}
     }
 
     return true
@@ -332,7 +205,6 @@ function addon:DeleteProfile(profileName)
         return false, "Profile not found"
     end
 
-    local charKey = self:GetCharacterKey()
     local isCurrentProfile = (self:GetCurrentProfile() == profileName)
 
     if isCurrentProfile then
@@ -408,8 +280,7 @@ function addon:CopyFromProfile(sourceProfileName)
     local sourceProfile = TinyChatonDB.profiles[sourceProfileName]
     local currentProfile = TinyChatonDB.profiles[currentProfileName]
 
-    currentProfile.plugin = addon.Utils.DeepCopy(sourceProfile.plugin)
-    currentProfile.system = addon.Utils.DeepCopy(sourceProfile.system)
+    currentProfile.profile = addon.Utils.DeepCopy(sourceProfile.profile)
 
     self:LoadProfile(currentProfileName)
     self:ApplyAllSettings()
@@ -418,28 +289,27 @@ function addon:CopyFromProfile(sourceProfileName)
     return true
 end
 
-
 function addon:SynchronizeConfig(isReset)
-    if not addon.db.plugin then addon.db.plugin = {} end
-    if not addon.db.system then addon.db.system = {} end
-    if not addon.db.global then addon.db.global = {} end
+    if not addon.db.profile then addon.db.profile = {} end
+    if not addon.db.account then addon.db.account = {} end
 
     if isReset or addon.db.enabled == nil then
         addon.db.enabled = (addon.DEFAULTS.enabled ~= nil) and addon.DEFAULTS.enabled or true
     end
 
-    RecursiveSync(addon.db.plugin, addon.DEFAULTS.plugin, isReset)
-    RecursiveSync(addon.db.global, addon.DEFAULTS.global, false)
+    RecursiveSync(addon.db.profile, addon.DEFAULTS.profile, isReset)
+    RecursiveSync(addon.db.account, addon.DEFAULTS.account, false)
 
     for key, reg in pairs(addon.SETTING_REGISTRY or {}) do
         local defVal = addon:GetSettingDefault(key)
 
-        if reg.category == "system" then
-            if isReset or addon.db.system[key] == nil then
-                local realVal = (reg.getValue and reg.getValue())
-                addon.db.system[key] = (realVal ~= nil) and realVal or defVal
+        if reg.scope == "profile" then
+            if reg.get and reg.set then
+                if isReset or reg.get() == nil then
+                    reg.set(defVal)
+                end
             end
-        elseif reg.category == "plugin" then
+        elseif reg.scope == "account" then
             if reg.get and reg.set then
                 if isReset or reg.get() == nil then
                     reg.set(defVal)
@@ -454,23 +324,23 @@ function addon:InitConfig()
         print("|cFFFF0000TinyChaton Error:|r Config loaded but DEFAULTS is nil")
         TinyChatonDB = TinyChatonDB or { enabled = false }
         UpdateProfileCache()
-        InitDBProxy() 
+        InitDBProxy()
         return
     end
 
     TinyChatonDB = TinyChatonDB or {}
-    if not TinyChatonDB.global then TinyChatonDB.global = {} end
+    if not TinyChatonDB.account then TinyChatonDB.account = {} end
     if not TinyChatonDB.profiles then TinyChatonDB.profiles = {} end
     if not TinyChatonDB.profileKeys then TinyChatonDB.profileKeys = {} end
 
     if not TinyChatonDB.profiles[addon.CONSTANTS.PROFILE_DEFAULT_NAME] then
         TinyChatonDB.profiles[addon.CONSTANTS.PROFILE_DEFAULT_NAME] = {
             enabled = true,
-            plugin = {},
-            system = {}
+            profile = {},
         }
     end
 
+    addon.runtime = addon.runtime or {}
     InitDBProxy()
     UpdateProfileCache()
     self:SynchronizeConfig(false)
@@ -486,6 +356,11 @@ function addon:RefreshAllSettings()
 end
 
 function addon:Shutdown()
+    if addon.EventDispatcher and addon.EventDispatcher.UnregisterFilters then
+        addon.EventDispatcher:UnregisterFilters()
+    end
+    if addon.UnhookChatFrames then addon:UnhookChatFrames() end
+    if addon.RestoreShortChannelGlobals then addon:RestoreShortChannelGlobals() end
     if addon.StopBubbleTicker then addon:StopBubbleTicker() end
     if addon.CancelPendingWelcomeTimers then addon:CancelPendingWelcomeTimers() end
     if addon.CancelTabCycleTimer then addon:CancelTabCycleTimer() end

@@ -12,13 +12,13 @@ local function IsDynamicStreamKey(streamKey)
 end
 
 local function EnsureMutedConfig()
-    if not addon.db or not addon.db.plugin or not addon.db.plugin.shelf then
+    if not addon.db or not addon.db.profile or not addon.db.profile.buttons then
         return nil
     end
-    if type(addon.db.plugin.shelf.mutedDynamicChannels) ~= "table" then
-        addon.db.plugin.shelf.mutedDynamicChannels = {}
+    if type(addon.db.profile.buttons.mutedDynamicChannels) ~= "table" then
+        addon.db.profile.buttons.mutedDynamicChannels = {}
     end
-    return addon.db.plugin.shelf.mutedDynamicChannels
+    return addon.db.profile.buttons.mutedDynamicChannels
 end
 
 local function ResolveDynamicStreamKeyFromChannel(channelId, channelName)
@@ -83,6 +83,17 @@ local function EvaluateRuleVisibility(chatData, includeDuplicate)
     return true
 end
 
+local function ReturnDecision(visible, reason)
+    local decision = {
+        visible = visible == true,
+        reason = reason,
+    }
+    if addon.ValidateContract then
+        addon:ValidateContract("VisibilityDecision", decision)
+    end
+    return decision.visible
+end
+
 function Policy:IsDynamicChannelMuted(streamKey)
     local muted = EnsureMutedConfig()
     if not muted or not IsDynamicStreamKey(streamKey) then
@@ -112,28 +123,28 @@ end
 
 function Policy:IsVisibleRealtime(chatData)
     if not chatData then
-        return true
+        return ReturnDecision(true, "missing_chat_data")
     end
 
     if not EvaluateRuleVisibility(chatData, true) then
-        return false
+        return ReturnDecision(false, "rule_blocked")
     end
 
     if chatData.event ~= "CHAT_MSG_CHANNEL" then
-        return true
+        return ReturnDecision(true, "non_dynamic_event")
     end
 
     local streamKey = ResolveDynamicStreamKeyFromChannel(chatData.channelNumber, chatData.channelName)
     if not streamKey then
-        return true
+        return ReturnDecision(true, "dynamic_stream_not_resolved")
     end
 
-    return not self:IsDynamicChannelMuted(streamKey)
+    return ReturnDecision(not self:IsDynamicChannelMuted(streamKey), "dynamic_mute_check")
 end
 
 function Policy:IsVisibleSnapshotLine(line, frame)
     if type(line) ~= "table" then
-        return true
+        return ReturnDecision(true, "missing_snapshot_line")
     end
 
     local text = type(line.text) == "string" and line.text or ""
@@ -154,7 +165,7 @@ function Policy:IsVisibleSnapshotLine(line, frame)
     }
 
     if not EvaluateRuleVisibility(chatData, false) then
-        return false
+        return ReturnDecision(false, "rule_blocked")
     end
 
     local streamKey = line.channelKey
@@ -163,8 +174,8 @@ function Policy:IsVisibleSnapshotLine(line, frame)
     end
 
     if not streamKey then
-        return true
+        return ReturnDecision(true, "dynamic_stream_not_resolved")
     end
 
-    return not self:IsDynamicChannelMuted(streamKey)
+    return ReturnDecision(not self:IsDynamicChannelMuted(streamKey), "dynamic_mute_check")
 end

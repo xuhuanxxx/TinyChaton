@@ -1,6 +1,12 @@
 local addonName, addon = ...
 local L = addon.L
 
+local function TrackRuntimeSetting(meta)
+    if not meta or not meta.key then return end
+    addon.RUNTIME_SETTING_REGISTRY = addon.RUNTIME_SETTING_REGISTRY or {}
+    addon.RUNTIME_SETTING_REGISTRY[meta.key] = meta
+end
+
 function addon.ClearSettingsListHighlight(frame)
     if not frame then return end
 
@@ -198,6 +204,13 @@ function addon.AddNativeCheckbox(cat, variable, name, default, getter, setter, t
 
     local setting = Settings.RegisterProxySetting(cat, variable, Settings.VarType.Boolean, name, default, getter, setter)
     Settings.CreateCheckbox(cat, setting, tooltip)
+    TrackRuntimeSetting({
+        key = variable,
+        scope = "profile",
+        valueType = "boolean",
+        default = default,
+        accessor = { get = getter, set = setter },
+    })
 
     return setting
 end
@@ -229,6 +242,14 @@ function addon.AddNativeSlider(cat, variable, name, default, minVal, maxVal, ste
     end
 
     Settings.CreateSlider(cat, setting, options, dynamicTooltip)
+    TrackRuntimeSetting({
+        key = variable,
+        scope = "profile",
+        valueType = "number",
+        default = default,
+        ui = { type = "slider", min = minVal, max = maxVal, step = step },
+        accessor = { get = getter, set = setter },
+    })
 
     return setting
 end
@@ -242,6 +263,14 @@ function addon.AddNativeDropdown(cat, variable, name, default, optionsFunc, gett
     if setting then
         Settings.CreateDropdown(cat, setting, optionsFunc, tooltip)
     end
+    TrackRuntimeSetting({
+        key = variable,
+        scope = "profile",
+        valueType = (type(default) == "number") and "number" or "string",
+        default = default,
+        ui = { type = "dropdown", options = optionsFunc },
+        accessor = { get = getter, set = setter },
+    })
     return setting
 end
 
@@ -255,6 +284,13 @@ function addon.AddProxyCheckbox(cat, variable, name, default, getter, setter, to
     if setting then
         Settings.CreateCheckbox(cat, setting, tooltip)
     end
+    TrackRuntimeSetting({
+        key = variable,
+        scope = "profile",
+        valueType = "boolean",
+        default = default,
+        accessor = { get = getter, set = setter },
+    })
     return setting
 end
 
@@ -274,6 +310,14 @@ function addon.AddProxySlider(cat, variable, name, default, minVal, maxVal, step
             return tooltip and (tooltip .. "\n\n" .. L["LABEL_VALUE"] .. ": " .. valStr) or (L["LABEL_VALUE"] .. ": " .. valStr)
         end)
     end
+    TrackRuntimeSetting({
+        key = variable,
+        scope = "profile",
+        valueType = "number",
+        default = default,
+        ui = { type = "slider", min = minVal, max = maxVal, step = step },
+        accessor = { get = getter, set = setter },
+    })
     return setting
 end
 
@@ -286,7 +330,193 @@ function addon.AddProxyDropdown(cat, variable, name, default, optionsFunc, gette
     if setting then
         Settings.CreateDropdown(cat, setting, optionsFunc, tooltip)
     end
+    TrackRuntimeSetting({
+        key = variable,
+        scope = "profile",
+        valueType = (type(default) == "number") and "number" or "string",
+        default = default,
+        ui = { type = "dropdown", options = optionsFunc },
+        accessor = { get = getter, set = setter },
+    })
     return setting
+end
+
+local function ResolvePathContext(reg)
+    if not reg or type(reg.pathContext) ~= "function" then
+        return {}
+    end
+    local ok, ctx = pcall(reg.pathContext)
+    if ok and type(ctx) == "table" then
+        return ctx
+    end
+    return {}
+end
+
+local function ResolvePath(path, ctx)
+    if not addon.Utils or type(addon.Utils.ResolveTemplatePath) ~= "function" then
+        return path
+    end
+    local resolved = addon.Utils.ResolveTemplatePath(path, ctx)
+    if type(addon.Utils.ValidatePath) == "function" then
+        local ok = addon.Utils.ValidatePath(resolved)
+        if not ok then
+            return nil
+        end
+    end
+    return resolved
+end
+
+local function BuildPathAccessor(reg)
+    local function getter()
+        local ctx = ResolvePathContext(reg)
+        local path = ResolvePath(reg.path, ctx)
+        if not path then
+            return nil
+        end
+        return addon.Utils.GetByPath(addon.db, path)
+    end
+
+    local function setter(value)
+        local ctx = ResolvePathContext(reg)
+        local path = ResolvePath(reg.path, ctx)
+        if not path then
+            return
+        end
+        local ensureTablePath = reg.ensureTablePath
+        if ensureTablePath == nil then
+            ensureTablePath = true
+        end
+
+        if ensureTablePath then
+            addon.Utils.SetByPath(addon.db, path, value)
+            return
+        end
+
+        local parts = {}
+        for part in path:gmatch("[^%.]+") do
+            parts[#parts + 1] = part
+        end
+        if #parts == 0 then
+            return
+        end
+        local parentPath = table.concat(parts, ".", 1, #parts - 1)
+        local parent = (#parts == 1) and addon.db or addon.Utils.GetByPath(addon.db, parentPath)
+        if type(parent) == "table" then
+            parent[parts[#parts]] = value
+        end
+    end
+
+    return {
+        get = getter,
+        set = setter,
+    }
+end
+
+local function BuildRegistrySetter(reg, rawSetter)
+    return function(v)
+        local ctx = ResolvePathContext(reg)
+        local value = v
+
+        if reg and type(reg.normalizeSet) == "function" then
+            local ok, normalized = pcall(reg.normalizeSet, value, ctx)
+            if ok then
+                value = normalized
+            end
+        end
+
+        if rawSetter then
+            rawSetter(value)
+        end
+
+        if reg and type(reg.onChange) == "function" then
+            pcall(reg.onChange, value, ctx)
+        end
+
+        if (not reg) or reg.applyAllSettings ~= false then
+            if addon.ApplyAllSettings then
+                addon:ApplyAllSettings()
+            end
+        end
+    end
+end
+
+local function ResolveRegistryDefault(reg, fallback)
+    if reg and type(reg.default) == "function" then
+        local ok, value = pcall(reg.default)
+        if ok then
+            return value
+        end
+    elseif reg and reg.default ~= nil then
+        return reg.default
+    end
+    return fallback
+end
+
+local function ResolveRegistryValue(reg, rawGetter, ctx, fallbackDefault)
+    local value = rawGetter and rawGetter() or nil
+    if reg and type(reg.normalizeGet) == "function" then
+        local ok, normalized = pcall(reg.normalizeGet, value, ctx)
+        if ok then
+            return normalized
+        end
+    end
+    if value == nil then
+        return ResolveRegistryDefault(reg, fallbackDefault)
+    end
+    return value
+end
+
+addon.SettingsRegistryInternals = addon.SettingsRegistryInternals or {}
+addon.SettingsRegistryInternals.ResolvePathContext = ResolvePathContext
+addon.SettingsRegistryInternals.ResolvePath = ResolvePath
+addon.SettingsRegistryInternals.BuildPathAccessor = BuildPathAccessor
+addon.SettingsRegistryInternals.BuildRegistrySetter = BuildRegistrySetter
+addon.SettingsRegistryInternals.ResolveRegistryDefault = ResolveRegistryDefault
+addon.SettingsRegistryInternals.ResolveRegistryValue = ResolveRegistryValue
+
+function addon.AddRegistrySetting(cat, key)
+    local reg = addon.SETTING_REGISTRY and addon.SETTING_REGISTRY[key]
+    if not reg or not reg.ui then return nil end
+
+    local variable = "TinyChaton_" .. key
+    local defVal = (type(reg.default) == "function") and reg.default() or reg.default
+    local accessor = reg.accessor or {}
+    local getter = accessor.get or reg.getValue or reg.get
+    local rawSetter = accessor.set or reg.setValue or reg.set
+
+    if (not getter or not rawSetter) and type(reg.path) == "string" then
+        local pathAccessor = BuildPathAccessor(reg)
+        getter = getter or pathAccessor.get
+        rawSetter = rawSetter or pathAccessor.set
+    end
+
+    if getter then
+        local rawGetter = getter
+        getter = function()
+            local ctx = ResolvePathContext(reg)
+            return ResolveRegistryValue(reg, rawGetter, ctx, defVal)
+        end
+    end
+    if not getter then
+        getter = function()
+            return ResolveRegistryDefault(reg, defVal)
+        end
+    end
+
+    rawSetter = rawSetter or function() end
+    local setter = BuildRegistrySetter(reg, rawSetter)
+    local label = reg.ui.label and L[reg.ui.label] or key
+    local tooltip = reg.ui.tooltip and L[reg.ui.tooltip] or nil
+
+    if reg.ui.type == "checkbox" then
+        return addon.AddProxyCheckbox(cat, variable, label, defVal, getter, setter, tooltip)
+    elseif reg.ui.type == "dropdown" then
+        return addon.AddProxyDropdown(cat, variable, label, defVal, reg.ui.options, getter, setter, tooltip)
+    elseif reg.ui.type == "slider" then
+        return addon.AddProxySlider(cat, variable, label, defVal, reg.ui.min, reg.ui.max, reg.ui.step, getter, setter, tooltip)
+    end
+
+    return nil
 end
 
 -- MultiDropdown Helper
@@ -306,6 +536,15 @@ function addon.AddProxyMultiDropdown(cat, variable, name, optionfunc, getter, se
         end
 
         local function deserializeSetter(value)
+            local selection = {}
+            if type(value) == "string" and value ~= "" then
+                for key in value:gmatch("([^,]+)") do
+                    selection[key] = true
+                end
+            end
+            if setter then
+                setter(selection)
+            end
         end
 
         setting = Settings.RegisterProxySetting(cat, variable, Settings.VarType.String, name, "", serializeGetter, deserializeSetter)
@@ -332,6 +571,14 @@ function addon.AddProxyMultiDropdown(cat, variable, name, optionfunc, getter, se
     init.GetData = function() return data end
 
     Settings.RegisterInitializer(cat, init)
+    TrackRuntimeSetting({
+        key = variable,
+        scope = "profile",
+        valueType = "table",
+        default = "",
+        accessor = { get = getter, set = setter },
+        ui = { type = "multi_dropdown" },
+    })
 
     return setting
 end

@@ -5,3 +5,7 @@ addon.ChatTypes = addon.ChatTypes or {
     VISIBILITY_DECISION = "VisibilityDecision",
     SNAPSHOT_RECORD = "SnapshotRecord",
 }
+
+function addon:GetChatTypeName(key)
+    return self.ChatTypes and self.ChatTypes[key] or nil
+end

@@ -3,6 +3,7 @@ local L = addon.L
 local format = string.format
 
 addon.EmotesRender = {}
+addon.EmotesRender.bubbleCache = addon.EmotesRender.bubbleCache or setmetatable({}, { __mode = "k" })
 
 -- Built-in Raid Icons
 local emotes = {
@@ -40,7 +41,7 @@ addon.EmotesRender.emotes = emotes
 -- Exported parser function
 function addon.EmotesRender.Parse(msg)
     if not msg or type(msg) ~= "string" then return msg end
-    if not addon:GetConfig("plugin.chat.content.emoteRender", true) then return msg end
+    if not addon:GetConfig("profile.chat.content.emoteRender", true) then return msg end
 
     for _, e in ipairs(emotes) do
         if not e.pattern then
@@ -53,12 +54,12 @@ function addon.EmotesRender.Parse(msg)
     return msg
 end
 
-local function EmoteTransformer(frame, text, ...)
-    if not text or type(text) ~= "string" then return text, ... end
-    if not addon:GetConfig("plugin.chat.content.emoteRender", true) then return text, ... end
+local function EmoteTransformer(frame, text, r, g, b, extraArgs)
+    if not text or type(text) ~= "string" then return text, r, g, b, extraArgs end
+    if not addon:GetConfig("profile.chat.content.emoteRender", true) then return text, r, g, b, extraArgs end
 
     local newText = addon.EmotesRender.Parse(text)
-    return newText, ...
+    return newText, r, g, b, extraArgs
 end
 
 -- Chat Bubble Support
@@ -97,21 +98,39 @@ local function HookChatBubbles()
     end
 
     local function UpdateBubbles()
-        if not addon:GetConfig("plugin.chat.content.emoteRender", true) then return end
+        if not addon:GetConfig("profile.chat.content.emoteRender", true) then return end
 
+        local now = GetTime()
+        local cache = addon.EmotesRender.bubbleCache
         local bubbles = C_ChatBubbles.GetAllChatBubbles()
         for _, bubble in ipairs(bubbles) do
             if not bubble:IsForbidden() then
-                if not bubble.fontString then
-                    bubble.fontString = FindFontString(bubble)
+                local state = cache[bubble]
+                if not state then
+                    state = {}
+                    cache[bubble] = state
                 end
 
-                if bubble.fontString then
-                    local text = bubble.fontString:GetText()
+                if not state.fontString then
+                    local canRetry = (not state.lastScanAt) or ((now - state.lastScanAt) >= 2)
+                    if canRetry then
+                        state.lastScanAt = now
+                        state.fontString = FindFontString(bubble)
+                        state.failed = not state.fontString
+                    end
+                end
+
+                if state.fontString then
+                    local text = state.fontString:GetText()
                     if text then
-                        local newText = addon.EmotesRender.Parse(text)
-                        if newText ~= text then
-                            bubble.fontString:SetText(newText)
+                        if state.lastText ~= text then
+                            local newText = addon.EmotesRender.Parse(text)
+                            if newText ~= text then
+                                state.fontString:SetText(newText)
+                                state.lastText = newText
+                            else
+                                state.lastText = text
+                            end
                         end
                     end
                 end
@@ -119,9 +138,9 @@ local function HookChatBubbles()
         end
     end
 
-    local interval = addon.CONSTANTS.EMOTE_TICKER_INTERVAL or 0.2
+    local interval = addon.CONSTANTS.EMOTE_TICKER_INTERVAL or 0.5
 
-    if not addon._bubbleTicker and addon:GetConfig("plugin.chat.content.emoteRender", true) then
+    if not addon._bubbleTicker and addon:GetConfig("profile.chat.content.emoteRender", true) then
         addon._bubbleTicker = C_Timer.NewTicker(interval, UpdateBubbles)
     end
 end
@@ -132,11 +151,12 @@ function addon:StopBubbleTicker()
         addon._bubbleTicker:Cancel()
         addon._bubbleTicker = nil
     end
+    addon.EmotesRender.bubbleCache = setmetatable({}, { __mode = "k" })
 end
 
 -- Update ticker state based on settings
 function addon:UpdateEmoteTickerState()
-    local enabled = addon:GetConfig("plugin.chat.content.emoteRender", true)
+    local enabled = addon:GetConfig("profile.chat.content.emoteRender", true)
 
     if enabled then
         -- Delegate to HookChatBubbles which handles ticker creation and uses the correct local UpdateBubbles function

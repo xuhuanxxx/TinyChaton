@@ -1,4 +1,8 @@
-local TR = _G.TinyReactor
+local addonName, addon = ...
+local TR = addon.TinyReactor
+if not TR then
+    error("TinyReactor not initialized")
+end
 
 -- =========================================================================
 -- Standard Layout Components

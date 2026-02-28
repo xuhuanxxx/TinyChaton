@@ -61,29 +61,32 @@ function addon.CreateSelectionRibbon(name, parent)
     -- Compact Labels
     local L = addon.L
     local COMPACT_LABELS = {
-        channel = "发言",
-        kit = "工具",
+        channel = L["LABEL_COMPACT_CHANNEL"] or "Channel",
+        kit = L["LABEL_COMPACT_KIT"] or "Tools",
     }
-    if GetLocale() ~= "zhCN" then
-        COMPACT_LABELS = {
-            channel = "Say",
-            kit = "Tools",
-        }
-    end
-
-    local ribbonTabs = {}
-    for i, cat in ipairs(CATEGORY_ORDER) do
-        table.insert(ribbonTabs, { label = COMPACT_LABELS[cat] or cat, key = cat })
-    end
 
     -- Dynamic Layout: Anchor Ribbon below Header
-    f.ribbon = addon.CreateRibbon(f, ribbonTabs, {
-        tabWidth = 80,
-        tabHeight = 24,
-        tabSpacing = 2,
-        startX = 10,
-        startY = 0, -- Overridden below
-        onTabChanged = function() end
+    f.ribbon = addon.CreateRibbon(f, {
+        tabs = {
+            { id = "channel", label = COMPACT_LABELS.channel or "channel" },
+            { id = "kit", label = COMPACT_LABELS.kit or "kit" },
+        },
+        layout = {
+            startX = 10,
+            startY = 0, -- Overridden below
+            spacing = -10,
+            minTabWidth = 60,
+            maxTabWidth = 80,
+            height = 24,
+        },
+        behavior = {
+            defaultTabId = "channel",
+            playClickSound = true,
+            onTabChanged = function() end,
+        },
+        content = {
+            pageInset = { top = 0, bottom = 40, left = 10, right = 10 },
+        },
     })
 
     -- Manually re-anchor ribbon to be relative to Header
@@ -99,7 +102,7 @@ function addon.CreateSelectionRibbon(name, parent)
     for i, cat in ipairs(CATEGORY_ORDER) do
         -- Dynamic Layout: Anchor Content below Ribbon
         -- We ignore the 'top' inset from CreateContentPage and re-anchor manually
-        local pageContainer = f.ribbon:CreateContentPage(i, f, { top = 0, bottom = 40, left = 10, right = 10 })
+        local pageContainer = f.ribbon:CreatePage(cat, f)
 
         pageContainer:ClearAllPoints()
         pageContainer:SetPoint("TOPLEFT", f.ribbon, "BOTTOMLEFT", 0, -5) -- 5px gap below tabs
@@ -163,8 +166,8 @@ function addon.CreateSelectionRibbon(name, parent)
         for _, item in ipairs(items) do
             -- Filter out special items (nil/false) as they are now handled by buttons
             if item.key ~= nil and item.key ~= false then
-                local c = item.category or "other"
-                if not categorized[c] then c = "other" end -- Fallback
+                local c = item.category or defaultCat
+                if not categorized[c] then c = defaultCat end
                 table.insert(categorized[c], item)
 
                 if item.key == selectedKey then selectedCat = c end
@@ -227,11 +230,7 @@ function addon.CreateSelectionRibbon(name, parent)
         end
 
         -- Select Tab
-        local tabIdx = 1
-        for i, cat in ipairs(CATEGORY_ORDER) do
-            if cat == selectedCat then tabIdx = i break end
-        end
-        f.ribbon:SetActiveTab(tabIdx)
+        f.ribbon:SelectTabById(selectedCat)
 
         f:Show()
     end

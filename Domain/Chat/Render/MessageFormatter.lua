@@ -38,7 +38,7 @@ end
 --- @param preferConfig boolean|nil If true, prioritize configured color over msgColor (for Snapshot)
 --- @return string Hex color string
 function addon.MessageFormatter.ResolveTimestampColor(msgColor, preferConfig)
-    local setting = addon.db and addon.db.plugin.chat and addon.db.plugin.chat.interaction and addon.db.plugin.chat.interaction.timestampColor
+    local setting = addon.db and addon.db.profile.chat and addon.db.profile.chat.interaction and addon.db.profile.chat.interaction.timestampColor
     local hasConfig = (setting and setting ~= "")
 
     -- Rule 1: Configured Override (Backlog/Snapshot prioritization)

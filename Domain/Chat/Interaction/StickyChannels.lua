@@ -9,9 +9,9 @@ local L = addon.L
 addon.StickyChannels = {}
 
 local function UpdateSticky()
-    if not addon.db or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction then return end
-    local enabled = addon.db.plugin.chat.interaction.sticky
-    local types = { "SAY", "YELL", "EMOTE", "PARTY", "RAID", "GUILD", "OFFICER", "CHANNEL" }
+    if not addon.db or not addon.db.profile.chat or not addon.db.profile.chat.interaction then return end
+    local enabled = addon.db.profile.chat.interaction.sticky
+    local types = { "SAY", "YELL", "EMOTE", "PARTY", "RAID", "GUILD", "OFFICER", "CHANNEL", "WHISPER", "BN_WHISPER" }
     for _, t in ipairs(types) do
         if ChatTypeInfo[t] then
             ChatTypeInfo[t].sticky = enabled and 1 or 0
@@ -28,7 +28,7 @@ local function HookEditBoxForSticky()
         if not editBox or editBox._TinyChatonStickyHooked then return end
         editBox._TinyChatonStickyHooked = true
         editBox:HookScript("OnShow", function()
-            if addon.db and addon.db.plugin.chat and addon.db.plugin.chat.interaction and addon.db.plugin.chat.interaction.sticky then
+            if addon.db and addon.db.profile.chat and addon.db.profile.chat.interaction and addon.db.profile.chat.interaction.sticky then
                 UpdateSticky()
             end
         end)
@@ -46,9 +46,9 @@ function addon:InitStickyChannels()
     UpdateSticky()
     HookEditBoxForSticky()
 
-    if addon:GetConfig("plugin.chat.interaction.sticky", true) and C_Timer and C_Timer.After then
+    if addon:GetConfig("profile.chat.interaction.sticky", true) and C_Timer and C_Timer.After then
         C_Timer.After(2, function()
-            if addon:GetConfig("plugin.chat.interaction.sticky", true) then
+            if addon:GetConfig("profile.chat.interaction.sticky", true) then
                 UpdateSticky()
             end
         end)

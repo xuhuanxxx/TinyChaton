@@ -79,6 +79,9 @@ function addon.ChatData:New(frame, event, ...)
     chatData.channelNumber = channelNumber
     chatData.channelName = channelName
 
+    if addon.ValidateContract then
+        addon:ValidateContract("EventContext", chatData)
+    end
     return chatData
 end
 

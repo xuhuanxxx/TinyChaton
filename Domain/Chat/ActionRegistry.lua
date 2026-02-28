@@ -141,7 +141,8 @@ addon.ACTION_DEFINITIONS = {
         category = "kit",
         appliesTo = { kits = { "countdown" } },
         execute = function()
-            C_PartyInfo.DoCountdown(addon.db.plugin.shelf.kitOptions.countdown.primary or 10)
+            local countdown = addon.db and addon.db.profile and addon.db.profile.automation and addon.db.profile.automation.countdown
+            C_PartyInfo.DoCountdown(countdown and countdown.primarySeconds or 10)
         end,
         getLabel = function() return L["ACTION_TIMER_PRIMARY"] end,
         getTooltip = function() return L["ACTION_TIMER_PRIMARY_DESC"] end
@@ -151,7 +152,8 @@ addon.ACTION_DEFINITIONS = {
         category = "kit",
         appliesTo = { kits = { "countdown" } },
         execute = function()
-            C_PartyInfo.DoCountdown(addon.db.plugin.shelf.kitOptions.countdown.secondary or 5)
+            local countdown = addon.db and addon.db.profile and addon.db.profile.automation and addon.db.profile.automation.countdown
+            C_PartyInfo.DoCountdown(countdown and countdown.secondarySeconds or 5)
         end,
         getLabel = function() return L["ACTION_TIMER_SECONDARY"] end,
         getTooltip = function() return L["ACTION_TIMER_SECONDARY_DESC"] end
@@ -171,20 +173,6 @@ addon.ACTION_DEFINITIONS = {
         execute = function() RandomRoll(1, 100) end,
         getLabel = function() return L["KIT_ROLL"] end,
         getTooltip = function() return L["KIT_ROLL_TOOLTIP"] end
-    },
-    {
-        key = "filter_toggle",
-        category = "kit",
-        appliesTo = { kits = { "filter" } },
-        execute = function()
-            if addon.db.plugin.filter then
-                addon.db.plugin.filter.enabled = not addon.db.plugin.filter.enabled
-                addon:ApplyFilterSettings()
-                print(L["LABEL_FILTER"] .. " " .. (addon.db.plugin.filter.enabled and L["LABEL_STATUS_ENABLED"] or L["LABEL_STATUS_DISABLED"]))
-            end
-        end,
-        getLabel = function() return L["KIT_FILTER"] end,
-        getTooltip = function() return L["KIT_FILTER_TOOLTIP"] end
     },
     {
         key = "macro_toggle",

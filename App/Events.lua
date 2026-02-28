@@ -16,7 +16,10 @@ function addon:InitEvents()
     self.eventHandlers = {}
     self.eventFrame:SetScript("OnEvent", function(_, event, ...)
         for _, fn in ipairs(self.eventHandlers[event] or {}) do
-            fn(event, ...)
+            local ok, err = pcall(fn, event, ...)
+            if not ok and addon.Error then
+                addon:Error("Event handler failed (%s): %s", tostring(event), tostring(err))
+            end
         end
     end)
 end

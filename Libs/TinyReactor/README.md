@@ -20,12 +20,17 @@ A lightweight, declarative UI framework designed specifically for World of Warcr
 
 ## Quick Start
 
+> TinyReactor no longer exposes a global `_G` entry.  
+> Always access it via `addon.TinyReactor`.
+> Local check: run `./Scripts/check_no_tinyreactor_global.sh` before committing.
+
 ### 1. Define a Component
 
 Use `TR:Component` to define a component and implement the `:Render(props)` method.
 
 ```lua
-local TR = _G.TinyReactor
+local addonName, addon = ...
+local TR = addon.TinyReactor
 local MyButton = TR:Component("MyButton")
 
 function MyButton:Render(props)
@@ -386,7 +391,8 @@ Shallow copy utility (wrapper around WoW's `Mixin`). Copies properties from sour
 Here's a complete example demonstrating multiple TinyReactor features:
 
 ```lua
-local TR = _G.TinyReactor
+local addonName, addon = ...
+local TR = addon.TinyReactor
 
 -- Define a reusable Button component
 local Button = TR:Component("Button")

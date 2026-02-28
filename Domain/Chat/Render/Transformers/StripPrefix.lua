@@ -32,9 +32,9 @@ function addon.StripPrefix.Apply(msg)
     return msg
 end
 
-local function StripPrefixTransformer(frame, text, ...)
-    if not addon.db or not addon.db.enabled then return text, ... end
-    return addon.StripPrefix.Apply(text), ...
+local function StripPrefixTransformer(frame, text, r, g, b, extraArgs)
+    if not addon.db or not addon.db.enabled then return text, r, g, b, extraArgs end
+    return addon.StripPrefix.Apply(text), r, g, b, extraArgs
 end
 
 function addon:InitDisplayStripPrefix()

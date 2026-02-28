@@ -1,23 +1,29 @@
 local addonName, addon = ...
 local CF = _G["Create" .. "Frame"]
 local L = addon.L
-local def = addon.DEFAULTS and addon.DEFAULTS.plugin or {}
+local def = addon.DEFAULTS and addon.DEFAULTS.profile or {}
 
 local CategoryBuilders = addon.CategoryBuilders or {}
 addon.CategoryBuilders = CategoryBuilders
 
-CategoryBuilders.shelf = function(rootCat)
-    local cat, layout = Settings.RegisterVerticalLayoutSubcategory(rootCat, L["PAGE_SHELF"])
+CategoryBuilders.buttons = function(rootCat)
+    local cat, layout = Settings.RegisterVerticalLayoutSubcategory(rootCat, L["PAGE_BUTTONS"])
     Settings.RegisterAddOnCategory(cat)
-    local P = "TinyChaton_Shelf_Content_"
+    local P = "TinyChaton_Buttons_Content_"
 
-    local shelfOrder = addon.Shelf:GetOrder()
-    local shelfPath = "plugin.shelf"
-    local function GetShelfDB() return addon.GetTableFromPath(shelfPath) end
-    local shelfDef = def.shelf
+    local buttonOrder = addon.Shelf:GetOrder()
+    local function GetButtonsDB()
+        return addon.db and addon.db.profile and addon.db.profile.buttons
+    end
+    local buttonDef = def.buttons or {
+        channelPins = {},
+        kitPins = {},
+        dynamicMode = "mark",
+        mutedDynamicChannels = {},
+    }
 
-    local function GetCP() local db = GetShelfDB(); return db and db.channelPins or {} end
-    local function GetKP() local db = GetShelfDB(); return db and db.kitPins or {} end
+    local function GetCP() local db = GetButtonsDB(); return db and db.channelPins or {} end
+    local function GetKP() local db = GetButtonsDB(); return db and db.kitPins or {} end
 
     local registryMap = {}
     local kitRegistryMap = {}
@@ -35,12 +41,12 @@ CategoryBuilders.shelf = function(rootCat)
         local kp = GetKP()
         local dbValue = kp[key]
         if dbValue ~= nil then return dbValue == true end
-        local defValue = shelfDef and shelfDef.kitPins and shelfDef.kitPins[key]
+        local defValue = buttonDef and buttonDef.kitPins and buttonDef.kitPins[key]
         return defValue == true
     end
 
     local function GetKeyIndex(key)
-        for i, k in ipairs(shelfOrder) do
+        for i, k in ipairs(buttonOrder) do
             if k == key then return i end
         end
         return 0
@@ -48,27 +54,27 @@ CategoryBuilders.shelf = function(rootCat)
 
     local function GetPrevEnabledIndex(idx)
         for i = idx - 1, 1, -1 do
-            if IsKeyEnabled(shelfOrder[i]) then return i end
+            if IsKeyEnabled(buttonOrder[i]) then return i end
         end
         return nil
     end
 
     local function GetNextEnabledIndex(idx)
-        for i = idx + 1, #shelfOrder do
-            if IsKeyEnabled(shelfOrder[i]) then return i end
+        for i = idx + 1, #buttonOrder do
+            if IsKeyEnabled(buttonOrder[i]) then return i end
         end
         return nil
     end
 
-    local function MoveInShelfOrder(key, delta)
+    local function MoveInButtonOrder(key, delta)
         local idx = GetKeyIndex(key)
         if idx == 0 then return end
 
         local targetIdx = (delta < 0) and GetPrevEnabledIndex(idx) or GetNextEnabledIndex(idx)
         if targetIdx then
-            shelfOrder[idx], shelfOrder[targetIdx] = shelfOrder[targetIdx], shelfOrder[idx]
-            local db = GetShelfDB()
-            if db then db.shelfOrder = addon.Utils.DeepCopy(shelfOrder) end
+            buttonOrder[idx], buttonOrder[targetIdx] = buttonOrder[targetIdx], buttonOrder[idx]
+            local db = GetButtonsDB()
+            if db then db.buttonOrder = addon.Utils.DeepCopy(buttonOrder) end
             addon:RefreshShelf()
         end
     end
@@ -99,12 +105,11 @@ CategoryBuilders.shelf = function(rootCat)
         local container = addon.shelfPreviewContainer
         if not container or not container:IsVisible() then return end
 
-        local TR = _G.TinyReactor
+        local TR = addon.TinyReactor
         if not TR or not TR.Reconciler then return end
 
         local visibleItems = addon.Shelf and addon.Shelf:GetVisibleItems() or {}
-        local db = GetShelfDB()
-        local currentTheme = addon:GetShelfThemeProperties((db and db.theme) or "Modern")
+        local currentTheme = addon:GetShelfThemeProperties()
 
         local previewButtonSize = 30
         local previewSpacing = 2
@@ -116,6 +121,7 @@ CategoryBuilders.shelf = function(rootCat)
         for i, info in ipairs(visibleItems) do
             table.insert(elements, addon.ShelfButton:Create({
                 key = info.key, text = info.text, item = info.item, size = previewButtonSize, theme = currentTheme,
+                channelState = info.channelState,
                 point = {"LEFT", container, "LEFT", startX + (i-1)*(previewButtonSize+previewSpacing), 0},
             }))
         end
@@ -125,7 +131,7 @@ CategoryBuilders.shelf = function(rootCat)
 
     local bindingDialog = nil
     local function OpenBindingDialog(channelKey, buttonType)
-        local db = GetShelfDB()
+        local db = GetButtonsDB()
         if not db then return end
         local bindings = db.bindings
         if not bindings then db.bindings = {}; bindings = db.bindings end
@@ -172,7 +178,7 @@ CategoryBuilders.shelf = function(rootCat)
         end)
     end
 
-    if not addon.shelfTabState then addon.shelfTabState = { activeTab = 1 } end
+    if not addon.shelfTabState then addon.shelfTabState = { activeTabId = "system" } end
 
     local ribbonInit = Settings.CreateElementInitializer("SettingsListElementTemplate", { name = "" })
     ribbonInit.GetExtent = function() return 420 end
@@ -186,15 +192,30 @@ CategoryBuilders.shelf = function(rootCat)
             container:SetAllPoints()
             frame[addonName .. "_Shelf_RibbonContainer"] = container
 
-            local ribbonTabs = {
-                { label = L["LABEL_MODULES_TAB_SYSTEM"], key = "system" },
-                { label = L["LABEL_MODULES_TAB_DYNAMIC"], key = "dynamic" },
-                { label = L["LABEL_MODULES_TAB_KITS"], key = "kit" },
-            }
-
-            local ribbon = addon.CreateRibbon(container, ribbonTabs, {
-                tabWidth = 110, tabHeight = 28, tabSpacing = 12, startX = 0, startY = -10,
-                onTabChanged = function(index) addon.shelfTabState.activeTab = index end
+            local ribbon = addon.CreateRibbon(container, {
+                tabs = {
+                    { id = "system", label = L["LABEL_MODULES_TAB_SYSTEM"] },
+                    { id = "dynamic", label = L["LABEL_MODULES_TAB_DYNAMIC"] },
+                    { id = "kit", label = L["LABEL_MODULES_TAB_KITS"] },
+                },
+                layout = {
+                    startX = 0,
+                    startY = -10,
+                    spacing = -10,
+                    minTabWidth = 60,
+                    maxTabWidth = 110,
+                    height = 34,
+                },
+                behavior = {
+                    defaultTabId = "system",
+                    playClickSound = true,
+                    onTabChanged = function(tabId)
+                        addon.shelfTabState.activeTabId = tabId
+                    end,
+                },
+                content = {
+                    pageInset = { top = 60, bottom = 20, left = 0, right = 20 },
+                },
             })
             container.ribbon = ribbon
 
@@ -208,7 +229,7 @@ CategoryBuilders.shelf = function(rootCat)
                 local isEnabled = typeKey == "kit" and (GetKP()[item.key] ~= false) or (GetCP()[item.key] ~= false)
                 row.cb:SetChecked(isEnabled)
                 row.cb:SetScript("OnClick", function(self)
-                    local db = GetShelfDB()
+                    local db = GetButtonsDB()
                     if not db then return end
                     if not db.kitPins then db.kitPins = {} end
                     if not db.channelPins then db.channelPins = {} end
@@ -232,13 +253,13 @@ CategoryBuilders.shelf = function(rootCat)
                 downBtn:SetSize(MOVE_BTN_WIDTH, 22)
                 downBtn:SetPoint("RIGHT", RIGHT_MARGIN, 0)
                 downBtn:SetText("▼")
-                downBtn:SetScript("OnClick", function() MoveInShelfOrder(item.key, 1); addon.RefreshShelfList() end)
+                downBtn:SetScript("OnClick", function() MoveInButtonOrder(item.key, 1); addon.RefreshShelfList() end)
 
                 local upBtn = CF("Button", nil, row, "UIPanelButtonTemplate")
                 upBtn:SetSize(MOVE_BTN_WIDTH, 22)
                 upBtn:SetPoint("RIGHT", downBtn, "LEFT", -BTN_SPACING, 0)
                 upBtn:SetText("▲")
-                upBtn:SetScript("OnClick", function() MoveInShelfOrder(item.key, -1); addon.RefreshShelfList() end)
+                upBtn:SetScript("OnClick", function() MoveInButtonOrder(item.key, -1); addon.RefreshShelfList() end)
 
                 -- Action Buttons & Labels
                 -- Layout: [Left Btn]  [Right Btn] ... [Up] [Down]
@@ -287,7 +308,7 @@ CategoryBuilders.shelf = function(rootCat)
 
                     local idx = GetKeyIndex(item.key)
                     upBtn:SetEnabled(idx > 1 and GetPrevEnabledIndex(idx) ~= nil)
-                    downBtn:SetEnabled(idx > 0 and idx < #shelfOrder and GetNextEnabledIndex(idx) ~= nil)
+                    downBtn:SetEnabled(idx > 0 and idx < #buttonOrder and GetNextEnabledIndex(idx) ~= nil)
 
                     UpdateButtonText(leftBtn, "left")
                     UpdateButtonText(rightBtn, "right")
@@ -296,8 +317,8 @@ CategoryBuilders.shelf = function(rootCat)
                 return row
             end
 
-            local function SetupPage(idx, filterFunc, typeKey)
-                local page = ribbon:CreateContentPage(idx, container, { top = 60, bottom = 20, left = 0, right = 20 })
+            local function SetupPage(tabId, filterFunc, typeKey)
+                local page = ribbon:CreatePage(tabId, container)
                 page.items = {}
 
                 if typeKey == "kit" then
@@ -324,19 +345,23 @@ CategoryBuilders.shelf = function(rootCat)
                 return page
             end
 
-            local p1 = SetupPage(1, function(stream, catKey, subKey)
+            local p1 = SetupPage("system", function(stream, catKey, subKey)
                 return catKey == "CHANNEL" and subKey == "SYSTEM" and not stream.isSystemMsg and not stream.isNotStorable
             end, "channel")
-            local p2 = SetupPage(2, function(stream, catKey, subKey)
+            local p2 = SetupPage("dynamic", function(stream, catKey, subKey)
                 return catKey == "CHANNEL" and subKey == "DYNAMIC"
             end, "channel")
-            local p3 = SetupPage(3, function(r) return true end, "kit")
+            local p3 = SetupPage("kit", function(r) return true end, "kit")
 
             addon.RefreshShelfList = function()
                 p1.Refresh(); p2.Refresh(); p3.Refresh()
                 if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
             end
-            container.RestoreState = function() ribbon:SetActiveTab(addon.shelfTabState.activeTab or 1); addon.RefreshShelfList() end
+            container.RestoreState = function()
+                local tabId = addon.shelfTabState.activeTabId or "system"
+                ribbon:SelectTabById(tabId)
+                addon.RefreshShelfList()
+            end
             frame:HookScript("OnHide", function() container:Hide() end)
         end
 
@@ -344,42 +369,39 @@ CategoryBuilders.shelf = function(rootCat)
         if frame[addonName .. "_Shelf_RibbonContainer"].RestoreState then frame[addonName .. "_Shelf_RibbonContainer"].RestoreState() end
     end
     Settings.RegisterInitializer(cat, ribbonInit)
+    addon.AddSectionHeader(cat, L["SECTION_OTHER"])
+    local dynamicModeSetting = addon.AddProxyDropdown(cat, P .. "dynamicMode", L["LABEL_SHELF_DYNAMIC_MODE"], buttonDef.dynamicMode,
+        function()
+            local c = Settings.CreateControlTextContainer()
+            c:Add("hide", L["LABEL_SHELF_DYNAMIC_HIDE"])
+            c:Add("mark", L["LABEL_SHELF_DYNAMIC_MARK"])
+            return c:GetData()
+        end,
+        function()
+            local db = GetButtonsDB()
+            return db and db.dynamicMode or buttonDef.dynamicMode
+        end,
+        function(v)
+            local db = GetButtonsDB()
+            if db then db.dynamicMode = v end
+            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+        end,
+        nil)
 
 
-    addon.AddSectionHeader(cat, L["KIT_COUNTDOWN"])
-    local P_CD = "TinyChaton_Shelf_Countdown_"
-    local cdPath = "plugin.shelf.kitOptions.countdown"
-    local cdDef = shelfDef.kitOptions.countdown
-
-    local function GetCdVal(key)
-        local db = addon.GetTableFromPath(cdPath)
-        return db and db[key]
-    end
-
-    local function SetCdVal(key, value)
-        local db = addon.GetTableFromPath(cdPath)
-        if db then db[key] = value end
-    end
-
-    addon.AddProxySlider(cat, P_CD .. "Primary", L["ACTION_TIMER_PRIMARY"], cdDef.primary, 3, 60, 1,
-        function() return GetCdVal("primary") end,
-        function(v) SetCdVal("primary", v) end,
-        L["ACTION_TIMER_PRIMARY_DESC"])
-
-    addon.AddProxySlider(cat, P_CD .. "Secondary", L["ACTION_TIMER_SECONDARY"], cdDef.secondary, 3, 60, 1,
-        function() return GetCdVal("secondary") end,
-        function(v) SetCdVal("secondary", v) end,
-        L["ACTION_TIMER_SECONDARY_DESC"])
-
-
-    local function ResetShelfData()
-        local db = GetShelfDB()
+    local function ResetButtonData()
+        local db = GetButtonsDB()
         if not db then return end
-        db.channelPins = addon.Utils.DeepCopy(def.shelf.channelPins)
-        db.kitPins = addon.Utils.DeepCopy(def.shelf.kitPins)
-        db.shelfOrder = nil
+        db.channelPins = addon.Utils.DeepCopy(def.buttons.channelPins)
+        db.kitPins = addon.Utils.DeepCopy(def.buttons.kitPins)
+        db.buttonOrder = nil
         db.bindings = {}
-        db.kitOptions = addon.Utils.DeepCopy(def.shelf.kitOptions)
+        db.dynamicMode = def.buttons.dynamicMode
+        db.mutedDynamicChannels = addon.Utils.DeepCopy(def.buttons.mutedDynamicChannels)
+
+        if dynamicModeSetting and dynamicModeSetting.SetValue then
+            dynamicModeSetting:SetValue(db.dynamicMode)
+        end
 
         addon:ApplyAllSettings()
         addon:RefreshShelf()
@@ -387,7 +409,7 @@ CategoryBuilders.shelf = function(rootCat)
         if addon.RefreshShelfList then addon.RefreshShelfList() end
     end
 
-    addon.RegisterPageReset(cat, ResetShelfData)
+    addon.RegisterPageReset(cat, ResetButtonData)
 
     return cat
 end

@@ -98,8 +98,8 @@ function TR:RegisterPreset(key, definition)
 
     self.presets[key] = finalDefinition
 
-    if addon.Debug and addon.Debug.themes then
-        print("|cFF00FF00ThemeRegistry:|r Registered theme '" .. key .. "'")
+    if addon.Debug then
+        addon:Debug("ThemeRegistry: Registered theme '%s'", key)
     end
 
     return true
@@ -135,8 +135,8 @@ function TR:RegisterComponent(componentKey, themeKeys, defaultTheme)
         default = defaultTheme or themeKeys[1],
     }
 
-    if addon.Debug and addon.Debug.themes then
-        print("|cFF00FF00ThemeRegistry:|r Registered component '" .. componentKey .. "' with " .. #themeKeys .. " themes")
+    if addon.Debug then
+        addon:Debug("ThemeRegistry: Registered component '%s' with %d themes", componentKey, #themeKeys)
     end
 end
 
@@ -315,8 +315,4 @@ function TR:GetPropertyControlType(propertyName, value)
     return "text"
 end
 
--- =========================================================================
--- 导出到全局（可选）
--- =========================================================================
-
-_G.TinyChatonThemeRegistry = addon.ThemeRegistry
+-- No global export. Access via addon.ThemeRegistry.

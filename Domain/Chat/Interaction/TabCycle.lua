@@ -95,9 +95,13 @@ end
 local function OnTabPressed(self)
     if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("TabCycle") then return end
     if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then return end
-    if not addon.db or not addon.db.enabled or not addon.db.plugin.chat or not addon.db.plugin.chat.interaction or not addon.db.plugin.chat.interaction.tabCycle then return end
+    if not addon.db or not addon.db.enabled or not addon.db.profile.chat or not addon.db.profile.chat.interaction or not addon.db.profile.chat.interaction.tabCycle then return end
     local text = self:GetText()
-    if text:sub(1, 1) ~= "/" then return end
+    -- If slash-command text exists, clear it before cycling channel to avoid mixed states
+    -- such as "Guild: /query".
+    if type(text) == "string" and text:sub(1, 1) == "/" then
+        self:SetText("")
+    end
 
     -- Get current chat type (compatible with modern/legacy API)
     local currentType = self:GetAttribute("chatType") or self.chatType
@@ -121,7 +125,6 @@ local function OnTabPressed(self)
     end
 
     ChatEdit_UpdateHeader(self)
-    self:SetText("")  -- Clear input while keeping the target channel.
 end
 
 -- Store delayed timer reference for cancellation

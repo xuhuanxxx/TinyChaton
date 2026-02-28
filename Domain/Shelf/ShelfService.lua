@@ -30,11 +30,42 @@ function addon.Shelf:InvalidateChannelListCache()
     channelListCache.timestamp = 0
 end
 
+function addon:GetShelfThemeProperties(themeKey)
+    themeKey = themeKey or (addon.db and addon.db.profile and addon.db.profile.shelf and addon.db.profile.shelf.theme) or addon.CONSTANTS.SHELF_DEFAULT_THEME
+
+    local props = {}
+    if not addon.ThemeRegistry or not addon.ThemeRegistry.GetPreset then
+        return props
+    end
+
+    local preset = addon.ThemeRegistry:GetPreset(themeKey)
+    if not preset then
+        preset = addon.ThemeRegistry:GetPreset(addon.CONSTANTS.SHELF_DEFAULT_THEME)
+    end
+
+    if preset and preset.properties then
+        for k, v in pairs(preset.properties) do
+            props[k] = v
+        end
+
+        local db = addon.db and addon.db.profile and addon.db.profile.shelf
+        if db and db.themes and db.themes[themeKey] then
+            for k, v in pairs(db.themes[themeKey]) do
+                if type(v) ~= "table" or k == "bgColor" or k == "borderColor" or k == "hoverBorderColor" or k == "textColor" then
+                    props[k] = v
+                end
+            end
+        end
+    end
+
+    return props
+end
+
 -- Configuration Generation
 
 function addon.Shelf:GetThemeProperty(prop)
-    if not addon.db or not addon.db.plugin or not addon.db.plugin.shelf then return nil end
-    local db = addon.db.plugin.shelf
+    if not addon.db or not addon.db.profile or not addon.db.profile.shelf then return nil end
+    local db = addon.db.profile.shelf
     local theme = db.theme or addon.CONSTANTS.SHELF_DEFAULT_THEME
     if not db.themes then db.themes = {} end
     if not db.themes[theme] then db.themes[theme] = {} end
@@ -49,8 +80,8 @@ function addon.Shelf:GetThemeProperty(prop)
 end
 
 function addon.Shelf:SetThemeProperty(prop, val)
-    if not addon.db or not addon.db.plugin or not addon.db.plugin.shelf then return end
-    local db = addon.db.plugin.shelf
+    if not addon.db or not addon.db.profile or not addon.db.profile.shelf then return end
+    local db = addon.db.profile.shelf
     local theme = db.theme or addon.CONSTANTS.SHELF_DEFAULT_THEME
     if not db.themes then db.themes = {} end
     if not db.themes[theme] then db.themes[theme] = {} end
@@ -60,8 +91,8 @@ function addon.Shelf:SetThemeProperty(prop, val)
 end
 
 function addon.Shelf:GetOrder()
-    if addon.db.plugin.shelf.shelfOrder and #addon.db.plugin.shelf.shelfOrder > 0 then
-        return addon.db.plugin.shelf.shelfOrder
+    if addon.db.profile.buttons.buttonOrder and #addon.db.profile.buttons.buttonOrder > 0 then
+        return addon.db.profile.buttons.buttonOrder
     end
 
     local items = {}
@@ -95,7 +126,7 @@ function addon.Shelf:GetOrder()
 end
 
 function addon.Shelf:GetItemConfig(key)
-    local bindings = (addon.db and addon.db.plugin and addon.db.plugin.shelf and addon.db.plugin.shelf.bindings) or {}
+    local bindings = (addon.db and addon.db.profile and addon.db.profile.buttons and addon.db.profile.buttons.bindings) or {}
     local customBind = bindings[key]
 
     -- Try to find Stream first (new architecture)
@@ -209,14 +240,14 @@ end
 function addon.Shelf:GetVisibleItems()
     local visibleItems = {}
 
-    if not addon.db or not addon.db.plugin.shelf then return visibleItems end
+    if not addon.db or not addon.db.profile.buttons then return visibleItems end
 
-    local shelfOrder = self:GetOrder()
-    local channelPins = addon.db.plugin.shelf.channelPins or {}
-    local kitPins = addon.db.plugin.shelf.kitPins or {}
+    local buttonOrder = self:GetOrder()
+    local channelPins = addon.db.profile.buttons.channelPins or {}
+    local kitPins = addon.db.profile.buttons.kitPins or {}
     -- IMPORTANT: dynamicMode applies to CHANNEL.DYNAMIC only.
     -- System channels are not availability-checked and remain pin-driven.
-    local dynamicMode = addon.db.plugin.shelf.dynamicMode or "hide"
+    local dynamicMode = addon.db.profile.buttons.dynamicMode or "hide"
 
     local channelList = GetCachedChannelList()
     local joinedChannels = {}
@@ -244,8 +275,8 @@ function addon.Shelf:GetVisibleItems()
         return nil
     end
 
-    -- Iterate by shelfOrder
-    for _, key in ipairs(shelfOrder) do
+    -- Iterate by buttonOrder
+    for _, key in ipairs(buttonOrder) do
         local item = self:GetItemConfig(key)
         if item then
             local isChannel = item.type == "channel"
@@ -284,8 +315,17 @@ function addon.Shelf:GetVisibleItems()
                     local displayText = isChannel and addon:GetChannelLabel(item, channelNumber, "SHORT") or (item.short or item.label or key)
 
                     local isMuted = false
-                    if item.isDynamic and addon.VisibilityPolicy and addon.VisibilityPolicy.IsDynamicChannelMuted then
+                    if item.isDynamic and isJoined and addon.VisibilityPolicy and addon.VisibilityPolicy.IsDynamicChannelMuted then
                         isMuted = addon.VisibilityPolicy:IsDynamicChannelMuted(item.key)
+                    end
+
+                    local channelState = "joined"
+                    if isChannel and item.isDynamic then
+                        if not isJoined then
+                            channelState = "unjoined"
+                        elseif isMuted then
+                            channelState = "muted"
+                        end
                     end
 
                     table.insert(visibleItems, {
@@ -296,10 +336,10 @@ function addon.Shelf:GetVisibleItems()
                         short = item.short,
                         color = item.color,
                         isDynamic = item.isDynamic,
-                        isActive = (not isChannel) or isJoined,
                         isChannel = isChannel,
                         isKit = isKit,
                         isMuted = isMuted,
+                        channelState = channelState,
                         item = item,
                         channelNumber = channelNumber,
                     })

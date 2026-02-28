@@ -46,7 +46,6 @@ addon.Colors = {
                     resetInstances = {1, 1, 1, 1},
                     countdown = {1, 1, 1, 1},
                     roll = {1, 1, 1, 1},
-                    filter = {1, 1, 1, 1},
                     macro = {1, 1, 1, 1},
                     leave = {1, 0.5, 0.5, 1},
                     emotePanel = {1, 1, 1, 1},

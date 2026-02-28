@@ -121,6 +121,66 @@ function addon.Utils.SetByPath(t, path, value)
     t[parts[#parts]] = value
 end
 
+--- Resolve {token} placeholders in a dot path with runtime context values.
+--- Missing tokens are replaced with an empty string.
+--- @param path string
+--- @param context? table
+--- @return string|nil
+function addon.Utils.ResolveTemplatePath(path, context)
+    if type(path) ~= "string" or path == "" then
+        return nil
+    end
+    local ctx = type(context) == "table" and context or {}
+    local resolved = path:gsub("{([%a_][%w_]*)}", function(token)
+        local value = ctx[token]
+        if value == nil then
+            return ""
+        end
+        return tostring(value)
+    end)
+    return resolved
+end
+
+--- Validate dot path syntax used by GetByPath/SetByPath.
+--- Returns false and reason when invalid.
+--- @param path string
+--- @return boolean, string?
+function addon.Utils.ValidatePath(path)
+    if type(path) ~= "string" then
+        return false, "path must be string"
+    end
+    if path == "" then
+        return false, "path cannot be empty"
+    end
+    if path:find("..", 1, true) then
+        return false, "path contains empty segment"
+    end
+    if path:sub(1, 1) == "." or path:sub(-1) == "." then
+        return false, "path cannot start or end with dot"
+    end
+    local scrubbed = path:gsub("{([%a_][%w_]*)}", "")
+    if scrubbed:find("{", 1, true) or scrubbed:find("}", 1, true) then
+        return false, "path contains invalid token"
+    end
+    return true
+end
+
+--- Pack varargs preserving nil holes (Lua 5.1 compatible)
+--- @return table packed { n = argc, ... }
+function addon.Utils.PackArgs(...)
+    return { n = select("#", ...), ... }
+end
+
+--- Unpack packed varargs preserving nil holes (Lua 5.1 compatible)
+--- @param packed table
+--- @return ...
+function addon.Utils.UnpackArgs(packed)
+    if type(packed) ~= "table" then
+        return
+    end
+    return unpack(packed, 1, packed.n or #packed)
+end
+
 --- Normalize channel base name (strip server suffix like "World - ServerName" -> "World")
 --- @param name string
 --- @return string
@@ -321,7 +381,7 @@ end
 function addon.Utils.ResolveChannelDisplay(input, format)
     if not input then return "", nil end
 
-    local fmt = format or (addon.db and addon.db.plugin.chat and addon.db.plugin.chat.visual and addon.db.plugin.chat.visual.channelNameFormat) or "SHORT"
+    local fmt = format or (addon.db and addon.db.profile.chat and addon.db.profile.chat.visual and addon.db.profile.chat.visual.channelNameFormat) or "SHORT"
     local reg = FindRegistryItem(input)
 
     if reg then

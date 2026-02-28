@@ -9,6 +9,7 @@
 ## Author: xuhuaxxx
 ## Version: 1.0.0
 ## SavedVariables: TinyChatonDB
+## SavedVariablesPerCharacter: TinyChatonCharDB
 ## IconTexture: Interface\AddOns\TinyChaton\icon.png
 
 Locales\Init.lua
@@ -23,8 +24,14 @@ Libs\MultiDropdown\Core.lua
 Libs\TinyReactor\TinyReactor.xml
 
 Infrastructure\Runtime\Logger.lua
+App\DI\Container.lua
 App\Container.lua
+App\Bootstrap\Runtime.lua
 App\Bootstrap.lua
+App\Bootstrap\Database.lua
+App\Bootstrap\ContainerSetup.lua
+App\Bootstrap\Modules.lua
+App\Bootstrap\Lifecycle.lua
 
 Domain\Chat\Types.lua
 Domain\Chat\Contracts.lua
@@ -53,6 +60,7 @@ Domain\Chat\Policy\VisibilityPolicy.lua
 Domain\Chat\Ingress\EventContextFactory.lua
 Domain\Chat\Render\MessageFormatter.lua
 Domain\Chat\Ingress\EventRouter.lua
+Domain\Chat\Ingress\Filters\RuleMatcher.lua
 Domain\Chat\Ingress\Filters\Blacklist.lua
 Domain\Chat\Ingress\Filters\Whitelist.lua
 Domain\Chat\Ingress\Filters\Duplicate.lua
@@ -81,9 +89,11 @@ Domain\Shelf\SelectionDialog.lua
 Domain\Settings\SettingsSchema.lua
 Domain\Settings\SettingsControls.lua
 Domain\Settings\Pages\General.lua
+Domain\Settings\Pages\Appearance.lua
 Domain\Settings\Pages\Filters.lua
-Domain\Settings\Pages\Shelf.lua
+Domain\Settings\Pages\Buttons.lua
 Domain\Settings\Pages\Chat.lua
+Domain\Settings\Pages\Data.lua
 Domain\Settings\Pages\Automation.lua
 Domain\Settings\Pages\Profile.lua
 Domain\Settings\SettingsService.lua

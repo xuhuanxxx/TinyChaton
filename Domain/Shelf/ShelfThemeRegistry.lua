@@ -3,7 +3,39 @@ local L = addon.L
 
 -- Shelf Themes - 使用 ThemeRegistry 注册 Shelf 主题
 
-addon.ThemeRegistry:RegisterPreset("Modern", {
+local function SafeRegisterPreset(key, definition)
+    if not addon.ThemeRegistry or type(addon.ThemeRegistry.RegisterPreset) ~= "function" then
+        if addon.Error then
+            addon:Error("ThemeRegistry is unavailable when registering shelf theme preset '%s'", tostring(key))
+        end
+        return
+    end
+
+    local ok, err = pcall(function()
+        addon.ThemeRegistry:RegisterPreset(key, definition)
+    end)
+    if not ok and addon.Error then
+        addon:Error("Failed to register shelf theme preset '%s': %s", tostring(key), tostring(err))
+    end
+end
+
+local function SafeRegisterComponent(componentKey, themeKeys, defaultTheme)
+    if not addon.ThemeRegistry or type(addon.ThemeRegistry.RegisterComponent) ~= "function" then
+        if addon.Error then
+            addon:Error("ThemeRegistry is unavailable when registering theme component '%s'", tostring(componentKey))
+        end
+        return
+    end
+
+    local ok, err = pcall(function()
+        addon.ThemeRegistry:RegisterComponent(componentKey, themeKeys, defaultTheme)
+    end)
+    if not ok and addon.Error then
+        addon:Error("Failed to register theme component '%s': %s", tostring(componentKey), tostring(err))
+    end
+end
+
+SafeRegisterPreset("Modern", {
     name = L["LABEL_SHELF_THEME_MODERN"],
     description = "Clean modern appearance with subtle borders",
     properties = {
@@ -33,7 +65,7 @@ addon.ThemeRegistry:RegisterPreset("Modern", {
     }
 })
 
-addon.ThemeRegistry:RegisterPreset("Legacy", {
+SafeRegisterPreset("Legacy", {
     name = L["LABEL_SHELF_THEME_LEGACY"],
     description = "Classic WoW tooltip style",
     properties = {
@@ -58,7 +90,7 @@ addon.ThemeRegistry:RegisterPreset("Legacy", {
     }
 })
 
-addon.ThemeRegistry:RegisterPreset("Soft", {
+SafeRegisterPreset("Soft", {
     name = L["LABEL_SHELF_THEME_SOFT"],
     description = "Soft rounded appearance",
     properties = {
@@ -92,7 +124,7 @@ addon.ThemeRegistry:RegisterPreset("Soft", {
     }
 })
 
-addon.ThemeRegistry:RegisterPreset("Flat", {
+SafeRegisterPreset("Flat", {
     name = L["LABEL_SHELF_THEME_FLAT"],
     description = "Flat design without borders",
     properties = {
@@ -117,7 +149,7 @@ addon.ThemeRegistry:RegisterPreset("Flat", {
     }
 })
 
-addon.ThemeRegistry:RegisterPreset("Retro", {
+SafeRegisterPreset("Retro", {
     name = L["LABEL_SHELF_THEME_RETRO"],
     description = "Classic WoW UIPanelButton red button style",
     properties = {
@@ -140,46 +172,17 @@ addon.ThemeRegistry:RegisterPreset("Retro", {
 })
 
 -- 注册 Shelf 组件绑定
-addon.ThemeRegistry:RegisterComponent("shelf",
+SafeRegisterComponent("shelf",
     {"Modern", "Legacy", "Soft", "Flat", "Retro"},
     "Modern"
 )
-
--- 辅助函数：获取 Shelf 当前主题属性
-
-function addon:GetShelfThemeProperties(themeKey)
-    themeKey = themeKey or (addon.db and addon.db.plugin and addon.db.plugin.shelf and addon.db.plugin.shelf.theme) or addon.CONSTANTS.SHELF_DEFAULT_THEME
-
-    local preset = addon.ThemeRegistry:GetPreset(themeKey)
-    if not preset then
-        preset = addon.ThemeRegistry:GetPreset(addon.CONSTANTS.SHELF_DEFAULT_THEME)
-    end
-
-    local props = {}
-    if preset and preset.properties then
-        for k, v in pairs(preset.properties) do
-            props[k] = v
-        end
-
-        local db = addon.db and addon.db.plugin and addon.db.plugin.shelf
-        if db and db.themes and db.themes[themeKey] then
-            for k, v in pairs(db.themes[themeKey]) do
-                if type(v) ~= "table" or k == "bgColor" or k == "borderColor" or k == "hoverBorderColor" or k == "textColor" then
-                    props[k] = v
-                end
-            end
-        end
-    end
-
-    return props
-end
 
 -- =========================================================================
 -- 辅助函数：验证和清理主题配置
 -- =========================================================================
 
 function addon:ValidateShelfThemeConfig()
-    local db = addon.db and addon.db.plugin and addon.db.plugin.shelf
+    local db = addon.db and addon.db.profile and addon.db.profile.shelf
     if not db then return end
 
     if not db.themes then

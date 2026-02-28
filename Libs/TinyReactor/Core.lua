@@ -1,6 +1,6 @@
 local addonName, addon = ...
-local TR = {}
-_G.TinyReactor = TR
+addon.TinyReactor = addon.TinyReactor or {}
+local TR = addon.TinyReactor
 
 -- =========================================================================
 -- TinyReactor Debug System

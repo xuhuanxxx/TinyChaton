@@ -36,7 +36,7 @@ local function PruneCache()
 end
 
 function addon:CreateClickableTimestamp(tsText, copyMsg, tsColor)
-    local interaction = self.db and self.db.plugin and self.db.plugin.chat and self.db.plugin.chat.interaction
+    local interaction = self.db and self.db.profile and self.db.profile.chat and self.db.profile.chat.interaction
     local clickEnabled = interaction and (interaction.clickToCopy ~= false) or false
 
     local color = tsColor or "FFFFFFFF"
@@ -58,18 +58,18 @@ function addon:CreateClickableTimestamp(tsText, copyMsg, tsColor)
     return linkified, id
 end
 
-local function InteractionTimestampTransformer(frame, text, r, g, b, ...)
-    if not addon.db or not addon.db.enabled then return text, r, g, b, ... end
-    if type(text) ~= "string" or text == "" then return text, r, g, b, ... end
+local function InteractionTimestampTransformer(frame, text, r, g, b, extraArgs)
+    if not addon.db or not addon.db.enabled then return text, r, g, b, extraArgs end
+    if type(text) ~= "string" or text == "" then return text, r, g, b, extraArgs end
 
     -- Skip if already processed
-    if text:find("|Htinychat:copy:") then return text, r, g, b, ... end
+    if text:find("|Htinychat:copy:") then return text, r, g, b, extraArgs end
 
     -- Match timestamp at start: [HH:MM] or [HH:MM:SS]
     local _, finish, ts = text:find("^(%[?%d+:%d+:?%d*%]?)")
 
     if not ts or not ts:find("%d+:%d+") then
-        return text, r, g, b, ...
+        return text, r, g, b, extraArgs
     end
 
     -- Check for trailing |r (color reset)
@@ -86,7 +86,7 @@ local function InteractionTimestampTransformer(frame, text, r, g, b, ...)
     local color = addon.MessageFormatter.ResolveTimestampColor({r = r, g = g, b = b})
     local linkified = addon:CreateClickableTimestamp(ts, ts .. (needsSpace and " " or "") .. rest, color)
 
-    return linkified .. rest, r, g, b, ...
+    return linkified .. rest, r, g, b, extraArgs
 end
 
 function addon:EnableInteractionTimestamp()

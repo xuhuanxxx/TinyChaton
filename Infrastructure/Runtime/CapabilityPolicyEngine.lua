@@ -69,7 +69,7 @@ local function NormalizePolicyConfig(policyTable)
 end
 
 function addon:GetPolicyConfig()
-    local globalDb = self.db and self.db.global
+    local globalDb = self.db and self.db.account
     if not globalDb then
         return {
             mplusPostCompleteMode = POLICY_DEFAULT_CONFIG.mplusPostCompleteMode,
@@ -150,7 +150,7 @@ function addon:InitPolicyEngine()
     end
 
     -- Ensure policy config exists and normalize once at init time.
-    if self.db and self.db.global then
-        self.db.global.policy = NormalizePolicyConfig(self.db.global.policy)
+    if self.db and self.db.account then
+        self.db.account.policy = NormalizePolicyConfig(self.db.account.policy)
     end
 end

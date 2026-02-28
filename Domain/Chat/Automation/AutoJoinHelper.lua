@@ -17,14 +17,14 @@ local function NormalizeChannelName(name)
     return trimmed
 end
 
-function addon:ApplyAutomationSettings()
-    if not self.db or not self.db.plugin.automation then return end
+function addon:ApplyAutoJoinSettings()
+    if not self.db or not self.db.profile.automation then return end
     if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
         return
     end
 
     -- Auto-join is intentionally narrowed to explicit custom channel names only.
-    local custom = self.db.plugin.automation.customAutoJoinChannels
+    local custom = self.db.profile.automation.customAutoJoinChannels
     if type(custom) == "table" then
         for _, rawName in ipairs(custom) do
             local channelName = NormalizeChannelName(rawName)
@@ -41,7 +41,7 @@ end
 
 function addon:InitAutoJoinHelper()
     local function EnableAutoJoin()
-        addon:ApplyAutomationSettings()
+        addon:ApplyAutoJoinSettings()
     end
 
     if addon.RegisterFeature then

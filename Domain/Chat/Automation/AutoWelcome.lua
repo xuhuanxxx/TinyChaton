@@ -3,181 +3,282 @@ local CF = _G["Create" .. "Frame"]
 
 -- =========================================================================
 -- Module: AutoWelcome
--- Automatically sends welcome messages when players join guild/party/raid
+-- Explicit state machine for automated guild/party/raid welcome messages.
 -- =========================================================================
 
-local lastWelcome = {}
-local pendingWelcomeTimers = {}
+local state = {
+    featureEnabled = false,
+    listenerEnabled = false,
+    pendingByKey = {},
+    lastSentAtByKey = {},
+    patternByScene = {},
+}
 
-local function buildPattern(formatStr)
-    if not formatStr or type(formatStr) ~= "string" then return nil end
-    return formatStr:gsub("%%s", "(.+)")
+local function EscapeLuaPattern(text)
+    if type(text) ~= "string" then return "" end
+    return (text:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1"))
 end
 
-local function getJoinedPlayer(msg, scene)
-    local pattern
-    if scene == "guild" and ERR_GUILD_JOIN_S then
-        pattern = buildPattern(ERR_GUILD_JOIN_S)
-    elseif scene == "party" then
-        if ERR_PARTY_MEMBER_JOINED_S then
-            pattern = buildPattern(ERR_PARTY_MEMBER_JOINED_S)
-        else
-            pattern = "(.+) joins the party"
-        end
-    elseif scene == "raid" then
-        if ERR_RAID_MEMBER_ADDED_S then
-            pattern = buildPattern(ERR_RAID_MEMBER_ADDED_S)
-        else
-            pattern = "(.+) has joined the raid"
-        end
+local function buildPattern(formatStr)
+    if type(formatStr) ~= "string" or formatStr == "" then return nil end
+    local token = "\001TINYCHATON_NAME\001"
+    local withToken = formatStr:gsub("%%s", token)
+    local escaped = EscapeLuaPattern(withToken)
+    escaped = escaped:gsub(token, "(.+)")
+    local pattern = "^" .. escaped .. "$"
+    if not pcall(string.match, "", pattern) then
+        return nil
     end
-    if pattern then
-        return msg:match(pattern)
+    return pattern
+end
+
+local function getSceneFormatString(scene)
+    if scene == "guild" then
+        return ERR_GUILD_JOIN_S
+    elseif scene == "party" then
+        return ERR_PARTY_MEMBER_JOINED_S
+    elseif scene == "raid" then
+        return ERR_RAID_MEMBER_ADDED_S
     end
     return nil
 end
 
-local function trySendWelcome(playerName, scene)
-    if not addon.db or not addon.db.enabled then return end
-    if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
-        return
+local function getScenePattern(scene)
+    if state.patternByScene[scene] ~= nil then
+        return state.patternByScene[scene] or nil
     end
-    local c = addon.db.plugin.automation
-    local cfg = scene == "guild" and c.welcomeGuild or scene == "party" and c.welcomeParty or c.welcomeRaid
-    if not cfg or not cfg.enabled then return end
+    local pattern = buildPattern(getSceneFormatString(scene))
+    state.patternByScene[scene] = pattern or false
+    return pattern
+end
 
-    -- Handle templates as function or table
-    local templates = cfg.templates
-    -- Note: RecursiveSync now handles function defaults automatically,
-    -- so templates will be a table here.
-    if not templates or type(templates) ~= "table" then return end
+local function normalizePlayerName(name)
+    if type(name) ~= "string" then return nil, nil end
+    local trimmed = name:match("^%s*(.-)%s*$")
+    if not trimmed or trimmed == "" then return nil, nil end
+    local lowered = (strlower and strlower(trimmed)) or string.lower(trimmed)
+    return trimmed, lowered
+end
 
-    -- Check permissions: party/raid requires leader, guild does not
+local function makeWelcomeKey(scene, normalizedLowerName)
+    if not scene or not normalizedLowerName then return nil end
+    return scene .. ":" .. normalizedLowerName
+end
+
+local function getAutomationConfig()
+    if not addon.db or not addon.db.profile then return nil end
+    return addon.db.profile.automation
+end
+
+local function getWelcomeRoot()
+    local automation = getAutomationConfig()
+    return automation and automation.welcome or nil
+end
+
+local function isCapabilityReady()
+    if not addon.Can then return true end
+    return addon:Can(addon.CAPABILITIES.READ_CHAT_EVENT) and addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION)
+end
+
+local function isWelcomeEnabled()
+    local welcome = getWelcomeRoot()
+    return welcome and welcome.enabled == true
+end
+
+local function getSceneConfig(scene)
+    local automation = getAutomationConfig()
+    if not automation then return nil end
+    if scene == "guild" then return automation.welcomeGuild end
+    if scene == "party" then return automation.welcomeParty end
+    if scene == "raid" then return automation.welcomeRaid end
+    return nil
+end
+
+local function isSceneAvailable(scene)
+    if scene == "guild" then
+        return IsInGuild()
+    elseif scene == "party" then
+        return IsInGroup() and not IsInRaid()
+    elseif scene == "raid" then
+        return IsInRaid()
+    end
+    return false
+end
+
+local function hasWelcomePermission(scene)
     if scene == "party" or scene == "raid" then
-        if not UnitIsGroupLeader("player") then
-            return
-        end
+        return UnitIsGroupLeader("player")
     end
-    local n = #templates
-    if n == 0 then return end
-    local cooldownMin = c.welcomeCooldownMinutes or 0
-    if cooldownMin > 0 then
-        local last = lastWelcome[playerName] or 0
-        if (time() - last) < cooldownMin * 60 then return end
+    return true
+end
+
+local function getJoinedPlayer(msg, scene)
+    local pattern = getScenePattern(scene)
+    if not pattern then return nil end
+    return msg:match(pattern)
+end
+
+local function cancelPendingTimer(key)
+    local timer = state.pendingByKey[key]
+    if timer and timer.Cancel then
+        timer:Cancel()
     end
-    local line = templates[math.random(n)]
+    state.pendingByKey[key] = nil
+end
+
+local function emitWelcome(playerName, scene, key)
+    if not addon.db or not addon.db.enabled then return end
+    if not isCapabilityReady() or not isWelcomeEnabled() then return end
+    if not hasWelcomePermission(scene) then return end
+
+    local cfg = getSceneConfig(scene)
+    if not cfg or not cfg.enabled then return end
+    if type(cfg.templates) ~= "table" or #cfg.templates == 0 then return end
+
+    local line = cfg.templates[math.random(#cfg.templates)]
     local text = (line or ""):gsub("%%s", playerName)
     if text == "" then return end
+
     local useWhisper = (cfg.sendMode == "whisper")
-    local chatType = (useWhisper and "WHISPER") or (scene == "guild" and "GUILD") or (scene == "party" and "PARTY") or "RAID"
-    local timerKey = playerName .. "_" .. scene
-    local timer = C_Timer.NewTimer(math.random(2, 5), function()
-        pendingWelcomeTimers[timerKey] = nil
-        -- Belt-and-suspenders for delayed callback: policy may change after timer creation.
-        if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
+    if useWhisper then
+        addon:EmitChatMessage(text, "WHISPER", nil, playerName)
+    elseif scene == "guild" and isSceneAvailable("guild") then
+        addon:EmitChatMessage(text, "GUILD")
+    elseif scene == "party" and isSceneAvailable("party") then
+        addon:EmitChatMessage(text, "PARTY")
+    elseif scene == "raid" and isSceneAvailable("raid") then
+        addon:EmitChatMessage(text, "RAID")
+    else
+        return
+    end
+
+    state.lastSentAtByKey[key] = time()
+end
+
+local function scheduleWelcome(playerName, scene)
+    if not addon.db or not addon.db.enabled then return end
+    if not isCapabilityReady() or not isWelcomeEnabled() then return end
+    if not hasWelcomePermission(scene) then return end
+
+    local cfg = getSceneConfig(scene)
+    if not cfg or not cfg.enabled then return end
+    if type(cfg.templates) ~= "table" or #cfg.templates == 0 then return end
+
+    local normalizedName, lowerName = normalizePlayerName(playerName)
+    if not normalizedName or not lowerName then return end
+
+    local key = makeWelcomeKey(scene, lowerName)
+    if not key then return end
+
+    local automation = getAutomationConfig()
+    local welcome = automation and automation.welcome or {}
+    local cooldownMin = welcome.cooldownMinutes or 0
+    if cooldownMin > 0 then
+        local last = state.lastSentAtByKey[key] or 0
+        if (time() - last) < (cooldownMin * 60) then
             return
         end
-        -- Re-check settings before sending (user may have disabled)
-        if not addon.db or not addon.db.plugin.automation then return end
-        local cfgNow = scene == "guild" and addon.db.plugin.automation.welcomeGuild or scene == "party" and addon.db.plugin.automation.welcomeParty or addon.db.plugin.automation.welcomeRaid
-        if not cfgNow or not cfgNow.enabled then return end
+    end
 
-        -- Re-check permissions (may have lost leader status during delay)
-        if scene == "party" or scene == "raid" then
-            if not UnitIsGroupLeader("player") then
+    cancelPendingTimer(key)
+    state.pendingByKey[key] = C_Timer.NewTimer(math.random(2, 5), function()
+        state.pendingByKey[key] = nil
+
+        local automationNow = getAutomationConfig()
+        local welcomeNow = automationNow and automationNow.welcome or {}
+        local cooldownNow = welcomeNow.cooldownMinutes or 0
+        if cooldownNow > 0 then
+            local last = state.lastSentAtByKey[key] or 0
+            if (time() - last) < (cooldownNow * 60) then
                 return
             end
         end
 
-        if chatType == "WHISPER" then
-            addon:EmitChatMessage(text, "WHISPER", nil, playerName)
-        elseif scene == "guild" and IsInGuild() then
-            addon:EmitChatMessage(text, "GUILD")
-        elseif scene == "party" and IsInGroup() and not IsInRaid() then
-            addon:EmitChatMessage(text, "PARTY")
-        elseif scene == "raid" and IsInRaid() then
-            addon:EmitChatMessage(text, "RAID")
-        else
-            return
-        end
-        lastWelcome[playerName] = time()
+        emitWelcome(normalizedName, scene, key)
     end)
-    pendingWelcomeTimers[timerKey] = timer
 end
 
--- Cancel all pending welcome timers
+local function enableListener()
+    if state.listenerEnabled then return end
+    if not addon.AutoWelcomeListener then
+        addon.AutoWelcomeListener = CF("Frame")
+        addon.AutoWelcomeListener:SetScript("OnEvent", function(_, event, msg)
+            if event ~= "CHAT_MSG_SYSTEM" then return end
+            if type(msg) ~= "string" or msg == "" then return end
+            if not isCapabilityReady() or not isWelcomeEnabled() then return end
+
+            local player = getJoinedPlayer(msg, "guild")
+            if player then
+                scheduleWelcome(player, "guild")
+                return
+            end
+
+            player = getJoinedPlayer(msg, "party")
+            if player then
+                scheduleWelcome(player, "party")
+                return
+            end
+
+            player = getJoinedPlayer(msg, "raid")
+            if player then
+                scheduleWelcome(player, "raid")
+            end
+        end)
+    end
+
+    if not addon.AutoWelcomeListener:IsEventRegistered("CHAT_MSG_SYSTEM") then
+        addon.AutoWelcomeListener:RegisterEvent("CHAT_MSG_SYSTEM")
+    end
+    state.listenerEnabled = true
+end
+
+local function disableListener()
+    if addon.AutoWelcomeListener and addon.AutoWelcomeListener:IsEventRegistered("CHAT_MSG_SYSTEM") then
+        addon.AutoWelcomeListener:UnregisterEvent("CHAT_MSG_SYSTEM")
+    end
+    state.listenerEnabled = false
+    addon:CancelPendingWelcomeTimers()
+end
+
 function addon:CancelPendingWelcomeTimers()
-    for key, timer in pairs(pendingWelcomeTimers) do
+    for key, timer in pairs(state.pendingByKey) do
         if timer and timer.Cancel then
             timer:Cancel()
         end
-        pendingWelcomeTimers[key] = nil
+        state.pendingByKey[key] = nil
     end
 end
 
---- Greeting Middleware (PRE_PROCESS stage)
---- Detects player join messages and sends automated greetings
-local function OnSystemMessage(self, event, msg)
-    if addon.Can then
-        -- Belt-and-suspenders: listener is managed by FeatureRegistry,
-        -- but keep runtime checks for safety under async/policy drift.
-        if not addon:Can(addon.CAPABILITIES.READ_CHAT_EVENT) then
-            return
-        end
-        if not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
-            return
-        end
-    end
-    if not addon:GetConfig("plugin.automation", true) then return end
-    if type(msg) ~= "string" or msg == "" then return end
+function addon:ApplyAutoWelcomeSettings()
+    local shouldEnable = addon.db
+        and addon.db.enabled
+        and state.featureEnabled
+        and isCapabilityReady()
+        and isWelcomeEnabled()
 
-    -- Check each scene
-    local player = getJoinedPlayer(msg, "guild")
-    if player then
-        trySendWelcome(player, "guild")
-        return
-    end
-
-    player = getJoinedPlayer(msg, "party")
-    if player then
-        trySendWelcome(player, "party")
-        return
-    end
-
-    player = getJoinedPlayer(msg, "raid")
-    if player then
-        trySendWelcome(player, "raid")
-        return
+    if shouldEnable then
+        enableListener()
+    else
+        disableListener()
     end
 end
 
 function addon:InitAutoWelcome()
-    local function EnableAutoWelcomeListener()
-        if not addon.AutoWelcomeListener then
-            addon.AutoWelcomeListener = CF("Frame")
-            addon.AutoWelcomeListener:SetScript("OnEvent", OnSystemMessage)
-        end
-
-        if not addon.AutoWelcomeListener:IsEventRegistered("CHAT_MSG_SYSTEM") then
-            addon.AutoWelcomeListener:RegisterEvent("CHAT_MSG_SYSTEM")
-        end
-    end
-
-    local function DisableAutoWelcomeListener()
-        if addon.AutoWelcomeListener and addon.AutoWelcomeListener:IsEventRegistered("CHAT_MSG_SYSTEM") then
-            addon.AutoWelcomeListener:UnregisterEvent("CHAT_MSG_SYSTEM")
-        end
-        addon:CancelPendingWelcomeTimers()
-    end
-
     if addon.RegisterFeature then
         addon:RegisterFeature("AutoWelcome", {
             requires = { "READ_CHAT_EVENT", "EMIT_CHAT_ACTION" },
-            onEnable = EnableAutoWelcomeListener,
-            onDisable = DisableAutoWelcomeListener,
+            onEnable = function()
+                state.featureEnabled = true
+                addon:ApplyAutoWelcomeSettings()
+            end,
+            onDisable = function()
+                state.featureEnabled = false
+                addon:ApplyAutoWelcomeSettings()
+            end,
         })
     else
-        EnableAutoWelcomeListener()
+        state.featureEnabled = true
+        addon:ApplyAutoWelcomeSettings()
     end
 end
 

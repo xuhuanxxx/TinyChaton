@@ -2,6 +2,7 @@ local addonName, addon = ...
 local L = addon.L
 
 addon.UI = {}
+addon.UI._specialFrameSet = addon.UI._specialFrameSet or {}
 
 -- ============================================
 -- Canvas Style & Layout
@@ -296,8 +297,11 @@ function addon.UI.CreateDialog(name, title, width, height)
         end
     end)
     
-    -- Register for ESC
-    table.insert(UISpecialFrames, name)
+    -- Register for ESC (deduplicated)
+    if name and not addon.UI._specialFrameSet[name] then
+        table.insert(UISpecialFrames, name)
+        addon.UI._specialFrameSet[name] = true
+    end
 
     -- Header
     dialog.Header = CreateFrame("Frame", nil, dialog, "DialogHeaderTemplate")

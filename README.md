@@ -42,6 +42,7 @@
 ## Usage
 
 - Open settings: `/tinychaton` or `Options -> AddOns -> TinyChaton`
+- Memory diagnostics: `/tcmem` (or `/tcmem sample <tag>`, `/tcmem diff <a> <b>`)
 - Move shelf: Blizzard Edit Mode
 - Use emote panel: shelf emote button (if enabled)
 

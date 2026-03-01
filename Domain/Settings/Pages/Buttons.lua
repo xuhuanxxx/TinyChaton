@@ -146,7 +146,7 @@ CategoryBuilders.buttons = function(rootCat)
         -- table.insert(items, { key = false, label = L["LABEL_NONE"] or "None", category = "other" })
 
         local sortedActions = {}
-        for key, action in pairs(addon.ACTION_REGISTRY or {}) do table.insert(sortedActions, action) end
+        for _, action in pairs(addon.ACTION_REGISTRY or {}) do table.insert(sortedActions, action) end
 
         for _, action in ipairs(sortedActions) do
             table.insert(items, {

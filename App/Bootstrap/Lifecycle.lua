@@ -69,6 +69,9 @@ function addon:OnInitialize()
         if addon.ApplyAllSettings then
             addon:ApplyAllSettings()
         end
+        if addon.MemoryDiagnostics and addon.MemoryDiagnostics.StartSession then
+            addon.MemoryDiagnostics:StartSession()
+        end
         if addon.BootstrapFinalizeContainer then
             addon:BootstrapFinalizeContainer()
         end

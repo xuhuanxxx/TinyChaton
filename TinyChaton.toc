@@ -54,6 +54,7 @@ Infrastructure\WowApi\ChatFrameHooks.lua
 Infrastructure\WowApi\CVarSync.lua
 Infrastructure\Runtime\InternalTests.lua
 Infrastructure\Runtime\Profiler.lua
+Infrastructure\Runtime\MemoryDiagnostics.lua
 
 Domain\Chat\Storage\SnapshotKeys.lua
 Domain\Chat\Policy\VisibilityPolicy.lua

@@ -5,18 +5,6 @@ local format = string.format
 addon.EmotesRender = {}
 addon.EmotesRender.bubbleCache = addon.EmotesRender.bubbleCache or setmetatable({}, { __mode = "k" })
 
--- Built-in Raid Icons
-local emotes = {
-    { key = "{star}",       file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1" },
-    { key = "{circle}",     file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_2" },
-    { key = "{diamond}",    file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_3" },
-    { key = "{triangle}",   file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_4" },
-    { key = "{moon}",       file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5" },
-    { key = "{square}",     file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_6" },
-    { key = "{cross}",      file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_7" },
-    { key = "{skull}",      file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8" },
-}
-
 -- Custom Emotes (Media/Texture/Emote/*.tga)
 local customEmotes = {
     "Innocent", "Titter", "angel", "angry", "biglaugh", "clap", "cool", "cry", "cutie", "despise",
@@ -27,22 +15,42 @@ local customEmotes = {
     "victory", "volunteer", "wronged"
 }
 
-for _, name in ipairs(customEmotes) do
-    table.insert(emotes, {
-        key = format("{%s}", name),
-        -- Use addonName to ensure correct path even if folder is renamed
-        file = format("Interface\\AddOns\\%s\\Media\\Texture\\Emote\\%s.tga", addonName, name)
-    })
+local function EnsureEmotes()
+    if addon.EmotesRender.emotesBuilt and type(addon.EmotesRender.emotes) == "table" then
+        return addon.EmotesRender.emotes
+    end
+
+    local emotes = {
+        { key = "{star}",       file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1" },
+        { key = "{circle}",     file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_2" },
+        { key = "{diamond}",    file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_3" },
+        { key = "{triangle}",   file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_4" },
+        { key = "{moon}",       file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5" },
+        { key = "{square}",     file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_6" },
+        { key = "{cross}",      file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_7" },
+        { key = "{skull}",      file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8" },
+    }
+
+    for _, name in ipairs(customEmotes) do
+        table.insert(emotes, {
+            key = format("{%s}", name),
+            file = format("Interface\\AddOns\\%s\\Media\\Texture\\Emote\\%s.tga", addonName, name)
+        })
+    end
+
+    addon.EmotesRender.emotes = emotes
+    addon.EmotesRender.emotesBuilt = true
+    return emotes
 end
 
--- Expose emotes list for Panel to use
-addon.EmotesRender.emotes = emotes
+addon.EmotesRender.GetEmotes = EnsureEmotes
 
 -- Exported parser function
 function addon.EmotesRender.Parse(msg)
     if not msg or type(msg) ~= "string" then return msg end
     if not addon:GetConfig("profile.chat.content.emoteRender", true) then return msg end
 
+    local emotes = EnsureEmotes()
     for _, e in ipairs(emotes) do
         if not e.pattern then
              -- Escape magic characters in key (e.g. { }) to treat them as literals

@@ -140,6 +140,51 @@ function addon.Tests.TestRuleMatcherCacheLifecycle()
     addon.Tests.Assert(cleared >= 2, "ClearAllCaches should clear all modes")
 end
 
+function addon.Tests.TestRegisterEventIdempotency()
+    addon.Tests.Assert(type(addon.InitEvents) == "function", "InitEvents missing")
+    addon.Tests.Assert(type(addon.RegisterEvent) == "function", "RegisterEvent missing")
+
+    addon:InitEvents()
+    addon.Tests.Assert(type(addon.eventFrame) == "table", "eventFrame missing after InitEvents")
+
+    local eventName = "PLAYER_ENTERING_WORLD"
+    local hitCount = 0
+    local sameFn = function()
+        hitCount = hitCount + 1
+    end
+
+    addon:RegisterEvent(eventName, sameFn)
+    addon:RegisterEvent(eventName, sameFn)
+
+    local handlers = addon.eventHandlers[eventName] or {}
+    addon.Tests.AssertEqual(#handlers, 1, "Duplicate handler should not be inserted")
+
+    local onEvent = addon.eventFrame:GetScript("OnEvent")
+    addon.Tests.Assert(type(onEvent) == "function", "OnEvent script missing")
+    onEvent(addon.eventFrame, eventName)
+    addon.Tests.AssertEqual(hitCount, 1, "Idempotent handler should fire once")
+
+    local secondHitCount = 0
+    local otherFn = function()
+        secondHitCount = secondHitCount + 1
+    end
+    addon:RegisterEvent(eventName, otherFn)
+    handlers = addon.eventHandlers[eventName] or {}
+    addon.Tests.AssertEqual(#handlers, 2, "Distinct handlers should coexist")
+
+    onEvent(addon.eventFrame, eventName)
+    addon.Tests.AssertEqual(hitCount, 2, "Primary handler should still run")
+    addon.Tests.AssertEqual(secondHitCount, 1, "Secondary handler should run")
+
+    local beforeInvalid = #handlers
+    addon:RegisterEvent("", sameFn)
+    addon:RegisterEvent(eventName, "not_a_function")
+    addon:RegisterEvent(nil, sameFn)
+    addon:RegisterEvent(eventName, nil)
+    local afterInvalid = #(addon.eventHandlers[eventName] or {})
+    addon.Tests.AssertEqual(afterInvalid, beforeInvalid, "Invalid inputs should not mutate handlers")
+end
+
 function addon.Tests.TestDIResolveSemantics()
     local containerType = addon.DIContainer and addon.DIContainer.Container
     addon.Tests.Assert(type(containerType) == "table", "DI container type missing")

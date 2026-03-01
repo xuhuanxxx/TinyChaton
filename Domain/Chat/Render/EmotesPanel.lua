@@ -33,10 +33,10 @@ end
 
 local function UpdateEmotePanel()
     if not panel then return end
-    
-    -- Ensure EmotesRender module is loaded and has data
-    if not addon.EmotesRender or not addon.EmotesRender.emotes then return end
-    local emotes = addon.EmotesRender.emotes
+
+    if not addon.EmotesRender then return end
+    local emotes = addon.EmotesRender.GetEmotes and addon.EmotesRender.GetEmotes() or addon.EmotesRender.emotes
+    if not emotes then return end
 
     local pageSize = GetPageSize()
     local total = #emotes

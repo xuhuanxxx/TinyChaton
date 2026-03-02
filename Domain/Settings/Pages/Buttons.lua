@@ -402,22 +402,22 @@ CategoryBuilders.buttons = function(rootCat)
     end
     Settings.RegisterInitializer(cat, ribbonInit)
 
-    local function ResetButtonData()
-        local db = GetButtonsDB()
-        if not db then return end
-        db.channelPins = addon.Utils.DeepCopy(def.buttons.channelPins)
-        db.kitPins = addon.Utils.DeepCopy(def.buttons.kitPins)
-        db.buttonOrder = nil
-        db.bindings = {}
-        db.mutedDynamicChannels = addon.Utils.DeepCopy(def.buttons.mutedDynamicChannels)
+    addon.SettingsReset:RegisterPageSpec("buttons", {
+        category = cat,
+        writeDefaults = {
+            "buttons.channelPins",
+            "buttons.kitPins",
+            "buttons.buttonOrder",
+            "buttons.bindings",
+            "buttons.mutedDynamicChannels",
+        },
+        postRefresh = function()
+            if addon.RefreshShelf then addon:RefreshShelf() end
+            if addon.RefreshShelfList then addon.RefreshShelfList() end
+        end,
+    })
 
-        addon:ApplyAllSettings()
-        addon:RefreshShelf()
-
-        if addon.RefreshShelfList then addon.RefreshShelfList() end
-    end
-
-    addon.RegisterPageReset(cat, ResetButtonData)
+    addon.RegisterPageReset(cat, "buttons")
 
     return cat
 end

@@ -146,6 +146,10 @@ end
 function SettingsReset:RunReset(spec, opts)
     if type(spec) ~= "table" then return end
 
+    if type(spec.preReset) == "function" then
+        spec.preReset(opts or {})
+    end
+
     for _, path in ipairs(spec.writeDefaults or {}) do
         self:WriteDefault(path)
     end
@@ -199,13 +203,14 @@ function SettingsReset:ResetAllProfile()
     table.sort(keys)
     for _, key in ipairs(keys) do
         local spec = self.pageSpecs[key]
-        if not spec.legacy then
-            for _, control in ipairs(spec.refreshControls or {}) do
-                self:RefreshControl(control)
-            end
-            if type(spec.postRefresh) == "function" then
-                spec.postRefresh({ isGlobal = true })
-            end
+        if type(spec.preReset) == "function" then
+            spec.preReset({ isGlobal = true })
+        end
+        for _, control in ipairs(spec.refreshControls or {}) do
+            self:RefreshControl(control)
+        end
+        if type(spec.postRefresh) == "function" then
+            spec.postRefresh({ isGlobal = true })
         end
     end
 

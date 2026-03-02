@@ -121,7 +121,7 @@ function addon.Tests.TestChannelIdentityResolverPriority()
 
         local byCandidate = resolver.ResolveDynamicActiveName(stream, {})
         addon.Tests.AssertEqual(byCandidate.activeName, "Candidate B", "Dynamic active name should prefer first joined candidate")
-        addon.Tests.AssertEqual(byCandidate.channelId, 55, "Joined candidate id mismatch")
+        addon.Tests.AssertEqual(byCandidate.channelId, nil, "Joined candidate should not imply channelId without explicit context")
 
         _G.GetChannelName = function(arg)
             if arg == 77 then return 77, "Candidate B - Realm" end

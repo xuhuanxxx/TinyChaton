@@ -646,22 +646,9 @@ function addon.AddNativeButton(cat, label, buttonText, onClick, tooltip, visibil
 end
 
 -- Page Reset Registration Helper
-function addon.RegisterPageReset(category, pageKeyOrCallback, spec)
-    if not category or not pageKeyOrCallback then return end
-
-    local pageKey = nil
+function addon.RegisterPageReset(category, pageKey, spec)
+    if not category or type(pageKey) ~= "string" or pageKey == "" then return end
     local pageSpec = spec
-    if type(pageKeyOrCallback) == "string" then
-        pageKey = pageKeyOrCallback
-    elseif type(pageKeyOrCallback) == "function" then
-        pageKey = "legacy_page_" .. category:GetID()
-        pageSpec = {
-            category = category,
-            postRefresh = pageKeyOrCallback,
-            skipApply = true,
-            legacy = true,
-        }
-    end
 
     if addon.SettingsReset and pageKey then
         if pageSpec then

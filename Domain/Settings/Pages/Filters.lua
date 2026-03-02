@@ -1,6 +1,5 @@
 local addonName, addon = ...
 local L = addon.L
-local def = addon.DEFAULTS and addon.DEFAULTS.profile or {}
 
 local CategoryBuilders = addon.CategoryBuilders or {}
 addon.CategoryBuilders = CategoryBuilders
@@ -149,35 +148,25 @@ CategoryBuilders.filters = function(rootCat)
         })
     end, nil)
 
-    -- Register Custom Reset Handler
-    if addon.RegisterPageReset then
-        addon.RegisterPageReset(cat, function()
+    addon.SettingsReset:RegisterPageSpec("filters", {
+        category = cat,
+        writeDefaults = {
+            "filter",
+        },
+        refreshControls = {
+            { type = "setting", variable = P .. "mode", valueFromPath = "filter.mode" },
+            { type = "setting", variable = P .. "highlight_enabled", valueFromPath = "filter.highlight.enabled" },
+        },
+        postRefresh = function()
             local db = GetFilterDB()
-            if not db then return end
-            
-            -- Clear all lists
-            if db.blacklist then
-                db.blacklist.names = {}
-                db.blacklist.keywords = {}
-            end
-            if db.whitelist then
-                db.whitelist.names = {}
-                db.whitelist.keywords = {}
-            end
-            if db.highlight then
-                db.highlight.names = {}
-                db.highlight.keywords = {}
-                db.highlight.color = "FF00FF00"
-            end
-
+            currentMode = (db and db.mode == "whitelist") and "whitelist" or "blacklist"
             if addon.RuleMatcher and addon.RuleMatcher.ClearAllCaches then
                 addon.RuleMatcher.ClearAllCaches("filters_reset")
             end
-            
-            addon:ApplyAllSettings()
             print(L["MSG_FILTERS_RESET"])
-        end)
-    end
+        end,
+    })
+    addon.RegisterPageReset(cat, "filters")
 
     return cat
 end

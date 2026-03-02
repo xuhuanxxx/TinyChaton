@@ -91,19 +91,23 @@ CategoryBuilders.appearance = function(rootCat, opts)
 
     addon.AddSectionHeader(cat, L["SECTION_GENERAL_APPEARANCE"] or "Appearance")
 
-    local appearanceProxySettings = {}
-
-    local function GetThemeVal(k)
-        local db = GetShelfDB()
-        if not db then return 0 end
-        local t = db.theme or addon.CONSTANTS.SHELF_DEFAULT_THEME
-        local themeTable = db.themes and db.themes[t]
-        if themeTable and themeTable[k] ~= nil then return themeTable[k] end
-        local preset = addon.ThemeRegistry and addon.ThemeRegistry:GetPreset(t)
-        if preset and preset.properties and preset.properties[k] ~= nil then return preset.properties[k] end
-        return 0
+    local appearanceThemeVariables = {
+        "TinyChaton_themeFont",
+        "TinyChaton_themeColorSet",
+        "TinyChaton_themeFontSize",
+        "TinyChaton_themeButtonSize",
+        "TinyChaton_themeSpacing",
+        "TinyChaton_themeScale",
+        "TinyChaton_themeAlpha",
+    }
+    local function RefreshThemeSettingsUi()
+        for _, variable in ipairs(appearanceThemeVariables) do
+            local setting = Settings.GetSetting(variable)
+            if setting and setting.GetValue then
+                addon.RefreshSettingValue(variable, setting:GetValue(), { silent = true })
+            end
+        end
     end
-
     addon.AddProxyDropdown(cat, P .. "theme", L["LABEL_SHELF_THEME"], shelfDef.theme,
         function()
             local c = Settings.CreateControlTextContainer()
@@ -122,46 +126,57 @@ CategoryBuilders.appearance = function(rootCat, opts)
             local db = GetShelfDB()
             if db then db.theme = v end
             if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
-
-            for key, setting in pairs(appearanceProxySettings) do
-                if setting and setting.SetValue then
-                    setting:SetValue(GetThemeVal(key))
-                end
-            end
+            RefreshThemeSettingsUi()
         end,
         nil)
-    appearanceProxySettings["font"] = addon.AddRegistrySetting(cat, "themeFont")
-    appearanceProxySettings["colorSet"] = addon.AddRegistrySetting(cat, "themeColorSet")
-    appearanceProxySettings["fontSize"] = addon.AddRegistrySetting(cat, "themeFontSize")
-    appearanceProxySettings["buttonSize"] = addon.AddRegistrySetting(cat, "themeButtonSize")
-    appearanceProxySettings["spacing"] = addon.AddRegistrySetting(cat, "themeSpacing")
-    appearanceProxySettings["scale"] = addon.AddRegistrySetting(cat, "themeScale")
-    appearanceProxySettings["alpha"] = addon.AddRegistrySetting(cat, "themeAlpha")
+    addon.AddRegistrySetting(cat, "themeFont")
+    addon.AddRegistrySetting(cat, "themeColorSet")
+    addon.AddRegistrySetting(cat, "themeFontSize")
+    addon.AddRegistrySetting(cat, "themeButtonSize")
+    addon.AddRegistrySetting(cat, "themeSpacing")
+    addon.AddRegistrySetting(cat, "themeScale")
+    addon.AddRegistrySetting(cat, "themeAlpha")
 
-    local function ResetAppearanceData()
-        local db = GetShelfDB()
-        if not db then return end
-
-        db.theme = shelfDef.theme
-        db.themes = addon.Utils.DeepCopy(shelfDef.themes)
-        db.colorSet = shelfDef.colorSet
-        db.anchor = shelfDef.anchor
-        db.direction = shelfDef.direction
-        db.savedPoint = shelfDef.savedPoint
-
-        for key, setting in pairs(appearanceProxySettings) do
-            if setting and setting.SetValue then
-                setting:SetValue(GetThemeVal(key))
-            end
-        end
-
-        if addon.ApplyAllSettings then addon:ApplyAllSettings() end
-        if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
+    local resetSpec = {
+        writeDefaults = {
+            "shelf.theme",
+            "shelf.themes",
+            "shelf.colorSet",
+            "shelf.anchor",
+            "shelf.direction",
+            "shelf.savedPoint",
+        },
+        refreshControls = {
+            { type = "setting", variable = P .. "anchor", valueFromPath = "shelf.anchor" },
+            { type = "setting", variable = P .. "direction", valueFromPath = "shelf.direction" },
+            { type = "setting", variable = P .. "theme", valueFromPath = "shelf.theme" },
+            { type = "setting", variable = "TinyChaton_themeFont" },
+            { type = "setting", variable = "TinyChaton_themeColorSet" },
+            { type = "setting", variable = "TinyChaton_themeFontSize" },
+            { type = "setting", variable = "TinyChaton_themeButtonSize" },
+            { type = "setting", variable = "TinyChaton_themeSpacing" },
+            { type = "setting", variable = "TinyChaton_themeScale" },
+            { type = "setting", variable = "TinyChaton_themeAlpha" },
+        },
+        postRefresh = function()
+            RefreshThemeSettingsUi()
+            if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
+        end,
+    }
+    if inGeneral then
+        resetSpec.writeDefaults[#resetSpec.writeDefaults + 1] = "buttons.dynamicMode"
+        resetSpec.refreshControls[#resetSpec.refreshControls + 1] = { type = "setting", variable = "TinyChaton_toolbarDynamicMode", valueFromPath = "buttons.dynamicMode" }
     end
 
     if not inline then
-        addon.RegisterPageReset(cat, ResetAppearanceData)
+        addon.SettingsReset:RegisterPageSpec("appearance", {
+            category = cat,
+            writeDefaults = resetSpec.writeDefaults,
+            refreshControls = resetSpec.refreshControls,
+            postRefresh = resetSpec.postRefresh,
+        })
+        addon.RegisterPageReset(cat, "appearance")
     end
 
-    return cat, ResetAppearanceData
+    return cat, resetSpec
 end

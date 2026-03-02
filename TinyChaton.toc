@@ -99,6 +99,7 @@ Domain\Shelf\SelectionDialog.lua
 
 Domain\Settings\SettingsSchema.lua
 Domain\Settings\SettingsControls.lua
+Domain\Settings\ResetEngine.lua
 Domain\Settings\Pages\General.lua
 Domain\Settings\Pages\Appearance.lua
 Domain\Settings\Pages\Filters.lua

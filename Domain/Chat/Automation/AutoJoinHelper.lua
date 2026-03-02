@@ -66,7 +66,7 @@ function addon:GetAutoJoinDynamicChannelSelection()
     return selection
 end
 
-function addon:SetAutoJoinDynamicChannelSelection(selection)
+function addon:SetAutoJoinDynamicChannelSelection(selection, opts)
     local selectionDB = GetDynamicJoinSelectionDB()
     if not selectionDB then return end
     table.wipe(selectionDB)
@@ -77,7 +77,9 @@ function addon:SetAutoJoinDynamicChannelSelection(selection)
             end
         end
     end
-    if addon.ApplyAllSettings then addon:ApplyAllSettings() end
+    if not (opts and opts.skipApply) and addon.ApplyAllSettings then
+        addon:ApplyAllSettings()
+    end
 end
 
 local function TryJoinChannel(channelName, joinedByName)

@@ -181,16 +181,10 @@ CategoryBuilders.profile = function(rootCat)
     addon.AddSectionHeader(cat, L["SECTION_RESET"])
 
     local function ResetAllSettings()
-        -- 1. Force Synchronize Config (Revert db to defaults)
-        addon:SynchronizeConfig(true)
-        if addon.RuleMatcher and addon.RuleMatcher.ClearAllCaches then
-            addon.RuleMatcher.ClearAllCaches("settings_reset_all")
+        if addon.SettingsReset and addon.SettingsReset.ResetAllProfile then
+            addon.SettingsReset:ResetAllProfile()
         end
 
-        -- 2. Apply and Refresh All
-        if addon.ApplyAllSettings then addon:ApplyAllSettings() end
-
-        -- 3. Update Custom UI Elements
         if addon.RefreshShelfList then addon.RefreshShelfList() end
         if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
 

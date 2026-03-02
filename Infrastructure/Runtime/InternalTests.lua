@@ -885,7 +885,8 @@ function addon.Tests.TestPerformanceBudgetWarningThrottle()
 end
 
 function addon.Tests.TestGlobalResetAppliesAutoJoinDefaultsFromRegistry()
-    addon.Tests.Assert(type(addon.SynchronizeConfig) == "function", "SynchronizeConfig missing")
+    addon.Tests.Assert(type(addon.SettingsReset) == "table", "SettingsReset missing")
+    addon.Tests.Assert(type(addon.SettingsReset.ResetAllProfile) == "function", "ResetAllProfile missing")
     addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS missing")
 
     if not addon.db or not addon.db.profile then
@@ -899,13 +900,131 @@ function addon.Tests.TestGlobalResetAppliesAutoJoinDefaultsFromRegistry()
         trade = true,
     }
 
-    addon:SynchronizeConfig(true)
+    addon.SettingsReset:ResetAllProfile()
 
-    local after = profile.automation.autoJoinDynamicChannels
+    local after = addon.db.profile.automation.autoJoinDynamicChannels
     addon.Tests.Assert(type(after) == "table", "autoJoinDynamicChannels should remain a table after reset")
     for _, key in ipairs({ "general", "trade", "services", "lfg", "world", "localdefense" }) do
         addon.Tests.AssertEqual(after[key], true, "Global reset should restore auto-join default for '" .. key .. "'")
     end
+end
+
+function addon.Tests.TestResetPageVsResetAll_AutomationAutoJoinConsistency()
+    addon.Tests.Assert(type(addon.SettingsReset) == "table", "SettingsReset missing")
+    addon.Tests.Assert(type(addon.SettingsReset.ResetPage) == "function", "ResetPage missing")
+    addon.Tests.Assert(type(addon.SettingsReset.ResetAllProfile) == "function", "ResetAllProfile missing")
+    addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS missing")
+
+    local oldSpecs = addon.SettingsReset.pageSpecs
+    local oldCategoryMap = addon.SettingsReset.pageKeyByCategoryId
+    local oldVariableMap = addon.SettingsReset.pageKeyByVariable
+    addon.SettingsReset.pageSpecs = {}
+    addon.SettingsReset.pageKeyByCategoryId = {}
+    addon.SettingsReset.pageKeyByVariable = {}
+    addon.SettingsReset:RegisterPageSpec("__test_automation", {
+        writeDefaults = { "automation" },
+    })
+
+    addon.db.profile.automation.autoJoinDynamicChannels = { general = false, trade = false, world = false }
+    addon.SettingsReset:ResetPage("__test_automation")
+    local byPage = addon.Utils.DeepCopy(addon.db.profile.automation.autoJoinDynamicChannels)
+
+    addon.db.profile.automation.autoJoinDynamicChannels = { general = false }
+    addon.SettingsReset:ResetAllProfile()
+    local byAll = addon.db.profile.automation.autoJoinDynamicChannels
+
+    local expected = addon.DEFAULTS.profile.automation.autoJoinDynamicChannels
+    for key, enabled in pairs(expected) do
+        addon.Tests.AssertEqual(byPage[key], enabled, "Page reset auto-join default mismatch: " .. tostring(key))
+        addon.Tests.AssertEqual(byAll[key], enabled, "Global reset auto-join default mismatch: " .. tostring(key))
+    end
+
+    addon.SettingsReset.pageSpecs = oldSpecs
+    addon.SettingsReset.pageKeyByCategoryId = oldCategoryMap
+    addon.SettingsReset.pageKeyByVariable = oldVariableMap
+end
+
+function addon.Tests.TestResetPageVsResetAll_ChatSnapshotConsistency()
+    addon.Tests.Assert(type(addon.SettingsReset) == "table", "SettingsReset missing")
+    addon.Tests.Assert(type(addon.SettingsReset.ResetPage) == "function", "ResetPage missing")
+    addon.Tests.Assert(type(addon.SettingsReset.ResetAllProfile) == "function", "ResetAllProfile missing")
+    addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS missing")
+
+    local oldSpecs = addon.SettingsReset.pageSpecs
+    local oldCategoryMap = addon.SettingsReset.pageKeyByCategoryId
+    local oldVariableMap = addon.SettingsReset.pageKeyByVariable
+    addon.SettingsReset.pageSpecs = {}
+    addon.SettingsReset.pageKeyByCategoryId = {}
+    addon.SettingsReset.pageKeyByVariable = {}
+    addon.SettingsReset:RegisterPageSpec("__test_chat", {
+        writeDefaults = { "chat.content.snapshotChannels" },
+    })
+
+    addon.db.profile.chat.content.snapshotChannels = { say = false, whisper = false, general = false }
+    addon.SettingsReset:ResetPage("__test_chat")
+    local byPage = addon.Utils.DeepCopy(addon.db.profile.chat.content.snapshotChannels)
+
+    addon.db.profile.chat.content.snapshotChannels = { say = false }
+    addon.SettingsReset:ResetAllProfile()
+    local byAll = addon.db.profile.chat.content.snapshotChannels
+
+    local expected = addon.DEFAULTS.profile.chat.content.snapshotChannels
+    for key, enabled in pairs(expected) do
+        addon.Tests.AssertEqual(byPage[key], enabled, "Page reset snapshot default mismatch: " .. tostring(key))
+        addon.Tests.AssertEqual(byAll[key], enabled, "Global reset snapshot default mismatch: " .. tostring(key))
+    end
+
+    addon.SettingsReset.pageSpecs = oldSpecs
+    addon.SettingsReset.pageKeyByCategoryId = oldCategoryMap
+    addon.SettingsReset.pageKeyByVariable = oldVariableMap
+end
+
+function addon.Tests.TestMultiDropdownSilentRefreshDoesNotWriteBack()
+    addon.Tests.Assert(type(TinyChaton_MultiDropdownMixin) == "table", "MultiDropdown mixin missing")
+    addon.Tests.Assert(type(TinyChaton_MultiDropdownMixin.SyncSetting) == "function", "SyncSetting missing")
+
+    local oldRefreshSettingValue = addon.RefreshSettingValue
+    local called = 0
+    local silentFlag = false
+    addon.RefreshSettingValue = function(_, _, opts)
+        called = called + 1
+        silentFlag = opts and opts.silent == true
+        return true
+    end
+
+    local dummy = {
+        var = "__test_multidropdown",
+        SerializeSelection = function() return "a,b" end,
+        GetSelectionMap = function() return { a = true, b = true } end,
+    }
+    setmetatable(dummy, { __index = TinyChaton_MultiDropdownMixin })
+
+    dummy:SyncSetting({ a = true, b = true })
+
+    addon.Tests.AssertEqual(called, 1, "Silent setting refresh should be invoked exactly once")
+    addon.Tests.Assert(silentFlag, "SyncSetting should use silent refresh to avoid writeback")
+
+    addon.RefreshSettingValue = oldRefreshSettingValue
+end
+
+function addon.Tests.TestResetEngineSingleApplyInvocation()
+    addon.Tests.Assert(type(addon.SettingsReset) == "table", "SettingsReset missing")
+    addon.Tests.Assert(type(addon.SettingsReset.RunReset) == "function", "RunReset missing")
+
+    local applyCount = 0
+    local oldApply = addon.ApplyAllSettings
+    addon.ApplyAllSettings = function()
+        applyCount = applyCount + 1
+    end
+
+    addon.SettingsReset:RunReset({
+        writeDefaults = {},
+        refreshControls = {},
+        postRefresh = function() end,
+    })
+
+    addon.Tests.AssertEqual(applyCount, 1, "RunReset should call ApplyAllSettings once")
+    addon.ApplyAllSettings = oldApply
 end
 
 function addon.Tests.TestStreamRegistryDefaultSchemaValidation()

@@ -462,7 +462,7 @@ function addon:GetSnapshotChannelSelection(filter)
     return selection
 end
 
-function addon:SetSnapshotChannelSelection(filter, selection)
+function addon:SetSnapshotChannelSelection(filter, selection, opts)
     if not self.db or not self.db.profile.chat or not self.db.profile.chat.content then
         return
     end
@@ -476,7 +476,9 @@ function addon:SetSnapshotChannelSelection(filter, selection)
         sc[item.key] = selection[item.key] and true or false
     end
 
-    if addon.ApplyAllSettings then addon:ApplyAllSettings() end
+    if not (opts and opts.skipApply) and addon.ApplyAllSettings then
+        addon:ApplyAllSettings()
+    end
 
     -- Trigger cleanup in case limits changed
     addon:TriggerEviction()

@@ -9,20 +9,6 @@ local function GetAutomationDefaults()
     return (type(profile) == "table" and type(profile.automation) == "table") and profile.automation or {}
 end
 
-local function SerializeSelection(selection)
-    if type(selection) ~= "table" then
-        return ""
-    end
-    local keys = {}
-    for key, enabled in pairs(selection) do
-        if enabled == true then
-            keys[#keys + 1] = key
-        end
-    end
-    table.sort(keys)
-    return table.concat(keys, ",")
-end
-
 CategoryBuilders.automation = function(rootCat)
     local cat, _ = Settings.RegisterVerticalLayoutSubcategory(rootCat, L["PAGE_AUTOMATION"])
     Settings.RegisterAddOnCategory(cat)
@@ -149,40 +135,29 @@ CategoryBuilders.automation = function(rootCat)
     local countdownSecondarySetting = addon.AddRegistrySetting(cat, "automationCountdownSecondarySeconds")
 
 
-    local function ResetAutomationData()
-        autoDef = GetAutomationDefaults()
-        countdownDef = autoDef.countdown or { primarySeconds = 10, secondarySeconds = 5 }
+    addon.SettingsReset:RegisterPageSpec("automation", {
+        category = cat,
+        writeDefaults = {
+            "automation",
+        },
+        refreshControls = {
+            { type = "setting", variable = P .. "CurrentSocialTab", valueFromPath = "automation.currentSocialTab" },
+            { type = "setting", variable = "TinyChaton_automationWelcomeEnabled" },
+            { type = "setting", variable = "TinyChaton_automationWelcomeCooldownMinutes" },
+            { type = "setting", variable = "TinyChaton_automationCountdownPrimarySeconds" },
+            { type = "setting", variable = "TinyChaton_automationCountdownSecondarySeconds" },
+            { type = "setting", variable = P .. "welcomeTab_enabled" },
+            { type = "setting", variable = P .. "welcomeTab_sendMode" },
+            { type = "multidropdown", variable = P .. "autoJoinDynamic", selectionFromPath = "automation.autoJoinDynamicChannels" },
+        },
+        postRefresh = function()
+            autoDef = GetAutomationDefaults()
+            countdownDef = autoDef.countdown or { primarySeconds = 10, secondarySeconds = 5 }
+            RefreshTabSettings()
+        end,
+    })
 
-        autoDB.autoJoinDynamicChannels = addon.Utils.DeepCopy(autoDef.autoJoinDynamicChannels or {})
-        autoDB.customAutoJoinChannels = addon.Utils.DeepCopy(autoDef.customAutoJoinChannels)
-        autoDB.welcome = addon.Utils.DeepCopy(autoDef.welcome)
-        autoDB.welcomeGuild = addon.Utils.DeepCopy(autoDef.welcomeGuild)
-        autoDB.welcomeParty = addon.Utils.DeepCopy(autoDef.welcomeParty)
-        autoDB.welcomeRaid = addon.Utils.DeepCopy(autoDef.welcomeRaid)
-        autoDB.countdown = addon.Utils.DeepCopy(countdownDef)
-
-        if welcomeEnabledSetting and welcomeEnabledSetting.SetValue then
-            welcomeEnabledSetting:SetValue(autoDB.welcome and autoDB.welcome.enabled)
-        end
-        if welcomeCooldownSetting and welcomeCooldownSetting.SetValue then
-            welcomeCooldownSetting:SetValue(autoDB.welcome and autoDB.welcome.cooldownMinutes)
-        end
-        if countdownPrimarySetting and countdownPrimarySetting.SetValue then
-            countdownPrimarySetting:SetValue(autoDB.countdown and autoDB.countdown.primarySeconds)
-        end
-        if countdownSecondarySetting and countdownSecondarySetting.SetValue then
-            countdownSecondarySetting:SetValue(autoDB.countdown and autoDB.countdown.secondarySeconds)
-        end
-        local autoJoinSetting = Settings.GetSetting(P .. "autoJoinDynamic")
-        if autoJoinSetting and autoJoinSetting.SetValue then
-            autoJoinSetting:SetValue(SerializeSelection(autoDB.autoJoinDynamicChannels))
-        end
-        RefreshTabSettings()
-
-        if addon.ApplyAllSettings then addon:ApplyAllSettings() end
-    end
-
-    addon.RegisterPageReset(cat, ResetAutomationData)
+    addon.RegisterPageReset(cat, "automation")
 
     return cat
 end

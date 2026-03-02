@@ -198,10 +198,15 @@ end
 
 function TinyChaton_MultiDropdownMixin:SyncSetting(selection)
     if self._suppressSync then return end
+    local serialized = self:SerializeSelection(selection or self:GetSelectionMap())
+    if addon.RefreshSettingValue and self.var then
+        addon.RefreshSettingValue(self.var, serialized, { silent = true })
+        return
+    end
     local setting = self:GetSetting()
-    if not setting then return end
-
-    setting:SetValue(self:SerializeSelection(selection or self:GetSelectionMap()))
+    if setting and setting.SetValue then
+        setting:SetValue(serialized)
+    end
 end
 
 function TinyChaton_MultiDropdownMixin:ToggleOption(key, option)
@@ -275,12 +280,11 @@ end
 
 
 function TinyChaton_MultiDropdownMixin:ApplyDefaultSelection()
-    local selection = CopySelection(self.defaultSelection or {})
-    if self.setSelectionFunc then
-        pcall(self.setSelectionFunc, selection)
+    if addon.SettingsReset and addon.SettingsReset.ResetBySetting then
+        local setting = self:GetSetting()
+        addon.SettingsReset:ResetBySetting(setting, { source = "setting_defaulted" })
+        return
     end
-    self.selectionCache = nil
-    self:SyncSetting(selection)
 end
 
 function TinyChaton_MultiDropdownMixin:EnsureDefaultCallbacks()
@@ -296,7 +300,9 @@ function TinyChaton_MultiDropdownMixin:EnsureDefaultCallbacks()
     EventRegistry:RegisterCallback("Settings.CategoryDefaulted", function(_, category)
         if not self.categoryID or not category or not category.GetID then return end
         if category:GetID() == self.categoryID then
-            self:ApplyDefaultSelection()
+            if addon.SettingsReset and addon.SettingsReset.ResetCategory then
+                addon.SettingsReset:ResetCategory(category, { source = "category_defaulted" })
+            end
         end
     end, self)
 end

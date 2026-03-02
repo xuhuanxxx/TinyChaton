@@ -1,6 +1,8 @@
 local addonName, addon = ...
 local L = addon.L
 
+addon.__silentSettingSync = addon.__silentSettingSync or {}
+
 local function TrackRuntimeSetting(meta)
     if not meta or not meta.key then return end
     addon.RUNTIME_SETTING_REGISTRY = addon.RUNTIME_SETTING_REGISTRY or {}
@@ -536,6 +538,9 @@ function addon.AddProxyMultiDropdown(cat, variable, name, optionfunc, getter, se
         end
 
         local function deserializeSetter(value)
+            if addon.__silentSettingSync and addon.__silentSettingSync[variable] then
+                return
+            end
             local selection = {}
             if type(value) == "string" and value ~= "" then
                 for key in value:gmatch("([^,]+)") do
@@ -556,6 +561,7 @@ function addon.AddProxyMultiDropdown(cat, variable, name, optionfunc, getter, se
         optionfunc = optionfunc,
         getSelection = getter,
         setSelection = setter,
+        categoryID = cat and cat.GetID and cat:GetID() or nil,
         tooltip = tooltip,
         summaryFunc = summaryFunc,
         hideSummary = true,
@@ -583,6 +589,51 @@ function addon.AddProxyMultiDropdown(cat, variable, name, optionfunc, getter, se
     return setting
 end
 
+local function SerializeSelection(selection)
+    if addon.SettingsReset and type(addon.SettingsReset.SerializeSelection) == "function" then
+        return addon.SettingsReset.SerializeSelection(selection)
+    end
+    if type(selection) ~= "table" then
+        return ""
+    end
+    local keys = {}
+    for key, enabled in pairs(selection) do
+        if enabled == true then
+            keys[#keys + 1] = tostring(key)
+        end
+    end
+    table.sort(keys)
+    return table.concat(keys, ",")
+end
+
+function addon.RefreshSettingValue(variable, value, opts)
+    if type(variable) ~= "string" or variable == "" then
+        return false
+    end
+    local setting = Settings.GetSetting(variable)
+    if not setting or not setting.SetValue then
+        return false
+    end
+
+    local silent = not not (opts and opts.silent)
+    if silent then
+        addon.__silentSettingSync[variable] = true
+    end
+
+    setting:SetValue(value)
+
+    if silent then
+        addon.__silentSettingSync[variable] = nil
+    end
+
+    return true
+end
+
+function addon.RefreshMultiDropdownSelection(variable, selection, opts)
+    local serialized = (opts and opts.serialized) or SerializeSelection(selection)
+    return addon.RefreshSettingValue(variable, serialized, { silent = (opts and opts.silent) ~= false })
+end
+
 function addon.AddNativeButton(cat, label, buttonText, onClick, tooltip, visibilityPredicate)
     if CreateSettingsButtonInitializer then
         local btn = CreateSettingsButtonInitializer(label, buttonText, onClick, tooltip, false)
@@ -595,8 +646,36 @@ function addon.AddNativeButton(cat, label, buttonText, onClick, tooltip, visibil
 end
 
 -- Page Reset Registration Helper
-function addon.RegisterPageReset(category, callback)
-    if not category or not callback then return end
+function addon.RegisterPageReset(category, pageKeyOrCallback, spec)
+    if not category or not pageKeyOrCallback then return end
+
+    local pageKey = nil
+    local pageSpec = spec
+    if type(pageKeyOrCallback) == "string" then
+        pageKey = pageKeyOrCallback
+    elseif type(pageKeyOrCallback) == "function" then
+        pageKey = "legacy_page_" .. category:GetID()
+        pageSpec = {
+            category = category,
+            postRefresh = pageKeyOrCallback,
+            skipApply = true,
+            legacy = true,
+        }
+    end
+
+    if addon.SettingsReset and pageKey then
+        if pageSpec then
+            if not pageSpec.category then
+                pageSpec.category = category
+            end
+            addon.SettingsReset:RegisterPageSpec(pageKey, pageSpec)
+        elseif not addon.SettingsReset.pageSpecs[pageKey] then
+            addon.SettingsReset:RegisterPageSpec(pageKey, { category = category })
+        else
+            addon.SettingsReset.pageSpecs[pageKey].category = category
+            addon.SettingsReset.pageKeyByCategoryId[category:GetID()] = pageKey
+        end
+    end
 
     local variable = "TinyChaton_ResetTrigger_" .. category:GetID()
 
@@ -606,8 +685,8 @@ function addon.RegisterPageReset(category, callback)
             "Reset Trigger", 0,
             function() return 1 end,
             function(v)
-                if v == 0 then
-                    callback()
+                if v == 0 and addon.SettingsReset and pageKey then
+                    addon.SettingsReset:ResetPage(pageKey, { source = "category_default" })
                 end
             end
         )

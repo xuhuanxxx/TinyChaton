@@ -128,23 +128,19 @@ CategoryBuilders.chat = function(rootCat)
     CreateSettingFromRegistry(subCat, "sticky")
     CreateSettingFromRegistry(subCat, "tabCycle")
 
-    local function ResetChatData()
-        addon.db.profile.chat.content.snapshotChannels = addon.Utils.DeepCopy(def.chat.content.snapshotChannels)
-        if addon.ApplyAllSettings then addon:ApplyAllSettings() end
+    addon.SettingsReset:RegisterPageSpec("chat", {
+        category = subCat,
+        writeDefaults = {
+            "chat.content.snapshotChannels",
+        },
+        refreshControls = {
+            { type = "multidropdown", variable = P .. "snapshotPersonal", selectionFromPath = "chat.content.snapshotChannels" },
+            { type = "multidropdown", variable = P .. "snapshotSystem", selectionFromPath = "chat.content.snapshotChannels" },
+            { type = "multidropdown", variable = P .. "snapshotDynamic", selectionFromPath = "chat.content.snapshotChannels" },
+        },
+    })
 
-        local settings = {
-            Settings.GetSetting(P .. "snapshotPersonal"),
-            Settings.GetSetting(P .. "snapshotSystem"),
-            Settings.GetSetting(P .. "snapshotDynamic"),
-        }
-        for _, setting in ipairs(settings) do
-            if setting and setting.SetValue and setting.GetValue then
-                setting:SetValue(setting:GetValue())
-            end
-        end
-    end
-
-    addon.RegisterPageReset(subCat, ResetChatData)
+    addon.RegisterPageReset(subCat, "chat")
 
     return subCat
 end

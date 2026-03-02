@@ -201,7 +201,6 @@ function addon.UI.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
 
         local btnSave = CreateFrame("Button", nil, EditorFrame, "UIPanelButtonTemplate")
         btnSave:SetSize(90, 22)
-        btnSave:SetPoint("BOTTOMRIGHT", -20, 16)
         btnSave:SetText(SAVE)
         btnSave:SetScript("OnClick", function()
             local text = EditorFrame.Edit:GetText()
@@ -242,9 +241,10 @@ function addon.UI.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
 
         local btnCancel = CreateFrame("Button", nil, EditorFrame, "UIPanelButtonTemplate")
         btnCancel:SetSize(90, 22)
-        btnCancel:SetPoint("RIGHT", btnSave, "LEFT", -10, 0)
+        btnCancel:SetPoint("BOTTOMRIGHT", -20, 16)
         btnCancel:SetText(CANCEL)
         btnCancel:SetScript("OnClick", function() EditorFrame:Hide() end)
+        btnSave:SetPoint("RIGHT", btnCancel, "LEFT", -10, 0)
 
         if SettingsPanel then
             SettingsPanel:HookScript("OnHide", function()

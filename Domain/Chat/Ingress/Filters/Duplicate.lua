@@ -1,7 +1,7 @@
 local addonName, addon = ...
 
 -- Middleware: DuplicateFilter
--- Stage: FILTER
+-- Stage: BLOCK
 -- Priority: 30
 -- Description: Filters repeated messages and cleans character spam
 
@@ -63,7 +63,7 @@ function addon.Filters.DuplicateProcess(chatData)
 
     local normalizedMsg = BuildNormalizedMessage(msg)
     local last = lastMessage[author]
-    local window = addon.REPEAT_FILTER_WINDOW or 10
+    local window = addon.REPEAT_BLOCK_WINDOW or 10
 
     -- Exact match check after normalization.
     if last and last.msg == normalizedMsg and (t - last.time) < window then
@@ -86,14 +86,14 @@ end
 
 function addon:InitDuplicateFilterMiddleware()
     local function EnableDuplicateFilter()
-        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("FILTER", "DuplicateFilterBlock") then
-            addon.EventDispatcher:RegisterMiddleware("FILTER", 30, "DuplicateFilterBlock", DuplicateFilterBlockMiddleware)
+        if addon.ChatPipeline and not addon.ChatPipeline:IsMiddlewareRegistered("BLOCK", "DuplicateFilterBlock") then
+            addon.ChatPipeline:RegisterMiddleware("BLOCK", 30, "DuplicateFilterBlock", DuplicateFilterBlockMiddleware)
         end
     end
 
     local function DisableDuplicateFilter()
-        if addon.EventDispatcher then
-            addon.EventDispatcher:UnregisterMiddleware("FILTER", "DuplicateFilterBlock")
+        if addon.ChatPipeline then
+            addon.ChatPipeline:UnregisterMiddleware("BLOCK", "DuplicateFilterBlock")
         end
     end
 

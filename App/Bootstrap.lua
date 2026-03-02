@@ -387,6 +387,9 @@ function addon:InitConfig()
     self:SynchronizeConfig(false)
     EnsureDisplayConfig(addon.db and addon.db.profile)
     EnsureChannelCandidatesRegistry()
+    if self.BuildStreamIndex then
+        self:BuildStreamIndex()
+    end
 end
 
 function addon:RefreshAllSettings()
@@ -399,8 +402,8 @@ function addon:RefreshAllSettings()
 end
 
 function addon:Shutdown()
-    if addon.EventDispatcher and addon.EventDispatcher.UnregisterFilters then
-        addon.EventDispatcher:UnregisterFilters()
+    if addon.ChatPipeline and addon.ChatPipeline.UnregisterFilters then
+        addon.ChatPipeline:UnregisterFilters()
     end
     if addon.StopBubbleTicker then addon:StopBubbleTicker() end
     if addon.CancelPendingWelcomeTimers then addon:CancelPendingWelcomeTimers() end

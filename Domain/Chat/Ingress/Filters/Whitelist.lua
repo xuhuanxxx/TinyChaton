@@ -55,14 +55,14 @@ end
 
 function addon:InitWhitelistMiddleware()
     local function EnableWhitelist()
-        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("FILTER", "Whitelist") then
-            addon.EventDispatcher:RegisterMiddleware("FILTER", 21, "Whitelist", WhitelistMiddleware)
+        if addon.ChatPipeline and not addon.ChatPipeline:IsMiddlewareRegistered("BLOCK", "Whitelist") then
+            addon.ChatPipeline:RegisterMiddleware("BLOCK", 21, "Whitelist", WhitelistMiddleware)
         end
     end
 
     local function DisableWhitelist()
-        if addon.EventDispatcher then
-            addon.EventDispatcher:UnregisterMiddleware("FILTER", "Whitelist")
+        if addon.ChatPipeline then
+            addon.ChatPipeline:UnregisterMiddleware("BLOCK", "Whitelist")
         end
     end
 

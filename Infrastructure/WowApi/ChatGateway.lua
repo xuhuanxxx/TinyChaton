@@ -8,23 +8,44 @@ Gateway.Display = Gateway.Display or {}
 Gateway.Outbound = Gateway.Outbound or {}
 
 function Gateway.Inbound:Allow(event, frame, ...)
+    if addon.Profiler and addon.Profiler.Start then
+        addon.Profiler:Start("ChatGateway.Inbound.Allow")
+    end
     if not addon.db or not addon.db.enabled then
+        if addon.Profiler and addon.Profiler.Stop then
+            addon.Profiler:Stop("ChatGateway.Inbound.Allow")
+        end
         return false
     end
 
     if addon.Can and not addon:Can(addon.CAPABILITIES.READ_CHAT_EVENT) then
+        if addon.Profiler and addon.Profiler.Stop then
+            addon.Profiler:Stop("ChatGateway.Inbound.Allow")
+        end
         return false
     end
 
+    if addon.Profiler and addon.Profiler.Stop then
+        addon.Profiler:Stop("ChatGateway.Inbound.Allow")
+    end
     return true
 end
 
 function Gateway.Display:Transform(frame, msg, r, g, b, extraArgs)
+    if addon.Profiler and addon.Profiler.Start then
+        addon.Profiler:Start("ChatGateway.Display.Transform")
+    end
     if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then
+        if addon.Profiler and addon.Profiler.Stop then
+            addon.Profiler:Stop("ChatGateway.Display.Transform")
+        end
         return msg, r, g, b, (type(extraArgs) == "table" and extraArgs or {})
     end
 
     if type(msg) ~= "string" then
+        if addon.Profiler and addon.Profiler.Stop then
+            addon.Profiler:Stop("ChatGateway.Display.Transform")
+        end
         return msg, r, g, b, (type(extraArgs) == "table" and extraArgs or {})
     end
 
@@ -59,6 +80,9 @@ function Gateway.Display:Transform(frame, msg, r, g, b, extraArgs)
         end
     end
 
+    if addon.Profiler and addon.Profiler.Stop then
+        addon.Profiler:Stop("ChatGateway.Display.Transform")
+    end
     return currentMsg, currentR, currentG, currentB, currentExtra
 end
 

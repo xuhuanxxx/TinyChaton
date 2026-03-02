@@ -744,6 +744,100 @@ function addon.Tests.TestPathFallbackPrecedence()
     addon.__testPrecedenceValue = nil
 end
 
+function addon.Tests.TestStreamIndexLookupParity()
+    addon.Tests.Assert(type(addon.BuildStreamIndex) == "function", "BuildStreamIndex should exist")
+    addon:BuildStreamIndex()
+    addon.Tests.Assert(type(addon.STREAM_INDEX) == "table", "STREAM_INDEX should be table")
+
+    local stream = addon:GetStreamByKey("say")
+    addon.Tests.Assert(type(stream) == "table", "GetStreamByKey should return stream table")
+    addon.Tests.AssertEqual(stream.key, "say", "GetStreamByKey key mismatch")
+    addon.Tests.AssertEqual(addon:GetStreamPath("say"), "CHANNEL.SYSTEM", "GetStreamPath mismatch")
+    addon.Tests.Assert(addon:IsChannelStream("say") == true, "IsChannelStream should be true for say")
+    addon.Tests.Assert(addon:IsNoticeStream("say") == false, "IsNoticeStream should be false for say")
+end
+
+function addon.Tests.TestChatPipelineStageOrder()
+    addon.Tests.Assert(type(addon.ChatPipeline) == "table", "ChatPipeline missing")
+
+    local pipeline = addon.ChatPipeline
+    local original = pipeline.middlewares
+    local oldCan = addon.Can
+
+    local order = {}
+    pipeline.middlewares = {
+        VALIDATE = { { name = "v", priority = 10, fn = function() table.insert(order, "VALIDATE") end } },
+        BLOCK = { { name = "b", priority = 10, fn = function() table.insert(order, "BLOCK") end } },
+        TRANSFORM = { { name = "t", priority = 10, fn = function() table.insert(order, "TRANSFORM") end } },
+        PERSIST = { { name = "p", priority = 10, fn = function() table.insert(order, "PERSIST") end } },
+    }
+    addon.Can = nil
+
+    local chatData = { metadata = {} }
+    pipeline:RunMiddlewares("VALIDATE", chatData)
+    pipeline:RunMiddlewares("BLOCK", chatData)
+    pipeline:RunMiddlewares("TRANSFORM", chatData)
+    pipeline:RunMiddlewares("PERSIST", chatData)
+
+    addon.Tests.AssertEqual(table.concat(order, ","), "VALIDATE,BLOCK,TRANSFORM,PERSIST", "ChatPipeline stage order mismatch")
+
+    addon.Can = oldCan
+    pipeline.middlewares = original
+end
+
+function addon.Tests.TestThemeColorOrthogonalResolution()
+    addon.Tests.Assert(type(addon.ShelfVisualSpecResolver) == "table", "ShelfVisualSpecResolver missing")
+
+    local spec = addon.ShelfVisualSpecResolver:ResolveButtonVisualSpec({
+        key = "say",
+        type = "channel",
+    }, {})
+
+    addon.Tests.Assert(type(spec) == "table", "Visual spec should be table")
+    addon.Tests.Assert(type(spec.themeProps) == "table", "themeProps should be table")
+    addon.Tests.Assert(type(spec.textColor) == "table", "textColor should be table")
+    addon.Tests.Assert(type(spec.alpha) == "number", "alpha should be number")
+    addon.Tests.Assert(type(spec.scale) == "number", "scale should be number")
+end
+
+function addon.Tests.TestPerformanceBudgetWarningThrottle()
+    addon.Tests.Assert(type(addon.Profiler) == "table", "Profiler missing")
+
+    local profiler = addon.Profiler
+    local label = "__test.budget.throttle"
+    local oldEnabled = profiler.enabled
+    local oldWarn = addon.Warn
+    local oldBudget = addon.PERFORMANCE_BUDGET and addon.PERFORMANCE_BUDGET[label] or nil
+
+    addon.PERFORMANCE_BUDGET = addon.PERFORMANCE_BUDGET or {}
+    addon.PERFORMANCE_BUDGET[label] = -1
+    profiler.lastBudgetWarnAt = profiler.lastBudgetWarnAt or {}
+    profiler.lastBudgetWarnAt[label] = 0
+    profiler:SetEnabled(true)
+
+    local warnCount = 0
+    addon.Warn = function(_, ...)
+        warnCount = warnCount + 1
+    end
+
+    profiler:Start(label)
+    profiler:Stop(label)
+
+    profiler.lastBudgetWarnAt[label] = GetTime()
+    profiler:Start(label)
+    profiler:Stop(label)
+
+    addon.Tests.AssertEqual(warnCount, 1, "Budget warning should be throttled")
+
+    addon.Warn = oldWarn
+    profiler:SetEnabled(oldEnabled)
+    if oldBudget == nil then
+        addon.PERFORMANCE_BUDGET[label] = nil
+    else
+        addon.PERFORMANCE_BUDGET[label] = oldBudget
+    end
+end
+
 -- Slash Command
 SLASH_TINYCHATON_TEST1 = "/tctest"
 SlashCmdList["TINYCHATON_TEST"] = function()

@@ -5,8 +5,6 @@ local L = addon.L
 
 addon.Shelf = addon.Shelf or {}
 
--- Channel List Cache
-local GetChannelList = GetChannelList
 local GetTime = GetTime
 local ipairs = ipairs
 local pairs = pairs
@@ -14,81 +12,28 @@ local table = table
 local type = type
 local tostring = tostring
 
-local channelListCache = { data = nil, timestamp = 0, TTL = 1 }
 local lastActionBlockedAt = 0
 
-local function GetCachedChannelList()
-    local now = GetTime()
-    if not channelListCache.data or (now - channelListCache.timestamp) > channelListCache.TTL then
-        channelListCache.data = { GetChannelList() }
-        channelListCache.timestamp = now
-    end
-    return channelListCache.data
-end
-
-function addon.Shelf:InvalidateChannelListCache()
-    channelListCache.data = nil
-    channelListCache.timestamp = 0
-end
-
 function addon:GetShelfThemeProperties(themeKey)
-    themeKey = themeKey or (addon.db and addon.db.profile and addon.db.profile.shelf and addon.db.profile.shelf.theme) or addon.CONSTANTS.SHELF_DEFAULT_THEME
-
-    local props = {}
-    if not addon.ThemeRegistry or not addon.ThemeRegistry.GetPreset then
-        return props
+    if addon.ThemeProvider and addon.ThemeProvider.GetShelfThemeProperties then
+        return addon.ThemeProvider:GetShelfThemeProperties(themeKey)
     end
-
-    local preset = addon.ThemeRegistry:GetPreset(themeKey)
-    if not preset then
-        preset = addon.ThemeRegistry:GetPreset(addon.CONSTANTS.SHELF_DEFAULT_THEME)
-    end
-
-    if preset and preset.properties then
-        for k, v in pairs(preset.properties) do
-            props[k] = v
-        end
-
-        local db = addon.db and addon.db.profile and addon.db.profile.shelf
-        if db and db.themes and db.themes[themeKey] then
-            for k, v in pairs(db.themes[themeKey]) do
-                if type(v) ~= "table" or k == "bgColor" or k == "borderColor" or k == "hoverBorderColor" or k == "textColor" then
-                    props[k] = v
-                end
-            end
-        end
-    end
-
-    return props
+    return {}
 end
 
 -- Configuration Generation
 
 function addon.Shelf:GetThemeProperty(prop)
-    if not addon.db or not addon.db.profile or not addon.db.profile.shelf then return nil end
-    local db = addon.db.profile.shelf
-    local theme = db.theme or addon.CONSTANTS.SHELF_DEFAULT_THEME
-    if not db.themes then db.themes = {} end
-    if not db.themes[theme] then db.themes[theme] = {} end
-
-    local val = db.themes[theme][prop]
-    if val == nil then
-        -- Fallback to theme default
-        local preset = addon.ThemeRegistry and addon.ThemeRegistry:GetPreset(theme)
-        if preset and preset.properties then val = preset.properties[prop] end
+    if addon.ThemeProvider and addon.ThemeProvider.GetThemeProperty then
+        return addon.ThemeProvider:GetThemeProperty(prop)
     end
-    return val
+    return nil
 end
 
 function addon.Shelf:SetThemeProperty(prop, val)
-    if not addon.db or not addon.db.profile or not addon.db.profile.shelf then return end
-    local db = addon.db.profile.shelf
-    local theme = db.theme or addon.CONSTANTS.SHELF_DEFAULT_THEME
-    if not db.themes then db.themes = {} end
-    if not db.themes[theme] then db.themes[theme] = {} end
-
-    db.themes[theme][prop] = val
-    addon:RefreshShelf()
+    if addon.ThemeProvider and addon.ThemeProvider.SetThemeProperty then
+        addon.ThemeProvider:SetThemeProperty(prop, val)
+    end
 end
 
 function addon.Shelf:GetOrder()

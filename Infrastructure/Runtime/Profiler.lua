@@ -1,7 +1,8 @@
 local addonName, addon = ...
 addon.Profiler = {
     data = {},
-    enabled = false
+    enabled = false,
+    lastBudgetWarnAt = {}
 }
 
 --- Start profiling a labelled section
@@ -16,11 +17,26 @@ function addon.Profiler:Stop(label)
     if not self.enabled or not self.data[label] or not self.data[label].currentStart then return end
     local now = debugprofilestop()
     local elapsed = now - self.data[label].currentStart
-    
+
     local d = self.data[label]
     d.count = d.count + 1
     d.total = d.total + elapsed
     d.max = math.max(d.max, elapsed)
+    d.currentStart = nil
+
+    local budget = addon.PERFORMANCE_BUDGET and addon.PERFORMANCE_BUDGET[label]
+    if type(budget) == "number" and elapsed > budget then
+        local warnAt = GetTime()
+        local lastWarn = self.lastBudgetWarnAt[label] or 0
+        if (warnAt - lastWarn) >= 10 then
+            self.lastBudgetWarnAt[label] = warnAt
+            if addon.Warn then
+                addon:Warn("%s exceeded budget: %.3fms > %.3fms", tostring(label), elapsed, budget)
+            else
+                print(string.format("|cffff8800[TinyChaton]|r %s exceeded budget: %.3fms > %.3fms", tostring(label), elapsed, budget))
+            end
+        end
+    end
 end
 
 --- Print profiling report
@@ -36,6 +52,7 @@ end
 --- Reset profiler data
 function addon.Profiler:Reset()
     self.data = {}
+    self.lastBudgetWarnAt = {}
     print("|cff00ffff[TinyChaton]|r Profiler data reset.")
 end
 
@@ -43,6 +60,10 @@ end
 function addon.Profiler:Toggle()
     self.enabled = not self.enabled
     print("|cff00ffff[TinyChaton]|r Profiler " .. (self.enabled and "|cff00ff00Enabled|r" or "|cffff0000Disabled|r"))
+end
+
+function addon.Profiler:SetEnabled(enabled)
+    self.enabled = enabled == true
 end
 
 -- Slash Command

@@ -52,14 +52,14 @@ end
 
 function addon:InitBlacklistMiddleware()
     local function EnableBlacklist()
-        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("FILTER", "Blacklist") then
-            addon.EventDispatcher:RegisterMiddleware("FILTER", 20, "Blacklist", BlacklistMiddleware)
+        if addon.ChatPipeline and not addon.ChatPipeline:IsMiddlewareRegistered("BLOCK", "Blacklist") then
+            addon.ChatPipeline:RegisterMiddleware("BLOCK", 20, "Blacklist", BlacklistMiddleware)
         end
     end
 
     local function DisableBlacklist()
-        if addon.EventDispatcher then
-            addon.EventDispatcher:UnregisterMiddleware("FILTER", "Blacklist")
+        if addon.ChatPipeline then
+            addon.ChatPipeline:UnregisterMiddleware("BLOCK", "Blacklist")
         end
     end
 

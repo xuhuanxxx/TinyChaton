@@ -2,7 +2,7 @@ local addonName, addon = ...
 
 -- =========================================================================
 -- Middleware: Timestamp
--- Stage: ENRICH
+-- Stage: TRANSFORM
 -- Priority: 35
 -- Description: Reads system timestamp state for chat processing
 -- =========================================================================
@@ -46,14 +46,14 @@ function addon:InitSystemTimestampSyncMiddleware()
     end
 
     local function EnableTimestamp()
-        if addon.EventDispatcher and not addon.EventDispatcher:IsMiddlewareRegistered("ENRICH", "Timestamp") then
-            addon.EventDispatcher:RegisterMiddleware("ENRICH", 35, "Timestamp", TimestampMiddleware)
+        if addon.ChatPipeline and not addon.ChatPipeline:IsMiddlewareRegistered("TRANSFORM", "Timestamp") then
+            addon.ChatPipeline:RegisterMiddleware("TRANSFORM", 35, "Timestamp", TimestampMiddleware)
         end
     end
 
     local function DisableTimestamp()
-        if addon.EventDispatcher then
-            addon.EventDispatcher:UnregisterMiddleware("ENRICH", "Timestamp")
+        if addon.ChatPipeline then
+            addon.ChatPipeline:UnregisterMiddleware("TRANSFORM", "Timestamp")
         end
     end
 

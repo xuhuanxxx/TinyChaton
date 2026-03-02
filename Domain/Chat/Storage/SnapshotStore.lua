@@ -3,15 +3,15 @@ local CF = _G["Create" .. "Frame"]
 
 -- =========================================================================
 -- Middleware: SnapshotLogger
--- Stage: LOG
+-- Stage: PERSIST
 -- Priority: 10
 -- Description: Records message to history (Snapshot)
 -- =========================================================================
 
--- Runs FIRST in LOG stage to capture text *before* Display timestamps are added
+-- Runs FIRST in PERSIST stage to capture text *before* Display timestamps are added
 
 -- Standalone Frame for safe logging (Observer Pattern)
--- Decoupled from EventDispatcher to prevent Taint in combat
+-- Decoupled from ChatPipeline to prevent Taint in combat
 local loggerFrame = CF("Frame")
 local loggerEnabled = false
 

@@ -242,6 +242,30 @@ function addon.Utils.UnpackArgs(packed)
     return unpack(packed, 1, packed.n or #packed)
 end
 
+function addon.Utils.EnsureType(value, expectedType, fallback)
+    if type(value) == expectedType then
+        return value
+    end
+    return fallback
+end
+
+function addon.Utils.EnsureTable(t)
+    if type(t) == "table" then
+        return t
+    end
+    return {}
+end
+
+function addon.Utils.EnsureString(s, fallback)
+    if type(s) == "string" then
+        return s
+    end
+    if type(fallback) == "string" then
+        return fallback
+    end
+    return ""
+end
+
 --- Normalize channel base name (strip server suffix like "World - ServerName" -> "World")
 --- @param name string
 --- @return string

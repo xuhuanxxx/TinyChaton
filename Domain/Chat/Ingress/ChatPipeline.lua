@@ -3,20 +3,20 @@ local AddMessageFilter = _G["Chat" .. "Frame_AddMessageEventFilter"]
 local RemoveMessageFilter = _G["Chat" .. "Frame_RemoveMessageEventFilter"]
 
 -- =========================================================================
--- Event Dispatcher with Middleware Pipeline
+-- Chat Pipeline with Middleware Stages
 -- Provides a unified entry point for chat message processing
--- Supports 4 stages: PRE_PROCESS, FILTER, ENRICH, LOG
+-- Supports 4 stages: VALIDATE, BLOCK, TRANSFORM, PERSIST
 -- =========================================================================
 
-addon.EventDispatcher = addon.EventDispatcher or {}
-local Dispatcher = addon.EventDispatcher
+addon.ChatPipeline = addon.ChatPipeline or {}
+local Dispatcher = addon.ChatPipeline
 
 -- Middleware registry by stage
 Dispatcher.middlewares = {
-    PRE_PROCESS = {},  -- Pre-processing (cannot block)
-    FILTER = {},       -- Filtering/blocking stage (can return true to block)
-    ENRICH = {},       -- Enhancement stage (modify text)
-    LOG = {}           -- Logging stage (cannot block)
+    VALIDATE = {},  -- Pre-processing (cannot block)
+    BLOCK = {},       -- Filtering/blocking stage (can return true to block)
+    TRANSFORM = {},       -- Enhancement stage (modify text)
+    PERSIST = {}           -- Logging stage (cannot block)
 }
 
 -- Registered event filters
@@ -38,11 +38,14 @@ function Dispatcher:Initialize()
 end
 
 --- Register a middleware function
---- @param stage string Stage name: "PRE_PROCESS", "FILTER", "ENRICH", "LOG"
+--- @param stage string Stage name: "VALIDATE", "BLOCK", "TRANSFORM", "PERSIST"
 --- @param priority number Lower numbers execute first (e.g., 10, 20, 30)
 --- @param name string Middleware name for debugging
 --- @param fn function Middleware function(chatData) -> boolean|nil
 function Dispatcher:RegisterMiddleware(stage, priority, name, fn)
+    if addon.Utils and addon.Utils.EnsureString then
+        stage = addon.Utils.EnsureString(stage, "")
+    end
     if not self.middlewares[stage] then
         error("Invalid middleware stage: " .. tostring(stage))
     end
@@ -112,21 +115,44 @@ end
 --- Execute middlewares for a specific stage
 --- @param stage string Stage name
 --- @param chatData table ChatData object
---- @return boolean True if any FILTER middleware marked a match
+--- @return boolean True if any BLOCK middleware marked a match
 function Dispatcher:RunMiddlewares(stage, chatData)
+    if addon.Utils and addon.Utils.EnsureString then
+        stage = addon.Utils.EnsureString(stage, "")
+    end
+    local hasProfiler = addon.Profiler and addon.Profiler.Start and addon.Profiler.Stop
+    local profileLabel = nil
+    if stage == "BLOCK" or stage == "PERSIST" then
+        profileLabel = "ChatPipeline.Middleware." .. stage
+    end
+    if hasProfiler and profileLabel then
+        addon.Profiler:Start(profileLabel)
+    end
+
     if addon.Can then
         local caps = addon.CAPABILITIES or {}
-        if (stage == "PRE_PROCESS" or stage == "FILTER" or stage == "ENRICH")
+        if (stage == "VALIDATE" or stage == "BLOCK" or stage == "TRANSFORM")
             and not addon:Can(caps.PROCESS_CHAT_DATA or "PROCESS_CHAT_DATA") then
+            if hasProfiler and profileLabel then
+                addon.Profiler:Stop(profileLabel)
+            end
             return false
         end
-        if stage == "LOG" and not addon:Can(caps.PERSIST_CHAT_DATA or "PERSIST_CHAT_DATA") then
+        if stage == "PERSIST" and not addon:Can(caps.PERSIST_CHAT_DATA or "PERSIST_CHAT_DATA") then
+            if hasProfiler and profileLabel then
+                addon.Profiler:Stop(profileLabel)
+            end
             return false
         end
     end
 
     local middlewares = self.middlewares[stage]
-    if not middlewares then return false end
+    if not middlewares then
+        if hasProfiler and profileLabel then
+            addon.Profiler:Stop(profileLabel)
+        end
+        return false
+    end
 
     for _, middleware in ipairs(middlewares) do
         local ok, result = pcall(middleware.fn, chatData)
@@ -137,12 +163,15 @@ function Dispatcher:RunMiddlewares(stage, chatData)
                 addon:Debug(string.format("Middleware error [%s:%s]: %s",
                     stage, middleware.name, tostring(result)))
             end
-        elseif result == true and stage == "FILTER" then
+        elseif result == true and stage == "BLOCK" then
             chatData.isBlocked = true
         end
     end
 
-    return chatData.isBlocked == true and stage == "FILTER"
+    if hasProfiler and profileLabel then
+        addon.Profiler:Stop(profileLabel)
+    end
+    return chatData.isBlocked == true and stage == "BLOCK"
 end
 
 --- Core event handler with middleware pipeline
@@ -168,17 +197,17 @@ function Dispatcher:OnChatEvent(frame, event, ...)
         return false
     end
 
-    -- Stage 1: PRE_PROCESS
+    -- Stage 1: VALIDATE
     -- Pre-processing stage (cannot block, but can modify chatData)
-    self:RunMiddlewares("PRE_PROCESS", chatData)
+    self:RunMiddlewares("VALIDATE", chatData)
 
-    -- Stage 2: FILTER
+    -- Stage 2: BLOCK
     -- Filtering stage now only marks metadata (display decision is centralized).
-    self:RunMiddlewares("FILTER", chatData)
+    self:RunMiddlewares("BLOCK", chatData)
 
-    -- Stage 3: ENRICH
+    -- Stage 3: TRANSFORM
     -- Enrichment stage (internal metadata only; no argument repacking)
-    self:RunMiddlewares("ENRICH", chatData)
+    self:RunMiddlewares("TRANSFORM", chatData)
 
     local shouldHide = false
     if addon.VisibilityPolicy and addon.VisibilityPolicy.IsVisibleRealtime then
@@ -188,9 +217,9 @@ function Dispatcher:OnChatEvent(frame, event, ...)
         end
     end
 
-    -- Stage 4: LOG
+    -- Stage 4: PERSIST
     -- Logging stage always runs to keep snapshot/data ingestion complete.
-    self:RunMiddlewares("LOG", chatData)
+    self:RunMiddlewares("PERSIST", chatData)
 
     local emitted = false
     if not shouldHide and addon.MessageFormatter and addon.MessageFormatter.BuildRealtimeLineFromChatData and addon.EmitRenderedChatLine then
@@ -301,21 +330,21 @@ end
 -- =========================================================================
 -- Initialization
 -- =========================================================================
-function addon:InitializeEventDispatcher()
-    if not self.EventDispatcher then return end
+function addon:InitializeChatPipeline()
+    if not self.ChatPipeline then return end
 
     -- Initialize mapping table
-    self.EventDispatcher:Initialize()
+    self.ChatPipeline:Initialize()
 
     local function EnableDispatcherFilters()
-        self.EventDispatcher:RebuildFiltersForCurrentMode()
+        self.ChatPipeline:RebuildFiltersForCurrentMode()
     end
 
     local function DisableDispatcherFilters()
-        self.EventDispatcher:UnregisterFilters()
+        self.ChatPipeline:UnregisterFilters()
     end
 
-    self:RegisterFeature("EventDispatcherFilters", {
+    self:RegisterFeature("ChatPipelineFilters", {
         requires = { "READ_CHAT_EVENT" },
         plane = self.RUNTIME_PLANES and self.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
         onEnable = EnableDispatcherFilters,
@@ -324,10 +353,10 @@ function addon:InitializeEventDispatcher()
 
     if self.Debug then
         local middlewareCount = 0
-        for stage, middlewares in pairs(self.EventDispatcher.middlewares) do
+        for _, middlewares in pairs(self.ChatPipeline.middlewares) do
             middlewareCount = middlewareCount + #middlewares
         end
 
-        self:Debug(string.format("EventDispatcher initialized: %d middlewares", middlewareCount))
+        self:Debug(string.format("ChatPipeline initialized: %d middlewares", middlewareCount))
     end
 end

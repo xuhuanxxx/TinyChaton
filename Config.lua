@@ -89,46 +89,73 @@ end
 
 -- Stream Helper Functions
 
-function addon:GetStreamPath(key)
-    if not self.STREAM_REGISTRY then return nil end
+function addon:BuildStreamIndex()
+    local registry = self.STREAM_REGISTRY
+    if type(registry) ~= "table" then
+        self.STREAM_INDEX = nil
+        return
+    end
 
-    for categoryKey, category in pairs(self.STREAM_REGISTRY) do
-        for subKey, subCategory in pairs(category) do
-            for _, stream in ipairs(subCategory) do
-                if stream.key == key then
-                    return categoryKey .. "." .. subKey
+    local byKey = {}
+    local pathByKey = {}
+    local categoryByKey = {}
+
+    for categoryKey, category in pairs(registry) do
+        if type(category) == "table" then
+            for subKey, subCategory in pairs(category) do
+                if type(subCategory) == "table" then
+                    for _, stream in ipairs(subCategory) do
+                        if type(stream) == "table" and type(stream.key) == "string" and stream.key ~= "" then
+                            if byKey[stream.key] then
+                                error(string.format("Duplicate stream key in STREAM_REGISTRY: %s", stream.key))
+                            end
+                            byKey[stream.key] = stream
+                            pathByKey[stream.key] = tostring(categoryKey) .. "." .. tostring(subKey)
+                            categoryByKey[stream.key] = categoryKey
+                        end
+                    end
                 end
             end
         end
     end
 
-    return nil
+    self.STREAM_INDEX = {
+        byKey = byKey,
+        pathByKey = pathByKey,
+        categoryByKey = categoryByKey,
+    }
+end
+
+function addon:GetStreamPath(key)
+    local index = self.STREAM_INDEX
+    if not index or type(index.pathByKey) ~= "table" then
+        return nil
+    end
+    return index.pathByKey[key]
 end
 
 function addon:GetStreamByKey(key)
-    if not self.STREAM_REGISTRY then return nil end
-
-    for categoryKey, category in pairs(self.STREAM_REGISTRY) do
-        for subKey, subCategory in pairs(category) do
-            for _, stream in ipairs(subCategory) do
-                if stream.key == key then
-                    return stream
-                end
-            end
-        end
+    local index = self.STREAM_INDEX
+    if not index or type(index.byKey) ~= "table" then
+        return nil
     end
-
-    return nil
+    return index.byKey[key]
 end
 
 function addon:IsChannelStream(key)
-    local path = self:GetStreamPath(key)
-    return path and path:match("^CHANNEL%.") ~= nil
+    local index = self.STREAM_INDEX
+    if not index or type(index.categoryByKey) ~= "table" then
+        return false
+    end
+    return index.categoryByKey[key] == "CHANNEL"
 end
 
 function addon:IsNoticeStream(key)
-    local path = self:GetStreamPath(key)
-    return path and path:match("^NOTICE%.") ~= nil
+    local index = self.STREAM_INDEX
+    if not index or type(index.categoryByKey) ~= "table" then
+        return false
+    end
+    return index.categoryByKey[key] == "NOTICE"
 end
 
 function addon:GetStreamDefaults(key)

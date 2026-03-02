@@ -60,6 +60,7 @@ Infrastructure\WowApi\EnvironmentGate.lua
 Infrastructure\Runtime\FeatureRegistry.lua
 Infrastructure\WowApi\CVarSync.lua
 Infrastructure\Runtime\InternalTests.lua
+Infrastructure\Runtime\PerformanceBudget.lua
 Infrastructure\Runtime\Profiler.lua
 Infrastructure\Runtime\MemoryDiagnostics.lua
 
@@ -67,7 +68,7 @@ Domain\Chat\Storage\SnapshotKeys.lua
 Domain\Chat\Policy\VisibilityPolicy.lua
 Domain\Chat\Ingress\EventContextFactory.lua
 Domain\Chat\Render\MessageFormatter.lua
-Domain\Chat\Ingress\EventRouter.lua
+Domain\Chat\Ingress\ChatPipeline.lua
 Domain\Chat\Ingress\Filters\RuleMatcher.lua
 Domain\Chat\Ingress\Filters\Blacklist.lua
 Domain\Chat\Ingress\Filters\Whitelist.lua
@@ -88,8 +89,11 @@ Domain\Chat\Interaction\LinkHover.lua
 Domain\Chat\Interaction\TabCycle.lua
 Domain\Chat\Render\Transformers\Highlight.lua
 
+Domain\Shelf\DynamicChannelResolver.lua
+Domain\Shelf\ThemeProvider.lua
 Domain\Shelf\ShelfService.lua
 Domain\Shelf\ShelfThemeRegistry.lua
+Domain\Shelf\ShelfVisualSpecResolver.lua
 Domain\Shelf\ShelfRender.lua
 Domain\Shelf\SelectionDialog.lua
 

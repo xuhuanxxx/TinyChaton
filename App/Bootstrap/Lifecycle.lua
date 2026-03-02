@@ -70,7 +70,7 @@ function addon:OnInitialize()
     end
 
     local frameHooksReady = RunPhase("Phase4 Frame Hooks", function()
-        RequireMethod(addon, "InitializeEventDispatcher")(addon)
+        RequireMethod(addon, "InitializeChatPipeline")(addon)
     end)
     if not frameHooksReady then
         return

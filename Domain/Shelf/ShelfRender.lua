@@ -184,8 +184,9 @@ addon.ShelfButton = ShelfButton
 
 
 function ShelfButton:Render(props)
-    local theme = props.theme or addon:GetShelfThemeProperties()
-    local textColor = addon:GetButtonColor(props.item)
+    local visualSpec = props.visualSpec or {}
+    local theme = visualSpec.themeProps or props.theme or addon:GetShelfThemeProperties()
+    local textColor = visualSpec.textColor or addon:GetButtonColor(props.item)
     local state = props.channelState or "joined"
 
     return TR:CreateElement("Button", {
@@ -313,6 +314,9 @@ function addon.Shelf:Render()
 
     local themeKey = addon.db.profile.shelf and addon.db.profile.shelf.theme
     local currentTheme = addon:GetShelfThemeProperties(themeKey)
+    local shelfVisualSpec = addon.ShelfVisualSpecResolver and addon.ShelfVisualSpecResolver.ResolveButtonVisualSpec
+        and addon.ShelfVisualSpecResolver:ResolveButtonVisualSpec(nil, { themeKey = themeKey }) or {}
+    currentTheme = shelfVisualSpec.themeProps or currentTheme
 
     local btnSize = currentTheme.buttonSize or addon.CONSTANTS.SHELF_DEFAULT_BUTTON_SIZE
     local spacing = currentTheme.spacing or addon.CONSTANTS.SHELF_DEFAULT_SPACING
@@ -321,9 +325,8 @@ function addon.Shelf:Render()
     local elements = {}
     local buttonElements = {}
 
-    local dbTheme = addon.db.profile.shelf and addon.db.profile.shelf.themes and addon.db.profile.shelf.themes[themeKey] or {}
-    local themeAlpha = dbTheme.alpha or currentTheme.alpha or 1.0
-    local themeScale = dbTheme.scale or currentTheme.scale or 1.0
+    local themeAlpha = shelfVisualSpec.alpha or currentTheme.alpha or 1.0
+    local themeScale = shelfVisualSpec.scale or currentTheme.scale or 1.0
 
     Shelf:SetAlpha(themeAlpha)
     Shelf:SetScale(themeScale)
@@ -364,6 +367,9 @@ function addon.Shelf:Render()
             end
         end
 
+        local buttonVisualSpec = addon.ShelfVisualSpecResolver and addon.ShelfVisualSpecResolver.ResolveButtonVisualSpec
+            and addon.ShelfVisualSpecResolver:ResolveButtonVisualSpec(item, { themeKey = themeKey }) or {}
+
         table.insert(buttonElements, addon.ShelfButton:Create({
             key = info.key,
             text = info.text,
@@ -371,6 +377,7 @@ function addon.Shelf:Render()
             channelState = info.channelState,
             size = btnSize,
             theme = currentTheme,
+            visualSpec = buttonVisualSpec,
 
             tooltip = tooltip,
             onLeftClick = function(btnSelf)
@@ -508,16 +515,16 @@ function addon.Shelf:InitRender()
         end
         channelRefreshTimer = C_Timer.NewTimer(0.5, function()
             channelRefreshTimer = nil
-            if addon.Shelf and addon.Shelf.InvalidateChannelListCache then
-                addon.Shelf:InvalidateChannelListCache()
+            if addon.DynamicChannelResolver and addon.DynamicChannelResolver.InvalidateCache then
+                addon.DynamicChannelResolver:InvalidateCache()
             end
             addon.Shelf:Render()
         end)
     end
 
     f:SetScript("OnEvent", function(self, event, ...)
-        if addon.Shelf and addon.Shelf.InvalidateChannelListCache then
-            addon.Shelf:InvalidateChannelListCache()
+        if addon.DynamicChannelResolver and addon.DynamicChannelResolver.InvalidateCache then
+            addon.DynamicChannelResolver:InvalidateCache()
         end
         addon.Shelf:Render()
     end)
@@ -528,8 +535,14 @@ end
 
 
 function addon:RefreshShelf()
+    if addon.Profiler and addon.Profiler.Start then
+        addon.Profiler:Start("ShelfService.RefreshShelf")
+    end
     if addon.Shelf then
         addon.Shelf:Render()
+    end
+    if addon.Profiler and addon.Profiler.Stop then
+        addon.Profiler:Stop("ShelfService.RefreshShelf")
     end
 end
 

@@ -757,6 +757,52 @@ function addon.Tests.TestStreamIndexLookupParity()
     addon.Tests.Assert(addon:IsNoticeStream("say") == false, "IsNoticeStream should be false for say")
 end
 
+function addon.Tests.TestDefaultChannelPinsArePinnedBySchema()
+    addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS should exist")
+    local buttons = addon.DEFAULTS.profile and addon.DEFAULTS.profile.buttons
+    addon.Tests.Assert(type(buttons) == "table", "DEFAULTS.profile.buttons should exist")
+    local channelPins = buttons.channelPins
+    addon.Tests.Assert(type(channelPins) == "table", "DEFAULTS channelPins should be table")
+
+    addon.Tests.AssertEqual(channelPins.say, true, "System channel 'say' should be pinned by default")
+
+    local hasPinnedDynamic = false
+    for _, key in ipairs({ "general", "trade", "services", "lfg", "world", "localdefense" }) do
+        if channelPins[key] == true then
+            hasPinnedDynamic = true
+            break
+        end
+    end
+    addon.Tests.Assert(hasPinnedDynamic, "At least one dynamic channel should be pinned by default")
+
+    addon.Tests.Assert(type(addon.STREAM_INDEX) == "table", "STREAM_INDEX should be initialized at load")
+    addon.Tests.AssertEqual(addon:GetStreamPath("say"), "CHANNEL.SYSTEM", "STREAM_INDEX path for 'say' mismatch")
+end
+
+function addon.Tests.TestDefaultAutoJoinDynamicChannelsEnabled()
+    addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS should exist")
+    local automation = addon.DEFAULTS.profile and addon.DEFAULTS.profile.automation
+    addon.Tests.Assert(type(automation) == "table", "DEFAULTS.profile.automation should exist")
+    local selections = automation.autoJoinDynamicChannels
+    addon.Tests.Assert(type(selections) == "table", "autoJoinDynamicChannels should be table")
+
+    for _, key in ipairs({ "general", "trade", "services", "lfg", "world", "localdefense" }) do
+        addon.Tests.AssertEqual(selections[key], true, "Dynamic channel '" .. key .. "' should default to auto-join enabled")
+    end
+end
+
+function addon.Tests.TestDefaultSnapshotChannelsFromRegistry()
+    addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS should exist")
+    local content = addon.DEFAULTS.profile and addon.DEFAULTS.profile.chat and addon.DEFAULTS.profile.chat.content
+    addon.Tests.Assert(type(content) == "table", "DEFAULTS.profile.chat.content should exist")
+    local channels = content.snapshotChannels
+    addon.Tests.Assert(type(channels) == "table", "snapshotChannels should be table")
+
+    addon.Tests.AssertEqual(channels.say, true, "System channel 'say' should be snapshotted by default")
+    addon.Tests.AssertEqual(channels.whisper, true, "Private channel 'whisper' should be snapshotted by default")
+    addon.Tests.AssertEqual(channels.general, true, "Dynamic channel 'general' should be snapshotted by default")
+end
+
 function addon.Tests.TestChatPipelineStageOrder()
     addon.Tests.Assert(type(addon.ChatPipeline) == "table", "ChatPipeline missing")
 
@@ -836,6 +882,57 @@ function addon.Tests.TestPerformanceBudgetWarningThrottle()
     else
         addon.PERFORMANCE_BUDGET[label] = oldBudget
     end
+end
+
+function addon.Tests.TestGlobalResetAppliesAutoJoinDefaultsFromRegistry()
+    addon.Tests.Assert(type(addon.SynchronizeConfig) == "function", "SynchronizeConfig missing")
+    addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS missing")
+
+    if not addon.db or not addon.db.profile then
+        return
+    end
+
+    local profile = addon.db.profile
+    profile.automation = profile.automation or {}
+    profile.automation.autoJoinDynamicChannels = {
+        general = true,
+        trade = true,
+    }
+
+    addon:SynchronizeConfig(true)
+
+    local after = profile.automation.autoJoinDynamicChannels
+    addon.Tests.Assert(type(after) == "table", "autoJoinDynamicChannels should remain a table after reset")
+    for _, key in ipairs({ "general", "trade", "services", "lfg", "world", "localdefense" }) do
+        addon.Tests.AssertEqual(after[key], true, "Global reset should restore auto-join default for '" .. key .. "'")
+    end
+end
+
+function addon.Tests.TestStreamRegistryDefaultSchemaValidation()
+    addon.Tests.Assert(type(addon.ValidateRegistryDefinitions) == "function", "ValidateRegistryDefinitions missing")
+    local reg = addon.STREAM_REGISTRY
+    addon.Tests.Assert(type(reg) == "table", "STREAM_REGISTRY missing")
+
+    local originalDynamicPinned = reg.CHANNEL.DYNAMIC[1].defaultPinned
+    reg.CHANNEL.DYNAMIC[1].defaultPinned = nil
+    local okPinned = pcall(function()
+        addon:ValidateRegistryDefinitions()
+    end)
+    addon.Tests.Assert(okPinned == false, "Registry validation should reject missing defaultPinned")
+    reg.CHANNEL.DYNAMIC[1].defaultPinned = originalDynamicPinned
+
+    local originalSystemAutoJoin = reg.CHANNEL.SYSTEM[1].defaultAutoJoin
+    reg.CHANNEL.SYSTEM[1].defaultAutoJoin = true
+    local okAutoJoin = pcall(function()
+        addon:ValidateRegistryDefinitions()
+    end)
+    addon.Tests.Assert(okAutoJoin == false, "Registry validation should reject defaultAutoJoin outside CHANNEL.DYNAMIC")
+    reg.CHANNEL.SYSTEM[1].defaultAutoJoin = originalSystemAutoJoin
+
+    local okFinal = pcall(function()
+        addon:ValidateRegistryDefinitions()
+    end)
+    addon.Tests.Assert(okFinal == true, "Registry validation should pass after restoring schema")
 end
 
 -- Slash Command

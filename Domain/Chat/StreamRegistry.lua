@@ -5,7 +5,7 @@ local PRI_STEP = addon.PRIORITY_STEP or 10
 
 -- STREAM_REGISTRY
 -- 消息流层级注册表 - Stream > Channel / Notice 架构
--- 通过嵌套结构隐式推导能力，移除扁平布尔标志
+-- 流默认行为由显式 schema 字段声明（defaultPinned/defaultSnapshotted/defaultAutoJoin）
 
 addon.STREAM_REGISTRY = {
     -- [CHANNEL] 具备交互能力的消息流（发送、粘滞、编号）
@@ -24,6 +24,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_SAY" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 0,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -37,6 +39,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_YELL" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 1,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -50,6 +54,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_GUILD" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 2,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -63,6 +69,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_OFFICER" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 3,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -76,6 +84,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 4,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -89,6 +99,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 5,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -102,6 +114,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 6,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -115,6 +129,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_RAID_WARNING" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 7,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -130,6 +146,8 @@ addon.STREAM_REGISTRY = {
                 -- for this pipeline. Keep action support (/bg), but do not subscribe.
                 events = {},
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 8,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -143,6 +161,8 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_EMOTE", "CHAT_MSG_TEXT_EMOTE" },
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 9,
+                defaultPinned = true,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
         },
@@ -162,6 +182,9 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 0,
+                defaultPinned = true,
+                defaultSnapshotted = true,
+                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -176,6 +199,9 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 1,
+                defaultPinned = true,
+                defaultSnapshotted = true,
+                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -190,6 +216,9 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 2,
+                defaultPinned = true,
+                defaultSnapshotted = true,
+                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -204,6 +233,9 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 3,
+                defaultPinned = true,
+                defaultSnapshotted = true,
+                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -218,6 +250,9 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 4,
+                defaultPinned = true,
+                defaultSnapshotted = true,
+                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -232,6 +267,9 @@ addon.STREAM_REGISTRY = {
 
                 events = { "CHAT_MSG_CHANNEL" },
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 5,
+                defaultPinned = true,
+                defaultSnapshotted = true,
+                defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
         },
@@ -250,6 +288,7 @@ addon.STREAM_REGISTRY = {
                 events = { "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM" },
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 6,
                 defaultPinned = false,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
             {
@@ -264,6 +303,7 @@ addon.STREAM_REGISTRY = {
                 events = { "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM" },
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 7,
                 defaultPinned = false,
+                defaultSnapshotted = true,
                 defaultBindings = { left = "send" },
             },
         }

@@ -62,10 +62,6 @@ local function RecursiveSync(target, source, isReset)
     end
 
     if isReset then
-        local sourceIsEmpty = (next(source) == nil)
-        if sourceIsEmpty then
-            return
-        end
         for k, _ in pairs(target) do
             if source[k] == nil and type(k) == "string" then
                 target[k] = nil

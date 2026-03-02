@@ -15,6 +15,12 @@ local function AssertPriority(item, label)
     end
 end
 
+local function AssertBooleanField(value, label)
+    if type(value) ~= "boolean" then
+        error(string.format("%s must be boolean", tostring(label)))
+    end
+end
+
 local function ResolveChannelBindingActionKey(streamKey, bindingKey, actionSet)
     if actionSet[bindingKey] then
         return bindingKey
@@ -136,6 +142,13 @@ function addon:ValidateRegistryDefinitions()
 
                         if categoryKey == "CHANNEL" then
                             AssertNonEmptyString(stream.chatType, sourceLabel .. ".chatType")
+                            AssertBooleanField(stream.defaultPinned, sourceLabel .. ".defaultPinned")
+                            AssertBooleanField(stream.defaultSnapshotted, sourceLabel .. ".defaultSnapshotted")
+                            if subKey == "DYNAMIC" then
+                                AssertBooleanField(stream.defaultAutoJoin, sourceLabel .. ".defaultAutoJoin")
+                            elseif stream.defaultAutoJoin ~= nil then
+                                error(sourceLabel .. ".defaultAutoJoin is only allowed for CHANNEL.DYNAMIC")
+                            end
                             if stream.events ~= nil and type(stream.events) ~= "table" then
                                 error(sourceLabel .. ".events must be table")
                             end

@@ -1,16 +1,34 @@
 local addonName, addon = ...
 local L = addon.L
-local def = addon.DEFAULTS and addon.DEFAULTS.profile or {}
 
 local CategoryBuilders = addon.CategoryBuilders or {}
 addon.CategoryBuilders = CategoryBuilders
+
+local function GetAutomationDefaults()
+    local profile = addon.DEFAULTS and addon.DEFAULTS.profile
+    return (type(profile) == "table" and type(profile.automation) == "table") and profile.automation or {}
+end
+
+local function SerializeSelection(selection)
+    if type(selection) ~= "table" then
+        return ""
+    end
+    local keys = {}
+    for key, enabled in pairs(selection) do
+        if enabled == true then
+            keys[#keys + 1] = key
+        end
+    end
+    table.sort(keys)
+    return table.concat(keys, ",")
+end
 
 CategoryBuilders.automation = function(rootCat)
     local cat, _ = Settings.RegisterVerticalLayoutSubcategory(rootCat, L["PAGE_AUTOMATION"])
     Settings.RegisterAddOnCategory(cat)
     local P = "TinyChaton_Automation_"
     local autoDB = addon.db.profile.automation
-    local autoDef = def.automation
+    local autoDef = GetAutomationDefaults()
     local countdownDef = autoDef.countdown or { primarySeconds = 10, secondarySeconds = 5 }
     local function GetAutoDB()
         return addon.db and addon.db.profile and addon.db.profile.automation
@@ -24,7 +42,8 @@ CategoryBuilders.automation = function(rootCat)
 
     local function GetTabConfig()
         local db = GetAutoDB()
-        if not db then return autoDef.welcomeGuild end -- Fallback
+        local fallback = GetAutomationDefaults().welcomeGuild or { enabled = false, sendMode = "channel" }
+        if not db then return fallback end -- Fallback
         local tab = db.currentSocialTab or "guild"
         if tab == "guild" then return db.welcomeGuild
         elseif tab == "party" then return db.welcomeParty
@@ -131,6 +150,9 @@ CategoryBuilders.automation = function(rootCat)
 
 
     local function ResetAutomationData()
+        autoDef = GetAutomationDefaults()
+        countdownDef = autoDef.countdown or { primarySeconds = 10, secondarySeconds = 5 }
+
         autoDB.autoJoinDynamicChannels = addon.Utils.DeepCopy(autoDef.autoJoinDynamicChannels or {})
         autoDB.customAutoJoinChannels = addon.Utils.DeepCopy(autoDef.customAutoJoinChannels)
         autoDB.welcome = addon.Utils.DeepCopy(autoDef.welcome)
@@ -152,8 +174,8 @@ CategoryBuilders.automation = function(rootCat)
             countdownSecondarySetting:SetValue(autoDB.countdown and autoDB.countdown.secondarySeconds)
         end
         local autoJoinSetting = Settings.GetSetting(P .. "autoJoinDynamic")
-        if autoJoinSetting and autoJoinSetting.SetValue and autoJoinSetting.GetValue then
-            autoJoinSetting:SetValue(autoJoinSetting:GetValue())
+        if autoJoinSetting and autoJoinSetting.SetValue then
+            autoJoinSetting:SetValue(SerializeSelection(autoDB.autoJoinDynamicChannels))
         end
         RefreshTabSettings()
 

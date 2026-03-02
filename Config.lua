@@ -89,11 +89,9 @@ end
 
 -- Stream Helper Functions
 
-function addon:BuildStreamIndex()
-    local registry = self.STREAM_REGISTRY
+local function BuildStreamIndexFromRegistry(registry)
     if type(registry) ~= "table" then
-        self.STREAM_INDEX = nil
-        return
+        error("STREAM_REGISTRY is not initialized")
     end
 
     local byKey = {}
@@ -111,7 +109,7 @@ function addon:BuildStreamIndex()
                             end
                             byKey[stream.key] = stream
                             pathByKey[stream.key] = tostring(categoryKey) .. "." .. tostring(subKey)
-                            categoryByKey[stream.key] = categoryKey
+                            categoryByKey[stream.key] = tostring(categoryKey)
                         end
                     end
                 end
@@ -119,11 +117,15 @@ function addon:BuildStreamIndex()
         end
     end
 
-    self.STREAM_INDEX = {
+    return {
         byKey = byKey,
         pathByKey = pathByKey,
         categoryByKey = categoryByKey,
     }
+end
+
+function addon:BuildStreamIndex()
+    self.STREAM_INDEX = BuildStreamIndexFromRegistry(self.STREAM_REGISTRY)
 end
 
 function addon:GetStreamPath(key)
@@ -158,37 +160,10 @@ function addon:IsNoticeStream(key)
     return index.categoryByKey[key] == "NOTICE"
 end
 
-function addon:GetStreamDefaults(key)
-    local path = self:GetStreamPath(key)
-    if not path then return {} end
-
-    local defaults = {}
-
-    if path:match("^CHANNEL%.") then
-        defaults.defaultPinned = true
-        defaults.defaultSnapshotted = true
-    end
-
-    if path:match("^NOTICE%.") then
-        defaults.defaultPinned = false
-        defaults.defaultSnapshotted = false
-    end
-
-    return defaults
-end
-
 function addon:GetStreamProperty(stream, propertyName, fallbackValue)
     if stream[propertyName] ~= nil then
         return stream[propertyName]
     end
-
-    if stream.key then
-        local defaults = self:GetStreamDefaults(stream.key)
-        if defaults[propertyName] ~= nil then
-            return defaults[propertyName]
-        end
-    end
-
     return fallbackValue
 end
 
@@ -313,13 +288,15 @@ function addon:ValidateChatEventDerivation()
     return true
 end
 
+addon.STREAM_INDEX = BuildStreamIndexFromRegistry(addon.STREAM_REGISTRY)
+
 local function BuildChannelPins()
     local pins = {}
 
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
-        for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
+        for _, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
             for _, stream in ipairs(category) do
-                pins[stream.key] = addon:GetStreamProperty(stream, "defaultPinned", false)
+                pins[stream.key] = stream.defaultPinned == true
             end
         end
     end
@@ -339,14 +316,28 @@ local function BuildSnapshotChannels()
     local channels = {}
 
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
-        for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
+        for _, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
             for _, stream in ipairs(category) do
-                channels[stream.key] = addon:GetStreamProperty(stream, "defaultSnapshotted", false)
+                channels[stream.key] = stream.defaultSnapshotted == true
             end
         end
     end
 
     return channels
+end
+
+local function BuildAutoJoinDynamicChannels()
+    local selections = {}
+    local channels = addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL
+    local dynamic = channels and channels.DYNAMIC
+    if type(dynamic) == "table" then
+        for _, stream in ipairs(dynamic) do
+            if type(stream) == "table" and type(stream.key) == "string" and stream.key ~= "" then
+                selections[stream.key] = stream.defaultAutoJoin == true
+            end
+        end
+    end
+    return selections
 end
 
 addon.DEFAULTS = {
@@ -431,7 +422,7 @@ addon.DEFAULTS = {
             welcomeGuild  = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("guild") },
             welcomeParty  = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("party") },
             welcomeRaid   = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("raid") },
-            autoJoinDynamicChannels = {},
+            autoJoinDynamicChannels = BuildAutoJoinDynamicChannels(),
             customAutoJoinChannels = {},
             countdown = { primarySeconds = 10, secondarySeconds = 5 },
         },

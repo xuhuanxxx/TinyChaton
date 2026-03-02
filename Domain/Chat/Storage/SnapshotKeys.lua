@@ -1,24 +1,5 @@
 local addonName, addon = ...
 
-addon.EVENT_TO_CHANNEL_KEY = addon.EVENT_TO_CHANNEL_KEY or {
-    ["CHAT_MSG_GUILD"] = "GUILD",
-    ["CHAT_MSG_OFFICER"] = "OFFICER",
-    ["CHAT_MSG_SAY"] = "SAY",
-    ["CHAT_MSG_YELL"] = "YELL",
-    ["CHAT_MSG_PARTY"] = "PARTY",
-    ["CHAT_MSG_PARTY_LEADER"] = "PARTY",
-    ["CHAT_MSG_RAID"] = "RAID",
-    ["CHAT_MSG_RAID_LEADER"] = "RAID",
-    ["CHAT_MSG_INSTANCE_CHAT"] = "INSTANCE_CHAT",
-    ["CHAT_MSG_INSTANCE_CHAT_LEADER"] = "INSTANCE_CHAT",
-    ["CHAT_MSG_WHISPER"] = "WHISPER",
-    ["CHAT_MSG_WHISPER_INFORM"] = "WHISPER",
-    ["CHAT_MSG_EMOTE"] = "EMOTE",
-    ["CHAT_MSG_TEXT_EMOTE"] = "EMOTE",
-    ["CHAT_MSG_SYSTEM"] = "SYSTEM",
-    ["CHAT_MSG_RAID_WARNING"] = "RAID_WARNING",
-}
-
 local channelNameCache = {}
 
 function addon:InvalidateChannelKeyCache()
@@ -63,12 +44,12 @@ function addon:GetCharacterKey()
 end
 
 function addon:GetChannelKey(event, ...)
-    local key = addon.EVENT_TO_CHANNEL_KEY[event]
-    if key then
-        if key == "INSTANCE_CHAT" then
+    local chatType = addon.GetChatTypeByEvent and addon:GetChatTypeByEvent(event) or nil
+    if chatType and chatType ~= "CHANNEL" then
+        if chatType == "INSTANCE_CHAT" then
             return "instance"
         end
-        return string.lower(key)
+        return string.lower(chatType)
     end
 
     if event == "CHAT_MSG_CHANNEL" then
@@ -101,5 +82,5 @@ function addon:GetChannelKey(event, ...)
         return "channel_?"
     end
 
-    return string.lower(event or "?")
+    error("Unmapped chat event in GetChannelKey: " .. tostring(event))
 end

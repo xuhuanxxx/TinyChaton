@@ -15,6 +15,7 @@ local type = type
 local tostring = tostring
 
 local channelListCache = { data = nil, timestamp = 0, TTL = 1 }
+local lastActionBlockedAt = 0
 
 local function GetCachedChannelList()
     local now = GetTime()
@@ -376,7 +377,24 @@ end
 function addon.Shelf:ExecuteAction(actionKey, ...)
     if not actionKey then return end
     local action = addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey]
-    if action and action.execute then
-        action.execute(...)
+    if not action or not action.execute then
+        return
     end
+
+    if addon.CanExecuteAction then
+        local allowed, reason = addon:CanExecuteAction(actionKey)
+        if not allowed then
+            if reason == "bypass_blocked" then
+                local now = GetTime()
+                if (now - lastActionBlockedAt) >= 1 then
+                    lastActionBlockedAt = now
+                    local prefix = (L and L["LABEL_ADDON_NAME"]) or "TinyChaton"
+                    print("|cff00ff00" .. prefix .. "|r: Action unavailable in instance bypass mode.")
+                end
+            end
+            return
+        end
+    end
+
+    action.execute(...)
 end

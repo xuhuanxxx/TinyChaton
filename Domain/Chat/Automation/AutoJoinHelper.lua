@@ -19,6 +19,9 @@ end
 
 function addon:ApplyAutoJoinSettings()
     if not self.db or not self.db.profile.automation then return end
+    if addon.IsChatBypassed and addon:IsChatBypassed() then
+        return
+    end
     if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
         return
     end
@@ -29,11 +32,7 @@ function addon:ApplyAutoJoinSettings()
         for _, rawName in ipairs(custom) do
             local channelName = NormalizeChannelName(rawName)
             if channelName then
-                if addon.ActionJoin then
-                    addon:ActionJoin(channelName)
-                else
-                    JoinChannelByName(channelName)
-                end
+                JoinChannelByName(channelName)
             end
         end
     end
@@ -47,6 +46,7 @@ function addon:InitAutoJoinHelper()
     if addon.RegisterFeature then
         addon:RegisterFeature("AutoJoinHelper", {
             requires = { "EMIT_CHAT_ACTION" },
+            plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
             onEnable = EnableAutoJoin,
             -- Intentionally no teardown for joined channels:
             -- this feature controls auto-join behavior only and does not roll back player channel state.

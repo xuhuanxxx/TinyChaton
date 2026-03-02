@@ -129,6 +129,7 @@ function addon:InitDisplayHighlight()
     if addon.RegisterFeature then
         addon:RegisterFeature("ChatHighlight", {
             requires = { "MUTATE_CHAT_DISPLAY" },
+            plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
             onEnable = EnableChatHighlight,
             onDisable = DisableChatHighlight,
         })

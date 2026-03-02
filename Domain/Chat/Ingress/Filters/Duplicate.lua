@@ -100,6 +100,7 @@ function addon:InitDuplicateFilterMiddleware()
     if addon.RegisterFeature then
         addon:RegisterFeature("DuplicateFilter", {
             requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+            plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
             onEnable = EnableDuplicateFilter,
             onDisable = DisableDuplicateFilter,
         })

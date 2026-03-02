@@ -209,6 +209,7 @@ function addon:InitDisplayEmotesRender()
     if addon.RegisterFeature then
         addon:RegisterFeature("EmotesRender", {
             requires = { "MUTATE_CHAT_DISPLAY" },
+            plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
             onEnable = EnableEmotesRender,
             onDisable = DisableEmotesRender,
         })
@@ -218,7 +219,7 @@ function addon:InitDisplayEmotesRender()
 
     if addon.RegisterCallback then
         addon:RegisterCallback("SETTINGS_APPLIED", ReconcileEmoteTickerState, "EmotesRender")
-        addon:RegisterCallback("POLICY_MODE_CHANGED", ReconcileEmoteTickerState, "EmotesRender")
+        addon:RegisterCallback("CHAT_RUNTIME_MODE_CHANGED", ReconcileEmoteTickerState, "EmotesRender")
     end
 end
 

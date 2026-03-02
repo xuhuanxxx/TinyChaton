@@ -131,6 +131,7 @@ function addon:InitTimestampInteraction()
     if addon.RegisterFeature then
         addon:RegisterFeature("InteractionTimestamp", {
             requires = { "MUTATE_CHAT_DISPLAY" },
+            plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
             onEnable = function()
                 addon:EnableInteractionTimestamp()
             end,

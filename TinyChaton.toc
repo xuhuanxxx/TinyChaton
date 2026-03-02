@@ -46,11 +46,12 @@ Config.lua
 
 Infrastructure\Runtime\Utils.lua
 Infrastructure\Runtime\ObjectPool.lua
+Infrastructure\Runtime\ChatRuntimeMode.lua
+Infrastructure\Runtime\RuntimeCoordinator.lua
 Infrastructure\Runtime\CapabilityPolicyEngine.lua
 Infrastructure\WowApi\ChatGateway.lua
-Infrastructure\WowApi\EnvironmentWatcher.lua
+Infrastructure\WowApi\EnvironmentGate.lua
 Infrastructure\Runtime\FeatureRegistry.lua
-Infrastructure\WowApi\ChatFrameHooks.lua
 Infrastructure\WowApi\CVarSync.lua
 Infrastructure\Runtime\InternalTests.lua
 Infrastructure\Runtime\Profiler.lua
@@ -69,7 +70,6 @@ Domain\Chat\Storage\SnapshotStore.lua
 Domain\Chat\Storage\SnapshotReplayer.lua
 
 Domain\Chat\Render\Transformers\StripPrefix.lua
-Domain\Chat\Render\Transformers\ChannelFormatter.lua
 Domain\Chat\Render\ChatFont.lua
 Domain\Chat\Interaction\StickyChannels.lua
 Domain\Chat\Render\Transformers\CleanMessage.lua

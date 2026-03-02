@@ -286,7 +286,14 @@ local function OnSnapshotEvent(self, event, ...)
     end
 
     -- Capture data
-    local chatType = addon.EVENT_TO_CHANNEL_KEY[event] or "CHANNEL"
+    local chatType = addon.GetChatTypeByEvent and addon:GetChatTypeByEvent(event) or nil
+    if event == "CHAT_MSG_CHANNEL" then
+        chatType = "CHANNEL"
+    end
+    if type(chatType) ~= "string" or chatType == "" then
+        addon.ChatData:Release(chatData)
+        error("SnapshotLogger unmapped event chatType: " .. tostring(event))
+    end
     local channelId, channelBaseName
     if event == "CHAT_MSG_CHANNEL" then
         channelId = chatData.channelNumber
@@ -344,25 +351,24 @@ loggerFrame:SetScript("OnEvent", OnSnapshotEvent)
 
 local function RegisterSnapshotEvents()
     if loggerEnabled then return end
-    for event in pairs(addon.EVENT_TO_CHANNEL_KEY) do
+    for _, event in ipairs(addon.CHAT_EVENTS or {}) do
         loggerFrame:RegisterEvent(event)
     end
-    loggerFrame:RegisterEvent("CHAT_MSG_CHANNEL")
     loggerEnabled = true
 end
 
 local function UnregisterSnapshotEvents()
     if not loggerEnabled then return end
-    for event in pairs(addon.EVENT_TO_CHANNEL_KEY) do
+    for _, event in ipairs(addon.CHAT_EVENTS or {}) do
         loggerFrame:UnregisterEvent(event)
     end
-    loggerFrame:UnregisterEvent("CHAT_MSG_CHANNEL")
     loggerEnabled = false
 end
 
 if addon.RegisterFeature then
     addon:RegisterFeature("SnapshotLogger", {
         requires = { "READ_CHAT_EVENT", "PERSIST_CHAT_DATA" },
+        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
         onEnable = RegisterSnapshotEvents,
         onDisable = UnregisterSnapshotEvents,
     })

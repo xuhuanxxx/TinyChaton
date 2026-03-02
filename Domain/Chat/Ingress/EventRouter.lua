@@ -24,6 +24,10 @@ Dispatcher.registeredFilters = {}
 Dispatcher.filterCallbacks = Dispatcher.filterCallbacks or {}
 Dispatcher.isFiltersRegistered = Dispatcher.isFiltersRegistered or false
 
+local function IsChannelFamilyEvent(eventName)
+    return type(eventName) == "string" and eventName:find("^CHAT_MSG_CHANNEL", 1, false) == 1
+end
+
 --- Initialize event dispatcher
 function Dispatcher:Initialize()
     self.registeredFilters = self.registeredFilters or {}
@@ -151,6 +155,8 @@ function Dispatcher:OnChatEvent(frame, event, ...)
         return false
     end
 
+    local packedArgs = addon.Utils.PackArgs(...)
+
     -- Create ChatData object
     local chatData = addon.ChatData:New(frame, event, ...)
 
@@ -183,9 +189,40 @@ function Dispatcher:OnChatEvent(frame, event, ...)
     -- Logging stage always runs to keep snapshot/data ingestion complete.
     self:RunMiddlewares("LOG", chatData)
 
-    -- EventFilter path never repacks/returns modified varargs.
+    local emitted = false
+    if not shouldHide and addon.MessageFormatter and addon.MessageFormatter.BuildRealtimeLineFromChatData and addon.EmitRenderedChatLine then
+        local line, lineErr = addon.MessageFormatter.BuildRealtimeLineFromChatData(chatData)
+        if type(line) ~= "table" then
+            addon.ChatData:Release(chatData)
+            error("Realtime line build failed: " .. tostring(lineErr))
+        end
+        emitted = addon:EmitRenderedChatLine(line, frame, { preferTimestampConfig = false }) == true
+    end
+
+    if not shouldHide and not emitted
+        and packedArgs
+        and type(packedArgs[1]) == "string"
+        and addon.Gateway
+        and addon.Gateway.Display
+        and addon.Gateway.Display.Transform then
+        local msg = packedArgs[1]
+        local transformedMsg = msg
+        local ok, nextMsg = pcall(function()
+            local outMsg = addon.Gateway.Display:Transform(frame, msg, nil, nil, nil, addon.Utils.PackArgs())
+            return outMsg
+        end)
+        if ok and type(nextMsg) == "string" then
+            transformedMsg = nextMsg
+        end
+        packedArgs[1] = transformedMsg
+    end
+
     addon.ChatData:Release(chatData)
-    return shouldHide
+
+    if shouldHide or emitted then
+        return true
+    end
+    return shouldHide, addon.Utils.UnpackArgs(packedArgs)
 end
 
 --- Register event filters for all chat events
@@ -206,22 +243,30 @@ function Dispatcher:RegisterFilters()
         events[#events + 1] = "CHAT_MSG_SYSTEM"
     end
 
+    local isBypassed = addon.IsChatBypassed and addon:IsChatBypassed()
     for _, event in ipairs(events) do
-        if not self.registeredFilters[event] then
-            local callback = self.filterCallbacks[event]
-            if not callback then
-                callback = function(frame, eventName, ...)
-                    return self:OnChatEvent(frame, eventName, ...)
+        if not (isBypassed and IsChannelFamilyEvent(event)) then
+            if not self.registeredFilters[event] then
+                local callback = self.filterCallbacks[event]
+                if not callback then
+                    callback = function(frame, eventName, ...)
+                        return self:OnChatEvent(frame, eventName, ...)
+                    end
+                    self.filterCallbacks[event] = callback
                 end
-                self.filterCallbacks[event] = callback
-            end
 
-            AddMessageFilter(event, callback)
-            self.registeredFilters[event] = true
+                AddMessageFilter(event, callback)
+                self.registeredFilters[event] = true
+            end
         end
     end
 
     self.isFiltersRegistered = true
+end
+
+function Dispatcher:RebuildFiltersForCurrentMode()
+    self:UnregisterFilters()
+    self:RegisterFilters()
 end
 
 function Dispatcher:UnregisterFilters()
@@ -250,7 +295,24 @@ function addon:InitializeEventDispatcher()
     -- Initialize mapping table
     self.EventDispatcher:Initialize()
 
-    self.EventDispatcher:RegisterFilters()
+    local function EnableDispatcherFilters()
+        self.EventDispatcher:RebuildFiltersForCurrentMode()
+    end
+
+    local function DisableDispatcherFilters()
+        self.EventDispatcher:UnregisterFilters()
+    end
+
+    if self.RegisterFeature then
+        self:RegisterFeature("EventDispatcherFilters", {
+            requires = { "READ_CHAT_EVENT" },
+            plane = self.RUNTIME_PLANES and self.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
+            onEnable = EnableDispatcherFilters,
+            onDisable = DisableDispatcherFilters,
+        })
+    else
+        EnableDispatcherFilters()
+    end
 
     if self.Debug then
         local middlewareCount = 0

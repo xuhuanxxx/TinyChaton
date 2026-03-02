@@ -60,6 +60,7 @@ function addon:InitSystemTimestampSyncMiddleware()
     if addon.RegisterFeature then
         addon:RegisterFeature("Timestamp", {
             requires = { "PROCESS_CHAT_DATA" },
+            plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
             onEnable = EnableTimestamp,
             onDisable = DisableTimestamp,
         })

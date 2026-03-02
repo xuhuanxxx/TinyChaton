@@ -47,7 +47,6 @@ addon.TRANSFORMER_ORDER = addon.TRANSFORMER_ORDER or {
     "display_strip_prefix",
     "display_highlight",
     "clean_message",
-    "channel_formatter",
     "interaction_timestamp",
     "visual_emotes",
 }

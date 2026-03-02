@@ -267,6 +267,7 @@ function addon:InitAutoWelcome()
     if addon.RegisterFeature then
         addon:RegisterFeature("AutoWelcome", {
             requires = { "READ_CHAT_EVENT", "EMIT_CHAT_ACTION" },
+            plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
             onEnable = function()
                 state.featureEnabled = true
                 addon:ApplyAutoWelcomeSettings()

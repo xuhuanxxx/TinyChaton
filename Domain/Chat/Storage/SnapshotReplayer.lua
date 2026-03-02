@@ -238,39 +238,6 @@ function addon:ClearHistory()
     print("|cff00ff00" .. L["LABEL_ADDON_NAME"] .. "|r: " .. L["MSG_HISTORY_CLEARED"])
 end
 
--- Helper: Get formatted timestamp with copy link
-local function FormatTimestamp(line, contentString)
-    if not line.time then return "" end
-
-    -- Use Formatter for base text and color
-    -- For Snapshot, we usually don't have R/G/B stored in line unless we parse it.
-    -- But we want to follow the logic: Configured Color > Message Color > Default.
-    -- Here we only have 'line' info.
-    
-    -- Try to deduce color from chatType if possible, similar to FormatChannelTag?
-    local msgColor = nil
-    if line.chatType and ChatTypeInfo and ChatTypeInfo[line.chatType] then
-         -- This is approximate. Real message color might differ.
-         -- But for Snapshot it's acceptable fallback if not using Config.
-         local info = ChatTypeInfo[line.chatType]
-         msgColor = {r = info.r, g = info.g, b = info.b}
-    end
-
-    local tsText = addon.MessageFormatter.GetTimestamp(line.time, msgColor, true)
-    if tsText == "" then return "" end
-
-    local clickEnabled = (addon.db.profile.chat.interaction and addon.db.profile.chat.interaction.clickToCopy ~= false)
-    if clickEnabled then
-         local colorHex = addon.MessageFormatter.ResolveTimestampColor(msgColor, true)
-         local plainText = addon.MessageFormatter.GetTimestampText(line.time)
-         
-         -- Use existing API for click-wrapping
-         return addon:CreateClickableTimestamp(plainText, contentString or "", colorHex)
-    else
-         return tsText
-    end
-end
-
 function addon:InitSnapshotManager()
     local L = addon.L
     local restored
@@ -281,9 +248,6 @@ function addon:InitSnapshotManager()
             addon.Utils.InvalidateChannelCaches()
         end)
         addon:RegisterEvent("CHANNEL_UI_UPDATE", function()
-            addon.Utils.InvalidateChannelCaches()
-        end)
-        addon:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE", function()
             addon.Utils.InvalidateChannelCaches()
         end)
     end
@@ -389,37 +353,7 @@ function addon:InitSnapshotManager()
                 return
             end
 
-            local channelTag = addon.MessageFormatter.GetChannelTag(line)
-            local authorTag = addon.MessageFormatter.GetAuthorTag(line)
-            local finalText = line.text
-            local contentForCopy = string.format("%s%s%s", channelTag, authorTag, finalText)
-            local timestamp = FormatTimestamp(line, contentForCopy)
-            local displayLine = string.format("%s%s", timestamp, contentForCopy)
-
-            local chatTypeForColor = line.chatType
-            if line.chatType == "CHANNEL" and line.channelId then
-                chatTypeForColor = "CHANNEL" .. line.channelId
-            end
-
-            local r, g, b = 1, 1, 1
-            if ChatTypeInfo and ChatTypeInfo[chatTypeForColor] then
-                local info = ChatTypeInfo[chatTypeForColor]
-                r, g, b = info.r or 1, info.g or 1, info.b or 1
-            end
-
-            local extraArgs = addon.Utils.PackArgs(r, g, b)
-            if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
-                displayLine, r, g, b, extraArgs = addon.Gateway.Display:Transform(frame, displayLine, r, g, b, extraArgs)
-            end
-            if type(extraArgs) ~= "table" then
-                extraArgs = addon.Utils.PackArgs(r, g, b)
-            elseif extraArgs.n == nil then
-                extraArgs.n = #extraArgs
-            end
-            extraArgs[1], extraArgs[2], extraArgs[3] = r, g, b
-
-            local addMessageFn = frame._TinyChatonOrigAddMessage or frame.AddMessage
-            addMessageFn(frame, displayLine, addon.Utils.UnpackArgs(extraArgs))
+            addon:EmitRenderedChatLine(line, frame, { preferTimestampConfig = true })
         end
 
         for _, state in ipairs(states) do

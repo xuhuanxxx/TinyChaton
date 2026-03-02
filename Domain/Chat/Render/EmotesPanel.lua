@@ -9,7 +9,7 @@ local maxPage = 1
 local lastBlockedNoticeAt = 0
 
 local function CanInsertEmote()
-    if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
+    if addon.IsChatBypassed and addon:IsChatBypassed() then
         return false
     end
     return true

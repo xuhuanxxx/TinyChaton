@@ -68,7 +68,9 @@ addon.STREAM_REGISTRY = {
                 shortKey = "STREAM_BATTLEGROUND_SHORT",
                 label = L["STREAM_BATTLEGROUND_LABEL"],
 
-                events = { "CHAT_MSG_BATTLEGROUND", "CHAT_MSG_BATTLEGROUND_LEADER" },
+                -- Retail does not provide stable CHAT_MSG_BATTLEGROUND* frame events
+                -- for this pipeline. Keep action support (/bg), but do not subscribe.
+                events = {},
                 order = 65,
                 defaultPinned = false,  -- 明确override默认值
                 defaultBindings = { left = "send" },
@@ -228,13 +230,9 @@ addon.STREAM_REGISTRY = {
 -- 这些函数被 Libs/Registry/Actions.lua 中的 ACTION_DEFINITIONS 调用
 -- 它们封装了底层的 WoW API 调用逻辑
 --
--- Action Semantics (Do not regress):
--- 1) User-triggered channel actions from Shelf are ALWAYS available:
---    - ActionSend: open chat input for a stream/channel
---    - ActionJoin: manual join channel
---    - ActionLeave: manual leave channel
--- 2) Policy capability EMIT_CHAT_ACTION gates AUTOMATED emissions only
---    (e.g., AutoWelcome / AutoJoinHelper / background sends), not manual Shelf actions.
+-- Action Semantics:
+-- 1) User-triggered ActionSend from Shelf remains available in all runtime modes.
+-- 2) ActionJoin / ActionLeave are intentionally removed from plugin-side channel management.
 
 local SLASH_COMMANDS = {
     ["INSTANCE_CHAT"] = "instance",
@@ -250,30 +248,17 @@ local SLASH_COMMANDS = {
 }
 
 function addon:ActionSend(chatType, channelKey, channelName)
-    -- User-triggered channel switch from Shelf should remain available in all modes.
-    -- This action only opens chat input (or routes to a joined channel), and is not
-    -- treated as background/automated emission.
+    -- User-triggered channel switch from Shelf remains available in all modes.
+    -- This action opens chat input for joined channels.
     if chatType == "CHANNEL" and channelName then
         local id = GetChannelName(channelName)
         if id and id > 0 then
             OpenChat("/" .. id .. " ")
         else
-            if channelName then
-                JoinChannelByName(channelName)
-            end
+            OpenChat("")
         end
     else
         local cmd = SLASH_COMMANDS[chatType] or string.lower(chatType)
         OpenChat("/" .. cmd .. " ")
     end
-end
-
-function addon:ActionJoin(channelName)
-    -- User-triggered channel management from Shelf should remain available in all modes.
-    if channelName then JoinChannelByName(channelName) end
-end
-
-function addon:ActionLeave(channelName)
-    -- User-triggered channel management from Shelf should remain available in all modes.
-    if channelName then LeaveChannelByName(channelName) end
 end

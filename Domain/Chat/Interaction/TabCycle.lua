@@ -94,7 +94,6 @@ end
 
 local function OnTabPressed(self)
     if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("TabCycle") then return end
-    if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then return end
     if not addon.db or not addon.db.enabled or not addon.db.profile.chat or not addon.db.profile.chat.interaction or not addon.db.profile.chat.interaction.tabCycle then return end
     local text = self:GetText()
     -- If slash-command text exists, clear it before cycling channel to avoid mixed states
@@ -165,7 +164,7 @@ function addon:InitTabCycle()
 
     if addon.RegisterFeature then
         addon:RegisterFeature("TabCycle", {
-            requires = { "MUTATE_CHAT_DISPLAY" },
+            plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.USER_ACTION or "USER_ACTION",
             onEnable = EnableTabCycle,
             onDisable = DisableTabCycle,
         })

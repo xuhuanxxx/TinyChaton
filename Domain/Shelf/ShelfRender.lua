@@ -490,7 +490,6 @@ function addon.Shelf:InitRender()
 
     if not shelfEventFrame then
         shelfEventFrame = CF("Frame")
-        shelfEventFrame:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE")
         shelfEventFrame:RegisterEvent("CHANNEL_UI_UPDATE")
         shelfEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     end
@@ -511,17 +510,10 @@ function addon.Shelf:InitRender()
     end
 
     f:SetScript("OnEvent", function(self, event, ...)
-        if event == "CHAT_MSG_CHANNEL_NOTICE" then
-            local noticeType = ...
-            if noticeType == "YOU_JOINED" or noticeType == "YOU_LEFT" then
-                DebouncedRefresh()
-            end
-        else
-            if addon.Shelf and addon.Shelf.InvalidateChannelListCache then
-                addon.Shelf:InvalidateChannelListCache()
-            end
-            addon.Shelf:Render()
+        if addon.Shelf and addon.Shelf.InvalidateChannelListCache then
+            addon.Shelf:InvalidateChannelListCache()
         end
+        addon.Shelf:Render()
     end)
 
     self:Render()

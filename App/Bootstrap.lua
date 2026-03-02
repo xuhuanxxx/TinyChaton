@@ -359,8 +359,6 @@ function addon:Shutdown()
     if addon.EventDispatcher and addon.EventDispatcher.UnregisterFilters then
         addon.EventDispatcher:UnregisterFilters()
     end
-    if addon.UnhookChatFrames then addon:UnhookChatFrames() end
-    if addon.RestoreShortChannelGlobals then addon:RestoreShortChannelGlobals() end
     if addon.StopBubbleTicker then addon:StopBubbleTicker() end
     if addon.CancelPendingWelcomeTimers then addon:CancelPendingWelcomeTimers() end
     if addon.CancelTabCycleTimer then addon:CancelTabCycleTimer() end

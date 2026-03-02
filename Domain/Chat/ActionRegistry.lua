@@ -16,6 +16,7 @@ addon.ACTION_DEFINITIONS = {
         key = "send",
         label = L["ACTION_PREFIX_SEND"],
         category = "channel",
+        actionPlane = "USER_ACTION",
         -- 声明此 ACTION 适用于哪些 Stream
         appliesTo = {
             streamPaths = { "CHANNEL.SYSTEM", "CHANNEL.DYNAMIC" }
@@ -46,6 +47,7 @@ addon.ACTION_DEFINITIONS = {
         key = "mute_toggle",
         label = L["ACTION_MUTE_TOGGLE"],
         category = "channel",
+        actionPlane = "CHAT_DATA",
         appliesTo = {
             streamPaths = { "CHANNEL.DYNAMIC" }
         },
@@ -76,6 +78,7 @@ addon.ACTION_DEFINITIONS = {
         key = "whisper_send",
         label = L["ACTION_PREFIX_SEND"],
         category = "channel",
+        actionPlane = "USER_ACTION",
         appliesTo = {
             streamKeys = { "whisper", "bn_whisper" }
         },
@@ -102,6 +105,7 @@ addon.ACTION_DEFINITIONS = {
         key = "emote_send",
         label = L["ACTION_PREFIX_SEND"],
         category = "channel",
+        actionPlane = "USER_ACTION",
         appliesTo = {
             streamKeys = { "emote" }
         },
@@ -123,6 +127,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "readycheck",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "readyCheck" } },
         execute = function() DoReadyCheck() end,
         getLabel = function() return L["KIT_READYCHECK"] end,
@@ -131,6 +136,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "reset_instances",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "resetInstances" } },
         execute = function() ResetInstances() end,
         getLabel = function() return L["KIT_RESET_INSTANCES"] end,
@@ -139,6 +145,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "countdown_primary",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "countdown" } },
         execute = function()
             local countdown = addon.db and addon.db.profile and addon.db.profile.automation and addon.db.profile.automation.countdown
@@ -150,6 +157,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "countdown_secondary",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "countdown" } },
         execute = function()
             local countdown = addon.db and addon.db.profile and addon.db.profile.automation and addon.db.profile.automation.countdown
@@ -161,6 +169,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "countdown_cancel",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "countdown" } },
         execute = function() C_PartyInfo.DoCountdown(0) end,
         getLabel = function() return L["ACTION_CANCEL"] end,
@@ -169,6 +178,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "roll",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "roll" } },
         execute = function() RandomRoll(1, 100) end,
         getLabel = function() return L["KIT_ROLL"] end,
@@ -177,6 +187,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "macro_toggle",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "macro" } },
         execute = function()
             if MacroFrame and MacroFrame:IsShown() then
@@ -191,6 +202,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "leave_party",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "leave" } },
         execute = function() C_PartyInfo.LeaveParty() end,
         getLabel = function() return L["KIT_LEAVE"] end,
@@ -199,6 +211,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "emote_panel",
         category = "kit",
+        actionPlane = "USER_ACTION",
         appliesTo = { kits = { "emotePanel" } },
         execute = function(self)
             if addon.ToggleEmotePanel then
@@ -211,6 +224,7 @@ addon.ACTION_DEFINITIONS = {
     {
         key = "reload_ui",
         category = "kit",
+        actionPlane = "UI_ONLY",
         appliesTo = { kits = { "reload" } },
         execute = function() ReloadUI() end,
         getLabel = function() return L["KIT_RELOAD"] end,
@@ -252,6 +266,7 @@ function addon:BuildActionRegistryFromDefinitions()
                                     tooltip = actionDef.getTooltip and actionDef.getTooltip(stream.key) or nil,
                                     streamKey = stream.key,
                                     category = actionDef.category,
+                                    actionPlane = actionDef.actionPlane or "UI_ONLY",
                                     execute = function(...)
                                         actionDef.execute(stream.key, ...)
                                     end
@@ -280,6 +295,7 @@ function addon:BuildActionRegistryFromDefinitions()
                     tooltip = actionDef.getTooltip and actionDef.getTooltip(streamKey) or nil,
                     streamKey = streamKey,
                     category = actionDef.category,
+                    actionPlane = actionDef.actionPlane or "UI_ONLY",
                     execute = function(...)
                         actionDef.execute(streamKey, ...)
                     end
@@ -304,6 +320,7 @@ function addon:BuildActionRegistryFromDefinitions()
                     tooltip = actionDef.getTooltip and actionDef.getTooltip(kitKey) or nil,
                     kitKey = kitKey,
                     category = "kit",
+                    actionPlane = actionDef.actionPlane or "UI_ONLY",
                     execute = actionDef.execute
                 }
             end

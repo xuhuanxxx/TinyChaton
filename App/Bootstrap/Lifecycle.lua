@@ -29,8 +29,12 @@ function addon:OnInitialize()
     end
 
     RunPhase("Phase3 Core Services", function()
-        if addon.InitPolicyEngine then addon:InitPolicyEngine() end
-        if addon.InitEnvironmentService then addon:InitEnvironmentService() end
+        if addon.ValidateChatEventDerivation then
+            addon:ValidateChatEventDerivation()
+        end
+        if addon.InitChatRuntimeMode then addon:InitChatRuntimeMode() end
+        if addon.InitEnvironmentGate then addon:InitEnvironmentGate() end
+        if addon.InitRuntimeCoordinator then addon:InitRuntimeCoordinator() end
         if addon.InitFeatureRegistry then addon:InitFeatureRegistry() end
         if addon.InitEvents then addon:InitEvents() end
         if addon.RegisterSettings then
@@ -42,9 +46,6 @@ function addon:OnInitialize()
     end)
 
     RunPhase("Phase4 Frame Hooks", function()
-        if addon.SetupChatFrameHooks then
-            addon:SetupChatFrameHooks()
-        end
         if addon.InitializeEventDispatcher then
             addon:InitializeEventDispatcher()
         end

@@ -2,6 +2,7 @@ local addonName, addon = ...
 local L = addon.L
 
 addon.errors = addon.errors or {}
+addon._warnOnceKeys = addon._warnOnceKeys or {}
 local MAX_ERRORS = 100
 
 local LEVEL_PRIORITY = {
@@ -100,6 +101,19 @@ end
 function addon:Warn(msg, ...)
     local formatted = FormatMessage(msg, ...)
     PrintLog("WARN", formatted)
+end
+
+function addon:WarnOnce(key, msg, ...)
+    if type(key) ~= "string" or key == "" then
+        self:Warn(msg, ...)
+        return
+    end
+
+    if self._warnOnceKeys[key] then
+        return
+    end
+    self._warnOnceKeys[key] = true
+    self:Warn(msg, ...)
 end
 
 function addon:Info(msg, ...)

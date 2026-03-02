@@ -44,6 +44,8 @@ if GetLocale() == "zhCN" then
     L["STREAM_PARTY_SHORT"] = "队"
     L["STREAM_RAID_LABEL"] = "团队"
     L["STREAM_RAID_SHORT"] = "团"
+    L["STREAM_RAID_WARNING_LABEL"] = "团队通知"
+    L["STREAM_RAID_WARNING_SHORT"] = "通"
     L["STREAM_SAY_LABEL"] = "说"
     L["STREAM_SAY_SHORT"] = "说"
     L["STREAM_SERVICES_LABEL"] = "服务"

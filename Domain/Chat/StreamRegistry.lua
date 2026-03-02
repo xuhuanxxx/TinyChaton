@@ -33,22 +33,32 @@ addon.STREAM_REGISTRY = {
                 defaultBindings = { left = "send" },
             },
             {
+                key = "guild",
+                chatType = "GUILD",
+                shortKey = "STREAM_GUILD_SHORT",
+                label = L["STREAM_GUILD_LABEL"],
+
+                events = { "CHAT_MSG_GUILD" },
+                order = 30,
+                defaultBindings = { left = "send" },
+            },
+            {
+                key = "officer",
+                chatType = "OFFICER",
+                shortKey = "STREAM_OFFICER_SHORT",
+                label = L["STREAM_OFFICER_LABEL"],
+
+                events = { "CHAT_MSG_OFFICER" },
+                order = 40,
+                defaultBindings = { left = "send" },
+            },
+            {
                 key = "party",
                 chatType = "PARTY",
                 shortKey = "STREAM_PARTY_SHORT",
                 label = L["STREAM_PARTY_LABEL"],
 
                 events = { "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" },
-                order = 40,
-                defaultBindings = { left = "send" },
-            },
-            {
-                key = "raid",
-                chatType = "RAID",
-                shortKey = "STREAM_RAID_SHORT",
-                label = L["STREAM_RAID_LABEL"],
-
-                events = { "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_RAID_WARNING" },
                 order = 50,
                 defaultBindings = { left = "send" },
             },
@@ -63,6 +73,26 @@ addon.STREAM_REGISTRY = {
                 defaultBindings = { left = "send" },
             },
             {
+                key = "raid",
+                chatType = "RAID",
+                shortKey = "STREAM_RAID_SHORT",
+                label = L["STREAM_RAID_LABEL"],
+
+                events = { "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER" },
+                order = 70,
+                defaultBindings = { left = "send" },
+            },
+            {
+                key = "raid_warning",
+                chatType = "RAID_WARNING",
+                shortKey = "STREAM_RAID_WARNING_SHORT",
+                label = L["STREAM_RAID_WARNING_LABEL"],
+
+                events = { "CHAT_MSG_RAID_WARNING" },
+                order = 80,
+                defaultBindings = { left = "send" },
+            },
+            {
                 key = "battleground",
                 chatType = "BATTLEGROUND",
                 shortKey = "STREAM_BATTLEGROUND_SHORT",
@@ -71,29 +101,7 @@ addon.STREAM_REGISTRY = {
                 -- Retail does not provide stable CHAT_MSG_BATTLEGROUND* frame events
                 -- for this pipeline. Keep action support (/bg), but do not subscribe.
                 events = {},
-                order = 65,
-                defaultPinned = false,  -- 明确override默认值
-                defaultBindings = { left = "send" },
-            },
-            {
-                key = "guild",
-                chatType = "GUILD",
-                shortKey = "STREAM_GUILD_SHORT",
-                label = L["STREAM_GUILD_LABEL"],
-
-                events = { "CHAT_MSG_GUILD" },
-                order = 70,
-                defaultBindings = { left = "send" },
-            },
-            {
-                key = "officer",
-                chatType = "OFFICER",
-                shortKey = "STREAM_OFFICER_SHORT",
-                label = L["STREAM_OFFICER_LABEL"],
-
-                events = { "CHAT_MSG_OFFICER" },
-                order = 80,
-                defaultPinned = false,
+                order = 90,
                 defaultBindings = { left = "send" },
             },
             {
@@ -103,8 +111,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_EMOTE_LABEL"],
 
                 events = { "CHAT_MSG_EMOTE", "CHAT_MSG_TEXT_EMOTE" },
-                order = 85,
-                defaultPinned = false,
+                order = 100,
                 defaultBindings = { left = "send" },
             },
         },
@@ -120,7 +127,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_GENERAL_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 90,
+                order = 110,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -131,7 +138,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_TRADE_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 91,
+                order = 120,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -142,19 +149,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_LOCALDEFENSE_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 92,
-                defaultPinned = false,
-                defaultBindings = { left = "send", right = "mute_toggle" },
-            },
-            {
-                key = "lfg",
-                chatType = "CHANNEL",
-                mappingKey = "STREAM_LFG_MAPPING",
-                shortKey = "STREAM_LFG_SHORT",
-                label = L["STREAM_LFG_LABEL"],
-
-                events = { "CHAT_MSG_CHANNEL" },
-                order = 93,
+                order = 130,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -165,8 +160,18 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_SERVICES_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 94,
-                defaultPinned = false,
+                order = 140,
+                defaultBindings = { left = "send", right = "mute_toggle" },
+            },
+            {
+                key = "lfg",
+                chatType = "CHANNEL",
+                mappingKey = "STREAM_LFG_MAPPING",
+                shortKey = "STREAM_LFG_SHORT",
+                label = L["STREAM_LFG_LABEL"],
+
+                events = { "CHAT_MSG_CHANNEL" },
+                order = 150,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
@@ -177,7 +182,7 @@ addon.STREAM_REGISTRY = {
                 label = L["STREAM_WORLD_LABEL"],
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 100,
+                order = 160,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
         },

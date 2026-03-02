@@ -265,7 +265,25 @@ local function OnSnapshotEvent(self, event, ...)
     local perChannel = addon:GetSnapshotStorage()
 
     local args = chatData.args
-    local channelKey = addon:GetChannelKey(event, addon.Utils.UnpackArgs(args))
+    local okChannelKey, channelKey = pcall(addon.GetChannelKey, addon, event, addon.Utils.UnpackArgs(args))
+    if not okChannelKey then
+        if addon.WarnOnce then
+            addon:WarnOnce(
+                "snapshot_store:channel_key:" .. tostring(event),
+                "SnapshotLogger failed to resolve channel key for %s: %s",
+                tostring(event),
+                tostring(channelKey)
+            )
+        elseif addon.Warn then
+            addon:Warn(
+                "SnapshotLogger failed to resolve channel key for %s: %s",
+                tostring(event),
+                tostring(channelKey)
+            )
+        end
+        addon.ChatData:Release(chatData)
+        return
+    end
 
     -- Check specific channel enabled
     local sc = contentSettings.snapshotChannels
@@ -291,8 +309,17 @@ local function OnSnapshotEvent(self, event, ...)
         chatType = "CHANNEL"
     end
     if type(chatType) ~= "string" or chatType == "" then
+        if addon.WarnOnce then
+            addon:WarnOnce(
+                "snapshot_store:chat_type:" .. tostring(event),
+                "SnapshotLogger unmapped event chatType: %s",
+                tostring(event)
+            )
+        elseif addon.Warn then
+            addon:Warn("SnapshotLogger unmapped event chatType: %s", tostring(event))
+        end
         addon.ChatData:Release(chatData)
-        error("SnapshotLogger unmapped event chatType: " .. tostring(event))
+        return
     end
     local channelId, channelBaseName
     if event == "CHAT_MSG_CHANNEL" then

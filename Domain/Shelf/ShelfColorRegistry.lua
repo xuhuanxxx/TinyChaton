@@ -27,6 +27,7 @@ addon.Colors = {
                     yell = {1, 0.25, 0.25, 1},
                     party = {0.66, 0.66, 1, 1},
                     raid = {1, 0.5, 0, 1},
+                    raid_warning = {1, 0.282, 0.035, 1},
                     instance = {1, 0.5, 0, 1},
                     battleground = {1, 0.5, 0, 1},
                     guild = {0.25, 1, 0.25, 1},

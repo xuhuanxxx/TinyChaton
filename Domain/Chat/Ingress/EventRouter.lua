@@ -193,10 +193,19 @@ function Dispatcher:OnChatEvent(frame, event, ...)
     if not shouldHide and addon.MessageFormatter and addon.MessageFormatter.BuildRealtimeLineFromChatData and addon.EmitRenderedChatLine then
         local line, lineErr = addon.MessageFormatter.BuildRealtimeLineFromChatData(chatData)
         if type(line) ~= "table" then
-            addon.ChatData:Release(chatData)
-            error("Realtime line build failed: " .. tostring(lineErr))
+            if addon.WarnOnce then
+                addon:WarnOnce(
+                    "event_router:line_build:" .. tostring(event),
+                    "Realtime line build failed for %s: %s",
+                    tostring(event),
+                    tostring(lineErr)
+                )
+            elseif addon.Warn then
+                addon:Warn("Realtime line build failed for %s: %s", tostring(event), tostring(lineErr))
+            end
+        else
+            emitted = addon:EmitRenderedChatLine(line, frame, { preferTimestampConfig = false }) == true
         end
-        emitted = addon:EmitRenderedChatLine(line, frame, { preferTimestampConfig = false }) == true
     end
 
     if not shouldHide and not emitted

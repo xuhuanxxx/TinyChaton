@@ -19,7 +19,6 @@ local linkHoverHooked = false
 
 local function OnHyperlinkEnter(self, linkData, link)
     if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("LinkHover") then return end
-    if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then return end
     if not addon.db or not addon.db.enabled or not addon.db.profile.chat or not addon.db.profile.chat.interaction or not addon.db.profile.chat.interaction.linkHover then return end
     local t = linkData:match("^(.-):")
     if linkTypes[t] then
@@ -31,7 +30,6 @@ end
 
 local function OnHyperlinkLeave(self)
     if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("LinkHover") then return end
-    if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then return end
     if not addon.db or not addon.db.enabled or not addon.db.profile.chat or not addon.db.profile.chat.interaction or not addon.db.profile.chat.interaction.linkHover then return end
     GameTooltip:Hide()
 end
@@ -57,15 +55,11 @@ function addon:InitLinkHover()
         -- HookScript is not reversible, so disable via runtime guards in callbacks.
     end
 
-    if addon.RegisterFeature then
-        addon:RegisterFeature("LinkHover", {
-            requires = { "MUTATE_CHAT_DISPLAY" },
-            onEnable = EnableLinkHover,
-            onDisable = DisableLinkHover,
-        })
-    else
-        EnableLinkHover()
-    end
+    addon:RegisterFeature("LinkHover", {
+        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.USER_ACTION or "USER_ACTION",
+        onEnable = EnableLinkHover,
+        onDisable = DisableLinkHover,
+    })
 end
 
 addon:RegisterModule("LinkHover", addon.InitLinkHover)

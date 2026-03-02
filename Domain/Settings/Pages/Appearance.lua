@@ -85,6 +85,9 @@ CategoryBuilders.appearance = function(rootCat, opts)
             if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
         end,
         nil)
+    if inGeneral then
+        addon.AddRegistrySetting(cat, "toolbarDynamicMode")
+    end
 
     addon.AddSectionHeader(cat, L["SECTION_GENERAL_APPEARANCE"] or "Appearance")
 

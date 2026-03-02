@@ -4,11 +4,23 @@ addon.eventHandlers = addon.eventHandlers or {}
 
 function addon:RegisterEvent(event, fn)
     if not self.eventFrame then return end
-    if not self.eventHandlers[event] then
-        self.eventHandlers[event] = {}
+    if type(event) ~= "string" or event == "" then return end
+    if type(fn) ~= "function" then return end
+
+    local handlers = self.eventHandlers[event]
+    if not handlers then
+        handlers = {}
+        self.eventHandlers[event] = handlers
         self.eventFrame:RegisterEvent(event)
     end
-    table.insert(self.eventHandlers[event], fn)
+
+    for _, handler in ipairs(handlers) do
+        if handler == fn then
+            return
+        end
+    end
+
+    table.insert(handlers, fn)
 end
 
 function addon:InitEvents()

@@ -39,6 +39,7 @@ CategoryBuilders.general = function(rootCat)
             if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
         end,
         nil)
+    local shelfNameStyleSetting = addon.AddRegistrySetting(cat, "shelfDisplayNameStyle")
 
     local resetAppearanceData = nil
     if addon.CategoryBuilders and addon.CategoryBuilders.appearance then
@@ -53,6 +54,12 @@ CategoryBuilders.general = function(rootCat)
         local db = GetButtonsDB()
         if db and buttonsDef then
             db.enabled = buttonsDef.enabled
+            db.dynamicMode = buttonsDef.dynamicMode or "mark"
+        end
+
+        local shelfDB = addon.db and addon.db.profile and addon.db.profile.shelf
+        if shelfDB and shelfDB.visual and shelfDB.visual.display then
+            shelfDB.visual.display.nameStyle = (def.shelf and def.shelf.visual and def.shelf.visual.display and def.shelf.visual.display.nameStyle) or "SHORT_ONE"
         end
 
         if resetAppearanceData then
@@ -65,6 +72,11 @@ CategoryBuilders.general = function(rootCat)
         if buttonsEnabledSetting and buttonsEnabledSetting.SetValue then
             local bdb = GetButtonsDB()
             buttonsEnabledSetting:SetValue(bdb and bdb.enabled)
+        end
+        if shelfNameStyleSetting and shelfNameStyleSetting.SetValue then
+            local sdb = addon.db and addon.db.profile and addon.db.profile.shelf
+            local style = sdb and sdb.visual and sdb.visual.display and sdb.visual.display.nameStyle
+            shelfNameStyleSetting:SetValue(style)
         end
 
         if addon.ApplyAllSettings then addon:ApplyAllSettings() end

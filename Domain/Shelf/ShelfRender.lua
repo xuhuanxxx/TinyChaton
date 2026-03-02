@@ -341,8 +341,14 @@ function addon.Shelf:Render()
         -- Tooltip logic
         local tooltip = function(tt, btnSelf)
             local headerText = item.label
-            if info.isChannel and item.isDynamic and item.mappingKey then
-                 headerText = L[item.mappingKey]
+            if info.isChannel then
+                local stream = addon:GetStreamByKey(item.key)
+                local identity = stream and addon.ResolveDisplayIdentity and addon:ResolveDisplayIdentity(stream, "channel", {
+                    channelId = info.channelNumber,
+                }) or nil
+                if identity and identity.fullName then
+                    headerText = identity.fullName
+                end
             end
             tt:SetText(headerText, 1, 0.82, 0)
 
@@ -490,7 +496,6 @@ function addon.Shelf:InitRender()
 
     if not shelfEventFrame then
         shelfEventFrame = CF("Frame")
-        shelfEventFrame:RegisterEvent("CHAT_MSG_CHANNEL_NOTICE")
         shelfEventFrame:RegisterEvent("CHANNEL_UI_UPDATE")
         shelfEventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     end
@@ -511,17 +516,10 @@ function addon.Shelf:InitRender()
     end
 
     f:SetScript("OnEvent", function(self, event, ...)
-        if event == "CHAT_MSG_CHANNEL_NOTICE" then
-            local noticeType = ...
-            if noticeType == "YOU_JOINED" or noticeType == "YOU_LEFT" then
-                DebouncedRefresh()
-            end
-        else
-            if addon.Shelf and addon.Shelf.InvalidateChannelListCache then
-                addon.Shelf:InvalidateChannelListCache()
-            end
-            addon.Shelf:Render()
+        if addon.Shelf and addon.Shelf.InvalidateChannelListCache then
+            addon.Shelf:InvalidateChannelListCache()
         end
+        addon.Shelf:Render()
     end)
 
     self:Render()

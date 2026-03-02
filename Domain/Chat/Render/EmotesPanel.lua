@@ -9,7 +9,7 @@ local maxPage = 1
 local lastBlockedNoticeAt = 0
 
 local function CanInsertEmote()
-    if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
+    if addon.IsChatBypassed and addon:IsChatBypassed() then
         return false
     end
     return true
@@ -33,10 +33,10 @@ end
 
 local function UpdateEmotePanel()
     if not panel then return end
-    
-    -- Ensure EmotesRender module is loaded and has data
-    if not addon.EmotesRender or not addon.EmotesRender.emotes then return end
-    local emotes = addon.EmotesRender.emotes
+
+    if not addon.EmotesRender then return end
+    local emotes = addon.EmotesRender.GetEmotes and addon.EmotesRender.GetEmotes() or addon.EmotesRender.emotes
+    if not emotes then return end
 
     local pageSize = GetPageSize()
     local total = #emotes

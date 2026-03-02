@@ -85,20 +85,53 @@ addon.SETTING_REGISTRY = {
             end,
         },
     },
-    channelNameFormat = {
+    chatDisplayChannelShowNumber = {
+        scope = "profile",
+        valueType = "boolean",
+        get = function() return addon.db.profile.chat.visual.display.channel.showNumber end,
+        set = function(v) addon.db.profile.chat.visual.display.channel.showNumber = v end,
+        default = true,
+        ui = { type = "checkbox", label = "LABEL_DISPLAY_SHOW_NUMBER", page = "chat", section = "SECTION_DISPLAY_CHAT_CHANNEL" },
+    },
+    chatDisplayChannelNameStyle = {
         scope = "profile",
         valueType = "string",
-        get = function() return addon.db.profile.chat.visual.channelNameFormat end,
-        set = function(v) addon.db.profile.chat.visual.channelNameFormat = v end,
-        default = "SHORT",
+        get = function() return addon.db.profile.chat.visual.display.channel.nameStyle end,
+        set = function(v)
+            if v ~= "FULL" and v ~= "SHORT_ONE" and v ~= "SHORT_TWO" then
+                v = "SHORT_ONE"
+            end
+            addon.db.profile.chat.visual.display.channel.nameStyle = v
+        end,
+        default = "SHORT_ONE",
         ui = {
-            type = "dropdown", label = "LABEL_STREAM_NAME_FORMAT_DESC_LABEL", page = "chat", section = "SECTION_CHAT_CHANNEL",
+            type = "dropdown", label = "LABEL_DISPLAY_NAME_STYLE", page = "chat", section = "SECTION_DISPLAY_CHAT_CHANNEL",
             options = function()
                 local c = Settings.CreateControlTextContainer()
-                c:Add("SHORT", L["LABEL_STREAM_FORMAT_SHORT"])
-                c:Add("FULL", L["LABEL_STREAM_FORMAT_FULL_LABEL"])
-                c:Add("NUMBER", L["LABEL_STREAM_FORMAT_NUMBER_LABEL"])
-                c:Add("NUMBER_SHORT", L["LABEL_STREAM_FORMAT_NUMBER_SHORT"])
+                c:Add("FULL", L["LABEL_NAME_STYLE_FULL"])
+                c:Add("SHORT_ONE", L["LABEL_NAME_STYLE_SHORT_ONE"])
+                c:Add("SHORT_TWO", L["LABEL_NAME_STYLE_SHORT_TWO"])
+                return c:GetData()
+            end,
+        },
+    },
+    shelfDisplayNameStyle = {
+        scope = "profile",
+        valueType = "string",
+        get = function() return addon.db.profile.shelf.visual.display.nameStyle end,
+        set = function(v)
+            if v ~= "SHORT_ONE" and v ~= "SHORT_TWO" then
+                v = "SHORT_ONE"
+            end
+            addon.db.profile.shelf.visual.display.nameStyle = v
+        end,
+        default = "SHORT_ONE",
+        ui = {
+            type = "dropdown", label = "LABEL_DISPLAY_NAME_STYLE", page = "general", section = "SECTION_GENERAL_TOOLBAR",
+            options = function()
+                local c = Settings.CreateControlTextContainer()
+                c:Add("SHORT_ONE", L["LABEL_NAME_STYLE_SHORT_ONE"])
+                c:Add("SHORT_TWO", L["LABEL_NAME_STYLE_SHORT_TWO"])
                 return c:GetData()
             end,
         },
@@ -248,12 +281,21 @@ addon.SETTING_REGISTRY = {
         set = function(v) addon.db.profile.shelf.direction = v end,
         default = "horizontal",
     },
-    shelfDynamicMode = {
+    toolbarDynamicMode = {
         scope = "profile",
         valueType = "string",
         get = function() return addon.db.profile.buttons.dynamicMode end,
         set = function(v) addon.db.profile.buttons.dynamicMode = v end,
         default = "mark",
+        ui = {
+            type = "dropdown", label = "LABEL_SHELF_DYNAMIC_MODE", page = "general", section = "SECTION_GENERAL_TOOLBAR",
+            options = function()
+                local c = Settings.CreateControlTextContainer()
+                c:Add("hide", L["LABEL_SHELF_DYNAMIC_HIDE"])
+                c:Add("mark", L["LABEL_SHELF_DYNAMIC_MARK"])
+                return c:GetData()
+            end,
+        },
     },
     shelfColorSet = {
         scope = "profile",

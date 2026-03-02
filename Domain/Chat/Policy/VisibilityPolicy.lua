@@ -22,31 +22,22 @@ local function EnsureMutedConfig()
 end
 
 local function ResolveDynamicStreamKeyFromChannel(channelId, channelName)
-    if addon.Utils and addon.Utils.FindDynamicStreamByChannelId and channelId then
-        local stream = addon.Utils.FindDynamicStreamByChannelId(channelId)
-        if stream and stream.key then
-            return stream.key
-        end
-    end
-
-    if type(channelName) ~= "string" or channelName == "" then
+    local resolver = addon.ChannelSemanticResolver
+    if not resolver or type(resolver.ResolveStreamKey) ~= "function" then
         return nil
     end
-
-    if addon.Utils and addon.Utils.FindChannelByKey then
-        local stream = addon.Utils.FindChannelByKey(channelName)
-        if stream and stream.key and IsDynamicStreamKey(stream.key) then
-            return stream.key
-        end
-
-        local normalized = addon.Utils.NormalizeChannelBaseName and addon.Utils.NormalizeChannelBaseName(channelName) or channelName
-        stream = addon.Utils.FindChannelByKey(normalized)
-        if stream and stream.key and IsDynamicStreamKey(stream.key) then
-            return stream.key
-        end
+    local streamKey = resolver.ResolveStreamKey({
+        chatType = "CHANNEL",
+        channelId = channelId,
+        channelName = channelName,
+    })
+    if type(streamKey) ~= "string" or streamKey == "" or streamKey == "unknown_dynamic" then
+        return nil
     end
-
-    return nil
+    if not IsDynamicStreamKey(streamKey) then
+        return nil
+    end
+    return streamKey
 end
 
 local function BuildAuthorFields(author)

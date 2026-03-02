@@ -126,15 +126,12 @@ function addon:InitDisplayHighlight()
         addon.chatFrameTransformers["display_highlight"] = nil
     end
 
-    if addon.RegisterFeature then
-        addon:RegisterFeature("ChatHighlight", {
-            requires = { "MUTATE_CHAT_DISPLAY" },
-            onEnable = EnableChatHighlight,
-            onDisable = DisableChatHighlight,
-        })
-    else
-        EnableChatHighlight()
-    end
+    addon:RegisterFeature("ChatHighlight", {
+        requires = { "MUTATE_CHAT_DISPLAY" },
+        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
+        onEnable = EnableChatHighlight,
+        onDisable = DisableChatHighlight,
+    })
 end
 
 addon:RegisterModule("DisplayHighlight", addon.InitDisplayHighlight)

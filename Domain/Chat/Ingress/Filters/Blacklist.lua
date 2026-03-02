@@ -63,15 +63,12 @@ function addon:InitBlacklistMiddleware()
         end
     end
 
-    if addon.RegisterFeature then
-        addon:RegisterFeature("Blacklist", {
-            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
-            onEnable = EnableBlacklist,
-            onDisable = DisableBlacklist,
-        })
-    else
-        EnableBlacklist()
-    end
+    addon:RegisterFeature("Blacklist", {
+        requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
+        onEnable = EnableBlacklist,
+        onDisable = DisableBlacklist,
+    })
 end
 
 addon:RegisterModule("BlacklistMiddleware", addon.InitBlacklistMiddleware)

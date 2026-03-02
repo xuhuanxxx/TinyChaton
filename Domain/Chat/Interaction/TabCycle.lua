@@ -94,7 +94,6 @@ end
 
 local function OnTabPressed(self)
     if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("TabCycle") then return end
-    if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then return end
     if not addon.db or not addon.db.enabled or not addon.db.profile.chat or not addon.db.profile.chat.interaction or not addon.db.profile.chat.interaction.tabCycle then return end
     local text = self:GetText()
     -- If slash-command text exists, clear it before cycling channel to avoid mixed states
@@ -103,9 +102,9 @@ local function OnTabPressed(self)
         self:SetText("")
     end
 
-    -- Get current chat type (compatible with modern/legacy API)
-    local currentType = self:GetAttribute("chatType") or self.chatType
-    local currentTarget = self:GetAttribute("channelTarget") or self.channelTarget
+    -- Read current chat type/channel target from EditBox attributes.
+    local currentType = self:GetAttribute("chatType")
+    local currentTarget = self:GetAttribute("channelTarget")
     if currentType == "CHANNEL" and type(currentTarget) == "string" then
         currentTarget = tonumber(currentTarget)
     end
@@ -138,21 +137,9 @@ function addon:InitTabCycle()
     end
 
     local function HookAllEditBoxes()
-        -- Prioritize ChatFrame1EditBox (Retail shared EditBox).
+        -- Retail shared EditBox path.
         if ChatFrame1EditBox then
             HookEditBox(ChatFrame1EditBox)
-        end
-
-        -- Compatibility loop: ChatFrame.editBox and ChatFrame*EditBox.
-        for i = 1, NUM_CHAT_WINDOWS do
-            local cf = _G["ChatFrame"..i]
-            if cf and cf.editBox then
-                HookEditBox(cf.editBox)
-            end
-            local eb = _G["ChatFrame"..i.."EditBox"]
-            if eb then
-                HookEditBox(eb)
-            end
         end
     end
     local function EnableTabCycle()
@@ -163,15 +150,11 @@ function addon:InitTabCycle()
         -- HookScript is not reversible, so disable via runtime guards in callbacks.
     end
 
-    if addon.RegisterFeature then
-        addon:RegisterFeature("TabCycle", {
-            requires = { "MUTATE_CHAT_DISPLAY" },
-            onEnable = EnableTabCycle,
-            onDisable = DisableTabCycle,
-        })
-    else
-        EnableTabCycle()
-    end
+    addon:RegisterFeature("TabCycle", {
+        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.USER_ACTION or "USER_ACTION",
+        onEnable = EnableTabCycle,
+        onDisable = DisableTabCycle,
+    })
 
     -- Retry with delay in case edit boxes were created late.
     delayedHookTimer = C_Timer.NewTimer(1, function()

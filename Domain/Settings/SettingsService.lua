@@ -16,7 +16,7 @@ local CATEGORY_ORDER = {
 
 -- Main Register
 -- Settings structure version (increment when changing settings structure)
-local SETTINGS_VERSION = 4
+local SETTINGS_VERSION = 6
 
 local function ResolveAccessor(reg)
     local accessor = reg and reg.accessor or nil
@@ -100,16 +100,12 @@ function addon:RegisterSettings()
     if addon._settingsVersion and addon._settingsVersion >= SETTINGS_VERSION then
         return
     end
-    addon._settingsVersion = SETTINGS_VERSION
 
     -- Use Standard Vertical Layout for Root Category
-    local rootCat, layout = Settings.RegisterVerticalLayoutCategory(L["LABEL_ADDON_NAME"])
-
-    -- Populate Root Page
+    local rootCat, _ = Settings.RegisterVerticalLayoutCategory(L["LABEL_ADDON_NAME"])
     addon.AddText(rootCat, L["LABEL_ADDON_DESC"])
     addon.AddText(rootCat, L["LABEL_VERSION"] .. ": " .. (C_AddOns.GetAddOnMetadata(addonName, "Version") or "Dev"))
     addon.AddText(rootCat, L["LABEL_ADDON_SOURCE"])
-
     Settings.RegisterAddOnCategory(rootCat)
     addon.settingsCategory = rootCat
 
@@ -124,7 +120,14 @@ function addon:RegisterSettings()
         end
     end
 
-    addon.OpenSettings = function() Settings.OpenToCategory(addon.settingsCategory:GetID()) end
+    addon._settingsVersion = SETTINGS_VERSION
+    addon._settingsLoaded = true -- Keep flag for diagnostics and compatibility.
+    addon.OpenSettings = function()
+        if addon.MemoryDiagnostics and addon.MemoryDiagnostics.MarkSettingsOpened then
+            addon.MemoryDiagnostics:MarkSettingsOpened()
+        end
+        Settings.OpenToCategory(addon.settingsCategory:GetID())
+    end
 end
 
 function addon:GetAllSettings()
@@ -223,5 +226,18 @@ function addon:ResetSettings(scopeOrPage)
     end
     if addon.ApplyAllSettings then
         addon:ApplyAllSettings()
+    end
+end
+
+SLASH_TINYCHATON_OPTIONS1 = "/tinychat"
+SLASH_TINYCHATON_OPTIONS2 = "/tinychaton"
+SlashCmdList["TINYCHATON_OPTIONS"] = function()
+    if addon.OpenSettings then
+        addon.OpenSettings()
+    else
+        addon:RegisterSettings()
+        if addon.settingsCategory then
+            Settings.OpenToCategory(addon.settingsCategory:GetID())
+        end
     end
 end

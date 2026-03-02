@@ -66,15 +66,12 @@ function addon:InitWhitelistMiddleware()
         end
     end
 
-    if addon.RegisterFeature then
-        addon:RegisterFeature("Whitelist", {
-            requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
-            onEnable = EnableWhitelist,
-            onDisable = DisableWhitelist,
-        })
-    else
-        EnableWhitelist()
-    end
+    addon:RegisterFeature("Whitelist", {
+        requires = { "READ_CHAT_EVENT", "PROCESS_CHAT_DATA" },
+        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
+        onEnable = EnableWhitelist,
+        onDisable = DisableWhitelist,
+    })
 end
 
 addon:RegisterModule("WhitelistMiddleware", addon.InitWhitelistMiddleware)

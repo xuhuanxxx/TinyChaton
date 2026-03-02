@@ -1,38 +1,13 @@
 local addonName, addon = ...
 local L = addon.L
 
--- Resolve channel display name based on format setting
-function addon:GetChannelLabel(item, channelNumber, format)
-    local fmt = format or (addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.visual and addon.db.profile.chat.visual.channelNameFormat) or "SHORT"
-
-    local id = channelNumber
-    if not id and item.chatType == "CHANNEL" then
-        if item.mappingKey then
-            local name = L[item.mappingKey]
-            if name then
-                id = GetChannelName(name)
-            end
-        end
+-- Resolve channel display name using current display policy.
+function addon:GetChannelLabel(item, channelNumber)
+    if addon.ChannelIdentityResolver and addon.ChannelIdentityResolver.FormatDisplayText then
+        return addon.ChannelIdentityResolver.FormatDisplayText(item, "channel", "chat", { channelId = channelNumber })
     end
-
-    if fmt == "FULL" then
-        return item.label
-    end
-
-    if fmt == "NUMBER" then
-        return tostring(id or item.label)
-    end
-
-    local short = item.shortKey and L[item.shortKey]
-    if not short or short == "" then
-        short = "[" .. (item.key or "UNKNOWN") .. "]"
-    end
-
-    if fmt == "NUMBER_SHORT" and id then
-        return id .. "." .. short
-    end
-
-    return short
+    local label = (item and item.identity and item.identity.labelKey and L[item.identity.labelKey]) or item.key or "UNKNOWN"
+    return tostring(label)
 end
 
 -- Apply filter settings and invalidate cache
@@ -100,6 +75,72 @@ local function RecursiveSync(target, source, isReset)
 end
 
 local currentProfileCache = nil
+local VALID_CHAT_NAME_STYLES = { FULL = true, SHORT_ONE = true, SHORT_TWO = true }
+local VALID_SHELF_NAME_STYLES = { SHORT_ONE = true, SHORT_TWO = true }
+
+local function EnsureDisplayConfig(profile)
+    if type(profile) ~= "table" then return end
+    if type(profile.chat) ~= "table" then profile.chat = {} end
+    if type(profile.chat.visual) ~= "table" then profile.chat.visual = {} end
+    if type(profile.chat.visual.display) ~= "table" then profile.chat.visual.display = {} end
+    if type(profile.chat.visual.display.channel) ~= "table" then profile.chat.visual.display.channel = {} end
+
+    if type(profile.shelf) ~= "table" then profile.shelf = {} end
+    if type(profile.shelf.visual) ~= "table" then profile.shelf.visual = {} end
+    if type(profile.shelf.visual.display) ~= "table" then profile.shelf.visual.display = {} end
+
+    local chatChannel = profile.chat.visual.display.channel
+    local shelfDisplay = profile.shelf.visual.display
+
+    -- Strict schema normalization:
+    -- chat keeps FULL/SHORT_ONE/SHORT_TWO; shelf keeps SHORT_ONE/SHORT_TWO only.
+    -- Drop obsolete display keys on every startup (idempotent cleanup).
+    if type(chatChannel.showNumber) ~= "boolean" then
+        chatChannel.showNumber = true
+    end
+    if not VALID_CHAT_NAME_STYLES[chatChannel.nameStyle] then
+        chatChannel.nameStyle = "SHORT_ONE"
+    end
+    if not VALID_SHELF_NAME_STYLES[shelfDisplay.nameStyle] then
+        shelfDisplay.nameStyle = "SHORT_ONE"
+    end
+
+    profile.chat.visual.display.kit = nil
+    profile.shelf.visual.display.channel = nil
+    profile.shelf.visual.display.kit = nil
+    profile.chat.visual.channelNameFormat = nil
+end
+
+local function EnsureChannelCandidatesRegistry()
+    addon.ChannelCandidatesValid = true
+    addon.ChannelCandidatesErrors = nil
+
+    local registry = addon.ChannelCandidatesRegistry
+    if not registry or type(registry.Validate) ~= "function" then
+        addon.ChannelCandidatesValid = false
+        addon.ChannelCandidatesErrors = { "ChannelCandidatesRegistry missing or invalid" }
+        return
+    end
+
+    local locale = (type(GetLocale) == "function" and GetLocale()) or "enUS"
+    if type(registry.BuildCanonicalIndex) == "function" then
+        registry:BuildCanonicalIndex(locale)
+    end
+    local ok, errs = registry:Validate(locale)
+    if ok then
+        return
+    end
+
+    addon.ChannelCandidatesValid = false
+    addon.ChannelCandidatesErrors = errs
+    local prefix = (L and L["LABEL_ADDON_NAME"]) or "TinyChaton"
+    print("|cffff0000" .. prefix .. "|r: candidate registry validation failed.")
+    if type(errs) == "table" then
+        for _, err in ipairs(errs) do
+            print("|cffff0000" .. prefix .. "|r: " .. tostring(err))
+        end
+    end
+end
 
 function addon:GetCurrentProfile()
     if not TinyChatonDB.profileKeys then return addon.CONSTANTS.PROFILE_DEFAULT_NAME end
@@ -344,6 +385,8 @@ function addon:InitConfig()
     InitDBProxy()
     UpdateProfileCache()
     self:SynchronizeConfig(false)
+    EnsureDisplayConfig(addon.db and addon.db.profile)
+    EnsureChannelCandidatesRegistry()
 end
 
 function addon:RefreshAllSettings()
@@ -359,8 +402,6 @@ function addon:Shutdown()
     if addon.EventDispatcher and addon.EventDispatcher.UnregisterFilters then
         addon.EventDispatcher:UnregisterFilters()
     end
-    if addon.UnhookChatFrames then addon:UnhookChatFrames() end
-    if addon.RestoreShortChannelGlobals then addon:RestoreShortChannelGlobals() end
     if addon.StopBubbleTicker then addon:StopBubbleTicker() end
     if addon.CancelPendingWelcomeTimers then addon:CancelPendingWelcomeTimers() end
     if addon.CancelTabCycleTimer then addon:CancelTabCycleTimer() end

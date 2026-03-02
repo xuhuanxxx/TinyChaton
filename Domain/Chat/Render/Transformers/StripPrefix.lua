@@ -46,15 +46,12 @@ function addon:InitDisplayStripPrefix()
         addon.chatFrameTransformers["display_strip_prefix"] = nil
     end
 
-    if addon.RegisterFeature then
-        addon:RegisterFeature("StripPrefix", {
-            requires = { "MUTATE_CHAT_DISPLAY" },
-            onEnable = EnableStripPrefix,
-            onDisable = DisableStripPrefix,
-        })
-    else
-        EnableStripPrefix()
-    end
+    addon:RegisterFeature("StripPrefix", {
+        requires = { "MUTATE_CHAT_DISPLAY" },
+        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
+        onEnable = EnableStripPrefix,
+        onDisable = DisableStripPrefix,
+    })
 end
 
 addon:RegisterModule("DisplayStripPrefix", addon.InitDisplayStripPrefix)

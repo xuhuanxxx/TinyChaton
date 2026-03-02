@@ -1,24 +1,26 @@
 local addonName, addon = ...
 local L = addon.L
+local COLOR_BASE = (addon.PRIORITY_BASE and addon.PRIORITY_BASE.COLORSET) or 400
+local PRI_STEP = addon.PRIORITY_STEP or 10
 
 -- Colors Registry
 
 addon.Colors = {
     themes = {
         white = {
-            order = 10,
+            priority = COLOR_BASE + PRI_STEP * 0,
             name = L["COLORSET_WHITE"],
             desc = "Uniform white text for all buttons",
             defaultColor = {1, 1, 1, 1}
         },
         blizzard = {
-            order = 20,
+            priority = COLOR_BASE + PRI_STEP * 1,
             name = L["COLORSET_BLIZZARD"],
             desc = "Classic Blizzard gold/yellow text",
             defaultColor = {1, 0.82, 0, 1}
         },
         rainbow = {
-            order = 30,
+            priority = COLOR_BASE + PRI_STEP * 2,
             name = L["COLORSET_RAINBOW"],
             desc = "Distinct colors for each channel and tool",
             colors = {
@@ -27,6 +29,7 @@ addon.Colors = {
                     yell = {1, 0.25, 0.25, 1},
                     party = {0.66, 0.66, 1, 1},
                     raid = {1, 0.5, 0, 1},
+                    raid_warning = {1, 0.282, 0.035, 1},
                     instance = {1, 0.5, 0, 1},
                     battleground = {1, 0.5, 0, 1},
                     guild = {0.25, 1, 0.25, 1},
@@ -37,7 +40,7 @@ addon.Colors = {
                     localdefense = {0.8, 0.8, 1, 1},
                     lfg = {1, 1, 0.8, 1},
                     services = {0.8, 1, 1, 1},
-                    world = {0.8, 0.8, 1, 1},
+                    world = {1, 0.7529, 0.7529, 1},
                     whisper = {1, 0.5, 1, 1},
                     bn_whisper = {0, 1, 0.96, 1},
                 },
@@ -54,19 +57,19 @@ addon.Colors = {
             }
         },
         red = {
-            order = 40,
+            priority = COLOR_BASE + PRI_STEP * 3,
             name = L["COLORSET_RED"],
             desc = "Red text for all buttons",
             defaultColor = {1, 0, 0, 1}
         },
         blue = {
-            order = 50,
+            priority = COLOR_BASE + PRI_STEP * 4,
             name = L["COLORSET_BLUE"],
             desc = "Blue text for all buttons",
             defaultColor = {0, 0.5, 1, 1}
         },
         green = {
-            order = 60,
+            priority = COLOR_BASE + PRI_STEP * 5,
             name = L["COLORSET_GREEN"],
             desc = "Green text for all buttons",
             defaultColor = {0, 1, 0, 1}
@@ -116,9 +119,14 @@ function addon:GetColorSetOptions()
         local c = Settings.CreateControlTextContainer()
         local list = {}
         for key, def in pairs(Colors.themes) do
-            table.insert(list, { key = key, name = def.name, order = def.order })
+            table.insert(list, { key = key, name = def.name, priority = def.priority, group = "COLORSET" })
         end
-        table.sort(list, function(a, b) return (a.order or 0) < (b.order or 0) end)
+        table.sort(list, function(a, b)
+            if addon.Utils and addon.Utils.CompareByPriority then
+                return addon.Utils.CompareByPriority(a, b, { groupRankByValue = { COLORSET = 1 } })
+            end
+            return (a.priority or 0) < (b.priority or 0)
+        end)
 
         for _, item in ipairs(list) do
             c:Add(item.key, item.name)
@@ -128,9 +136,14 @@ function addon:GetColorSetOptions()
 
     local list = {}
     for key, def in pairs(Colors.themes) do
-        table.insert(list, { key = key, name = def.name, order = def.order })
+        table.insert(list, { key = key, name = def.name, priority = def.priority, group = "COLORSET" })
     end
-    table.sort(list, function(a, b) return (a.order or 0) < (b.order or 0) end)
+    table.sort(list, function(a, b)
+        if addon.Utils and addon.Utils.CompareByPriority then
+            return addon.Utils.CompareByPriority(a, b, { groupRankByValue = { COLORSET = 1 } })
+        end
+        return (a.priority or 0) < (b.priority or 0)
+    end)
     return list
 end
 
@@ -155,13 +168,3 @@ function addon:GetButtonColor(element)
 
     return addon:GetColor(category, element.key, theme)
 end
-
--- 兼容旧的 ColorSetRegistry 访问
-addon.ColorSetRegistry = {
-    GetColor = function(self, element, setKey)
-        return addon:GetButtonColor(element)
-    end,
-    GetAllSets = function(self)
-        return addon:GetColorSetOptions()
-    end
-}

@@ -26,19 +26,8 @@ function addon.CreateSelectionRibbon(name, parent)
     -- Ensure it sits above the dialog border
     f.Header:SetFrameLevel(f:GetFrameLevel() + 5)
 
-    -- Alias for compatibility so existing code can change text
-    -- DialogHeaderTemplate puts the fontstring in .Text (Capitalized)
+    -- DialogHeaderTemplate exposes the title fontstring as .Text.
     f.Title = f.Header.Text
-
-    -- Safe fallback if .Text isn't directly accessible (varies by version sometimes?)
-    if not f.Title then
-        for _, region in ipairs({f.Header:GetRegions()}) do
-            if region:GetObjectType() == "FontString" then
-                f.Title = region
-                break
-            end
-        end
-    end
 
     -- Sync initial text
     if f.Title then f.Title:SetText("Selection") end

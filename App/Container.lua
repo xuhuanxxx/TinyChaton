@@ -1,34 +1,5 @@
 local addonName, addon = ...
 
-addon.Services = addon.Services or {}
-
-local function CreateLegacyFacade(container)
-    local facade = {}
-
-    setmetatable(facade, {
-        -- Compatibility facade: optional lookup only.
-        -- For required dependencies use addon:ResolveRequiredService(name).
-        __index = function(_, key)
-            if not container or not container.Has or not container:Has(key) then
-                return nil
-            end
-            local value, err = container:TryResolve(key)
-            if err and addon.Error then
-                addon:Error("Service resolve failed for '%s': %s", tostring(key), tostring(err))
-                return nil
-            end
-            return value
-        end,
-        __newindex = function()
-            if addon and addon.Warn then
-                addon:Warn("Ignoring direct write to addon.Services facade")
-            end
-        end,
-    })
-
-    return facade
-end
-
 function addon:InitServiceContainer()
     if not self.DIContainer or not self.DIContainer.Container then
         self:Error("DI container module missing")
@@ -68,7 +39,6 @@ function addon:InitServiceContainer()
     end)
 
     self.ServiceContainer = c
-    self.Services = CreateLegacyFacade(c)
 end
 
 function addon:RegisterServiceValue(name, value)
@@ -104,11 +74,6 @@ function addon:ResolveOptionalService(name)
         return nil
     end
     return value
-end
-
--- Backward-compatible alias; this remains optional semantics.
-function addon:ResolveService(name)
-    return self:ResolveOptionalService(name)
 end
 
 function addon:FinalizeServiceContainer()

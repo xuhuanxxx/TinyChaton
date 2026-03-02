@@ -9,7 +9,6 @@ addon.CategoryBuilders = CategoryBuilders
 CategoryBuilders.buttons = function(rootCat)
     local cat, layout = Settings.RegisterVerticalLayoutSubcategory(rootCat, L["PAGE_BUTTONS"])
     Settings.RegisterAddOnCategory(cat)
-    local P = "TinyChaton_Buttons_Content_"
 
     local buttonOrder = addon.Shelf:GetOrder()
     local function GetButtonsDB()
@@ -33,6 +32,26 @@ CategoryBuilders.buttons = function(rootCat)
     end
     for _, spec in ipairs(addon.KIT_REGISTRY or {}) do
         kitRegistryMap[spec.key] = spec
+    end
+
+    local function ResolveChannelDisplay(stream, useFull)
+        if type(stream) ~= "table" then return nil end
+        local identity = addon.ResolveDisplayIdentity and addon:ResolveDisplayIdentity(stream, "channel", {}) or nil
+        if not identity then return stream.key end
+        if useFull then
+            return identity.fullName or identity.label or stream.key
+        end
+        return identity.label or stream.key
+    end
+
+    local function ResolveKitDisplay(kit, useFull)
+        if type(kit) ~= "table" then return nil end
+        local identity = addon.ResolveDisplayIdentity and addon:ResolveDisplayIdentity(kit, "kit", {}) or nil
+        if not identity then return kit.key end
+        if useFull then
+            return identity.fullName or identity.label or kit.key
+        end
+        return identity.label or kit.key
     end
 
     local function IsKeyEnabled(key)
@@ -146,7 +165,7 @@ CategoryBuilders.buttons = function(rootCat)
         -- table.insert(items, { key = false, label = L["LABEL_NONE"] or "None", category = "other" })
 
         local sortedActions = {}
-        for key, action in pairs(addon.ACTION_REGISTRY or {}) do table.insert(sortedActions, action) end
+        for _, action in pairs(addon.ACTION_REGISTRY or {}) do table.insert(sortedActions, action) end
 
         for _, action in ipairs(sortedActions) do
             table.insert(items, {
@@ -164,8 +183,11 @@ CategoryBuilders.buttons = function(rootCat)
         -- Resolve Title
         local item = registryMap[channelKey] or kitRegistryMap[channelKey]
         local title = item and (item.label or item.key) or channelKey
-        if item and item.mappingKey and L[item.mappingKey] then
-             title = L[item.mappingKey]
+        local stream = item and item.chatType and item or addon:GetStreamByKey(channelKey)
+        if stream and stream.chatType then
+            title = ResolveChannelDisplay(stream, true) or title
+        elseif item then
+            title = ResolveKitDisplay(item, true) or title
         end
 
         bindingDialog:Open(items, currentAction, title, function(selectedKey)
@@ -241,7 +263,12 @@ CategoryBuilders.buttons = function(rootCat)
                 end)
 
                 row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-                row.label:SetPoint("LEFT", row.cb, "RIGHT", 6, 0); row.label:SetText(item.label or item.key)
+                row.label:SetPoint("LEFT", row.cb, "RIGHT", 6, 0)
+                if typeKey == "channel" then
+                    row.label:SetText(ResolveChannelDisplay(item, false) or item.key)
+                else
+                    row.label:SetText(ResolveKitDisplay(item, false) or item.key)
+                end
 
                 -- Layout Constants
                 local RIGHT_MARGIN = -5
@@ -332,7 +359,12 @@ CategoryBuilders.buttons = function(rootCat)
                         end
                     end
                 end
-                table.sort(page.items, function(a, b) return (a.order or 0) < (b.order or 0) end)
+                table.sort(page.items, function(a, b)
+                    if addon.Utils and addon.Utils.CompareByPriority then
+                        return addon.Utils.CompareByPriority(a, b)
+                    end
+                    return (a.priority or 0) < (b.priority or 0)
+                end)
 
                 page.rows = {}
                 page.Refresh = function()
@@ -369,25 +401,6 @@ CategoryBuilders.buttons = function(rootCat)
         if frame[addonName .. "_Shelf_RibbonContainer"].RestoreState then frame[addonName .. "_Shelf_RibbonContainer"].RestoreState() end
     end
     Settings.RegisterInitializer(cat, ribbonInit)
-    addon.AddSectionHeader(cat, L["SECTION_OTHER"])
-    local dynamicModeSetting = addon.AddProxyDropdown(cat, P .. "dynamicMode", L["LABEL_SHELF_DYNAMIC_MODE"], buttonDef.dynamicMode,
-        function()
-            local c = Settings.CreateControlTextContainer()
-            c:Add("hide", L["LABEL_SHELF_DYNAMIC_HIDE"])
-            c:Add("mark", L["LABEL_SHELF_DYNAMIC_MARK"])
-            return c:GetData()
-        end,
-        function()
-            local db = GetButtonsDB()
-            return db and db.dynamicMode or buttonDef.dynamicMode
-        end,
-        function(v)
-            local db = GetButtonsDB()
-            if db then db.dynamicMode = v end
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
-        end,
-        nil)
-
 
     local function ResetButtonData()
         local db = GetButtonsDB()
@@ -396,12 +409,7 @@ CategoryBuilders.buttons = function(rootCat)
         db.kitPins = addon.Utils.DeepCopy(def.buttons.kitPins)
         db.buttonOrder = nil
         db.bindings = {}
-        db.dynamicMode = def.buttons.dynamicMode
         db.mutedDynamicChannels = addon.Utils.DeepCopy(def.buttons.mutedDynamicChannels)
-
-        if dynamicModeSetting and dynamicModeSetting.SetValue then
-            dynamicModeSetting:SetValue(db.dynamicMode)
-        end
 
         addon:ApplyAllSettings()
         addon:RefreshShelf()

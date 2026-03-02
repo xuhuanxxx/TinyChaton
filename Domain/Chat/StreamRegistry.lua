@@ -1,6 +1,7 @@
 local addonName, addon = ...
 local OpenChat = _G["Chat" .. "Frame_OpenChat"]
-local L = addon.L
+local PRI_BASE = addon.PRIORITY_BASE or {}
+local PRI_STEP = addon.PRIORITY_STEP or 10
 
 -- STREAM_REGISTRY
 -- 消息流层级注册表 - Stream > Channel / Notice 架构
@@ -15,94 +16,133 @@ addon.STREAM_REGISTRY = {
             {
                 key = "say",
                 chatType = "SAY",
-                shortKey = "STREAM_SAY_SHORT",
-                label = L["STREAM_SAY_LABEL"],
+                identity = {
+                    labelKey = "STREAM_SAY_LABEL",
+                    shortOneKey = "STREAM_SAY_SHORT_ONE",
+                    shortTwoKey = "STREAM_SAY_SHORT_TWO",
+                },
 
                 events = { "CHAT_MSG_SAY" },
-                order = 10,
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 0,
                 defaultBindings = { left = "send" },
             },
             {
                 key = "yell",
                 chatType = "YELL",
-                shortKey = "STREAM_YELL_SHORT",
-                label = L["STREAM_YELL_LABEL"],
+                identity = {
+                    labelKey = "STREAM_YELL_LABEL",
+                    shortOneKey = "STREAM_YELL_SHORT_ONE",
+                    shortTwoKey = "STREAM_YELL_SHORT_TWO",
+                },
 
                 events = { "CHAT_MSG_YELL" },
-                order = 20,
-                defaultBindings = { left = "send" },
-            },
-            {
-                key = "party",
-                chatType = "PARTY",
-                shortKey = "STREAM_PARTY_SHORT",
-                label = L["STREAM_PARTY_LABEL"],
-
-                events = { "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" },
-                order = 40,
-                defaultBindings = { left = "send" },
-            },
-            {
-                key = "raid",
-                chatType = "RAID",
-                shortKey = "STREAM_RAID_SHORT",
-                label = L["STREAM_RAID_LABEL"],
-
-                events = { "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_RAID_WARNING" },
-                order = 50,
-                defaultBindings = { left = "send" },
-            },
-            {
-                key = "instance",
-                chatType = "INSTANCE_CHAT",
-                shortKey = "STREAM_INSTANCE_SHORT",
-                label = L["STREAM_INSTANCE_LABEL"],
-
-                events = { "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER" },
-                order = 60,
-                defaultBindings = { left = "send" },
-            },
-            {
-                key = "battleground",
-                chatType = "BATTLEGROUND",
-                shortKey = "STREAM_BATTLEGROUND_SHORT",
-                label = L["STREAM_BATTLEGROUND_LABEL"],
-
-                events = { "CHAT_MSG_BATTLEGROUND", "CHAT_MSG_BATTLEGROUND_LEADER" },
-                order = 65,
-                defaultPinned = false,  -- 明确override默认值
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 1,
                 defaultBindings = { left = "send" },
             },
             {
                 key = "guild",
                 chatType = "GUILD",
-                shortKey = "STREAM_GUILD_SHORT",
-                label = L["STREAM_GUILD_LABEL"],
+                identity = {
+                    labelKey = "STREAM_GUILD_LABEL",
+                    shortOneKey = "STREAM_GUILD_SHORT_ONE",
+                    shortTwoKey = "STREAM_GUILD_SHORT_TWO",
+                },
 
                 events = { "CHAT_MSG_GUILD" },
-                order = 70,
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 2,
                 defaultBindings = { left = "send" },
             },
             {
                 key = "officer",
                 chatType = "OFFICER",
-                shortKey = "STREAM_OFFICER_SHORT",
-                label = L["STREAM_OFFICER_LABEL"],
+                identity = {
+                    labelKey = "STREAM_OFFICER_LABEL",
+                    shortOneKey = "STREAM_OFFICER_SHORT_ONE",
+                    shortTwoKey = "STREAM_OFFICER_SHORT_TWO",
+                },
 
                 events = { "CHAT_MSG_OFFICER" },
-                order = 80,
-                defaultPinned = false,
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 3,
+                defaultBindings = { left = "send" },
+            },
+            {
+                key = "party",
+                chatType = "PARTY",
+                identity = {
+                    labelKey = "STREAM_PARTY_LABEL",
+                    shortOneKey = "STREAM_PARTY_SHORT_ONE",
+                    shortTwoKey = "STREAM_PARTY_SHORT_TWO",
+                },
+
+                events = { "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 4,
+                defaultBindings = { left = "send" },
+            },
+            {
+                key = "instance",
+                chatType = "INSTANCE_CHAT",
+                identity = {
+                    labelKey = "STREAM_INSTANCE_LABEL",
+                    shortOneKey = "STREAM_INSTANCE_SHORT_ONE",
+                    shortTwoKey = "STREAM_INSTANCE_SHORT_TWO",
+                },
+
+                events = { "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 5,
+                defaultBindings = { left = "send" },
+            },
+            {
+                key = "raid",
+                chatType = "RAID",
+                identity = {
+                    labelKey = "STREAM_RAID_LABEL",
+                    shortOneKey = "STREAM_RAID_SHORT_ONE",
+                    shortTwoKey = "STREAM_RAID_SHORT_TWO",
+                },
+
+                events = { "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 6,
+                defaultBindings = { left = "send" },
+            },
+            {
+                key = "raid_warning",
+                chatType = "RAID_WARNING",
+                identity = {
+                    labelKey = "STREAM_RAID_WARNING_LABEL",
+                    shortOneKey = "STREAM_RAID_WARNING_SHORT_ONE",
+                    shortTwoKey = "STREAM_RAID_WARNING_SHORT_TWO",
+                },
+
+                events = { "CHAT_MSG_RAID_WARNING" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 7,
+                defaultBindings = { left = "send" },
+            },
+            {
+                key = "battleground",
+                chatType = "BATTLEGROUND",
+                identity = {
+                    labelKey = "STREAM_BATTLEGROUND_LABEL",
+                    shortOneKey = "STREAM_BATTLEGROUND_SHORT_ONE",
+                    shortTwoKey = "STREAM_BATTLEGROUND_SHORT_TWO",
+                },
+
+                -- Retail does not provide stable CHAT_MSG_BATTLEGROUND* frame events
+                -- for this pipeline. Keep action support (/bg), but do not subscribe.
+                events = {},
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 8,
                 defaultBindings = { left = "send" },
             },
             {
                 key = "emote",
                 chatType = "EMOTE",
-                shortKey = "STREAM_EMOTE_SHORT",
-                label = L["STREAM_EMOTE_LABEL"],
+                identity = {
+                    labelKey = "STREAM_EMOTE_LABEL",
+                    shortOneKey = "STREAM_EMOTE_SHORT_ONE",
+                    shortTwoKey = "STREAM_EMOTE_SHORT_TWO",
+                },
 
                 events = { "CHAT_MSG_EMOTE", "CHAT_MSG_TEXT_EMOTE" },
-                order = 85,
-                defaultPinned = false,
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 9,
                 defaultBindings = { left = "send" },
             },
         },
@@ -113,69 +153,85 @@ addon.STREAM_REGISTRY = {
             {
                 key = "general",
                 chatType = "CHANNEL",
-                mappingKey = "STREAM_GENERAL_MAPPING",
-                shortKey = "STREAM_GENERAL_SHORT",
-                label = L["STREAM_GENERAL_LABEL"],
+                identity = {
+                    labelKey = "STREAM_GENERAL_LABEL",
+                    shortOneKey = "STREAM_GENERAL_SHORT_ONE",
+                    shortTwoKey = "STREAM_GENERAL_SHORT_TWO",
+                    candidatesId = "general",
+                },
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 90,
+                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 0,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "trade",
                 chatType = "CHANNEL",
-                mappingKey = "STREAM_TRADE_MAPPING",
-                shortKey = "STREAM_TRADE_SHORT",
-                label = L["STREAM_TRADE_LABEL"],
+                identity = {
+                    labelKey = "STREAM_TRADE_LABEL",
+                    shortOneKey = "STREAM_TRADE_SHORT_ONE",
+                    shortTwoKey = "STREAM_TRADE_SHORT_TWO",
+                    candidatesId = "trade",
+                },
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 91,
+                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 1,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "localdefense",
                 chatType = "CHANNEL",
-                mappingKey = "STREAM_LOCALDEFENSE_MAPPING",
-                shortKey = "STREAM_LOCALDEFENSE_SHORT",
-                label = L["STREAM_LOCALDEFENSE_LABEL"],
+                identity = {
+                    labelKey = "STREAM_LOCALDEFENSE_LABEL",
+                    shortOneKey = "STREAM_LOCALDEFENSE_SHORT_ONE",
+                    shortTwoKey = "STREAM_LOCALDEFENSE_SHORT_TWO",
+                    candidatesId = "localdefense",
+                },
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 92,
-                defaultPinned = false,
-                defaultBindings = { left = "send", right = "mute_toggle" },
-            },
-            {
-                key = "lfg",
-                chatType = "CHANNEL",
-                mappingKey = "STREAM_LFG_MAPPING",
-                shortKey = "STREAM_LFG_SHORT",
-                label = L["STREAM_LFG_LABEL"],
-
-                events = { "CHAT_MSG_CHANNEL" },
-                order = 93,
+                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 2,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "services",
                 chatType = "CHANNEL",
-                mappingKey = "STREAM_SERVICES_MAPPING",
-                shortKey = "STREAM_SERVICES_SHORT",
-                label = L["STREAM_SERVICES_LABEL"],
+                identity = {
+                    labelKey = "STREAM_SERVICES_LABEL",
+                    shortOneKey = "STREAM_SERVICES_SHORT_ONE",
+                    shortTwoKey = "STREAM_SERVICES_SHORT_TWO",
+                    candidatesId = "services",
+                },
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 94,
-                defaultPinned = false,
+                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 3,
+                defaultBindings = { left = "send", right = "mute_toggle" },
+            },
+            {
+                key = "lfg",
+                chatType = "CHANNEL",
+                identity = {
+                    labelKey = "STREAM_LFG_LABEL",
+                    shortOneKey = "STREAM_LFG_SHORT_ONE",
+                    shortTwoKey = "STREAM_LFG_SHORT_TWO",
+                    candidatesId = "lfg",
+                },
+
+                events = { "CHAT_MSG_CHANNEL" },
+                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 4,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
             {
                 key = "world",
                 chatType = "CHANNEL",
-                mappingKey = "STREAM_WORLD_MAPPING",
-                shortKey = "STREAM_WORLD_SHORT",
-                label = L["STREAM_WORLD_LABEL"],
+                identity = {
+                    labelKey = "STREAM_WORLD_LABEL",
+                    shortOneKey = "STREAM_WORLD_SHORT_ONE",
+                    shortTwoKey = "STREAM_WORLD_SHORT_TWO",
+                    candidatesId = "world",
+                },
 
                 events = { "CHAT_MSG_CHANNEL" },
-                order = 100,
+                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 5,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
         },
@@ -185,22 +241,28 @@ addon.STREAM_REGISTRY = {
             {
                 key = "whisper",
                 chatType = "WHISPER",
-                shortKey = "STREAM_WHISPER_SHORT",
-                label = L["STREAM_WHISPER_LABEL"],
+                identity = {
+                    labelKey = "STREAM_WHISPER_LABEL",
+                    shortOneKey = "STREAM_WHISPER_SHORT_ONE",
+                    shortTwoKey = "STREAM_WHISPER_SHORT_TWO",
+                },
 
                 events = { "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM" },
-                order = 30,
+                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 6,
                 defaultPinned = false,
                 defaultBindings = { left = "send" },
             },
             {
                 key = "bn_whisper",
                 chatType = "BN_WHISPER",
-                shortKey = "STREAM_BATTLENET_SHORT",
-                label = L["STREAM_BATTLENET_LABEL"],
+                identity = {
+                    labelKey = "STREAM_BATTLENET_LABEL",
+                    shortOneKey = "STREAM_BATTLENET_SHORT_ONE",
+                    shortTwoKey = "STREAM_BATTLENET_SHORT_TWO",
+                },
 
                 events = { "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM" },
-                order = 66,
+                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 7,
                 defaultPinned = false,
                 defaultBindings = { left = "send" },
             },
@@ -228,13 +290,9 @@ addon.STREAM_REGISTRY = {
 -- 这些函数被 Libs/Registry/Actions.lua 中的 ACTION_DEFINITIONS 调用
 -- 它们封装了底层的 WoW API 调用逻辑
 --
--- Action Semantics (Do not regress):
--- 1) User-triggered channel actions from Shelf are ALWAYS available:
---    - ActionSend: open chat input for a stream/channel
---    - ActionJoin: manual join channel
---    - ActionLeave: manual leave channel
--- 2) Policy capability EMIT_CHAT_ACTION gates AUTOMATED emissions only
---    (e.g., AutoWelcome / AutoJoinHelper / background sends), not manual Shelf actions.
+-- Action Semantics:
+-- 1) User-triggered ActionSend from Shelf remains available in all runtime modes.
+-- 2) ActionJoin / ActionLeave are intentionally removed from plugin-side channel management.
 
 local SLASH_COMMANDS = {
     ["INSTANCE_CHAT"] = "instance",
@@ -250,30 +308,25 @@ local SLASH_COMMANDS = {
 }
 
 function addon:ActionSend(chatType, channelKey, channelName)
-    -- User-triggered channel switch from Shelf should remain available in all modes.
-    -- This action only opens chat input (or routes to a joined channel), and is not
-    -- treated as background/automated emission.
-    if chatType == "CHANNEL" and channelName then
-        local id = GetChannelName(channelName)
+    -- User-triggered channel switch from Shelf remains available in all modes.
+    -- This action opens chat input for joined channels.
+    if chatType == "CHANNEL" then
+        local id = nil
+        local semantic = addon.ChannelSemanticResolver
+        if semantic and type(semantic.ResolveDynamic) == "function" and type(channelKey) == "string" and channelKey ~= "" then
+            local resolved = semantic.ResolveDynamic({
+                streamKey = channelKey,
+                channelName = channelName,
+            })
+            id = resolved and tonumber(resolved.channelId) or nil
+        end
         if id and id > 0 then
             OpenChat("/" .. id .. " ")
         else
-            if channelName then
-                JoinChannelByName(channelName)
-            end
+            return
         end
     else
         local cmd = SLASH_COMMANDS[chatType] or string.lower(chatType)
         OpenChat("/" .. cmd .. " ")
     end
-end
-
-function addon:ActionJoin(channelName)
-    -- User-triggered channel management from Shelf should remain available in all modes.
-    if channelName then JoinChannelByName(channelName) end
-end
-
-function addon:ActionLeave(channelName)
-    -- User-triggered channel management from Shelf should remain available in all modes.
-    if channelName then LeaveChannelByName(channelName) end
 end

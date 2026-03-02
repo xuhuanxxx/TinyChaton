@@ -69,6 +69,345 @@ function addon.Tests.TestNormalizeChannelName()
     addon.Tests.AssertEqual(N("Trade (Services)"), "Trade (Services)", "Parentheses usage")
 end
 
+function addon.Tests.TestChannelIdentityResolverPriority()
+    local resolver = addon.ChannelIdentityResolver
+    addon.Tests.Assert(type(resolver) == "table", "ChannelIdentityResolver missing")
+
+    local labelKey = "TEST_STREAM_LABEL"
+    local shortOneKey = "TEST_STREAM_SHORT_ONE"
+    local shortTwoKey = "TEST_STREAM_SHORT_TWO"
+    addon.L[labelKey] = "Test Stream"
+    addon.L[shortOneKey] = "T"
+    addon.L[shortTwoKey] = "TS"
+
+    local stream = {
+        key = "test_stream",
+        chatType = "CHANNEL",
+        identity = {
+            labelKey = labelKey,
+            shortOneKey = shortOneKey,
+            shortTwoKey = shortTwoKey,
+            candidatesId = "test_stream",
+        },
+    }
+
+    local oldGetChannelNameApi = _G.GetChannelName
+    local oldGetChannelNameMap = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.GetChannelName
+    local oldBuildCanonicalIndex = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.BuildCanonicalIndex
+    local ok, err = pcall(function()
+        addon.ChannelCandidatesValid = true
+        if addon.ChannelCandidatesRegistry then
+            addon.ChannelCandidatesRegistry.GetChannelName = function(_, _, candidatesId)
+                if candidatesId == "test_stream" then
+                    return "Candidate B"
+                end
+                return nil
+            end
+            addon.ChannelCandidatesRegistry.BuildCanonicalIndex = function()
+                return {
+                    ["candidate b"] = "test_stream",
+                }
+            end
+        end
+        _G.GetChannelName = function(arg)
+            if arg == 77 then return 77, "Candidate B - Realm" end
+            if arg == "Candidate B" then return 55, "Candidate B - Realm" end
+            return 0, nil
+        end
+
+        local byId = resolver.ResolveDynamicActiveName(stream, { channelId = 77 })
+        addon.Tests.AssertEqual(byId.activeName, "Candidate B", "Dynamic active name should prefer channelId resolution")
+        addon.Tests.AssertEqual(byId.channelId, 77, "Dynamic active id mismatch")
+
+        local byCandidate = resolver.ResolveDynamicActiveName(stream, {})
+        addon.Tests.AssertEqual(byCandidate.activeName, "Candidate B", "Dynamic active name should prefer first joined candidate")
+        addon.Tests.AssertEqual(byCandidate.channelId, 55, "Joined candidate id mismatch")
+
+        _G.GetChannelName = function(arg)
+            if arg == 77 then return 77, "Candidate B - Realm" end
+            return 0, nil
+        end
+        local byMessage = resolver.ResolveDynamicActiveName(stream, { channelName = "Incoming Name - Realm" })
+        addon.Tests.AssertEqual(byMessage.activeName, "Incoming Name", "Dynamic active name should fall back to incoming channel name")
+
+        local byDefault = resolver.ResolveDynamicActiveName(stream, {})
+        addon.Tests.AssertEqual(byDefault.activeName, "Candidate B", "Dynamic active name should fall back to mapped name")
+
+        local full = resolver.FormatDisplayText(stream, "channel", "chat", {
+            channelId = 77,
+            override = { showNumber = false, nameStyle = "FULL" },
+        })
+        local shortOne = resolver.FormatDisplayText(stream, "channel", "chat", {
+            channelId = 77,
+            override = { showNumber = false, nameStyle = "SHORT_ONE" },
+        })
+        local shortTwo = resolver.FormatDisplayText(stream, "channel", "chat", {
+            channelId = 77,
+            override = { showNumber = false, nameStyle = "SHORT_TWO" },
+        })
+        local chatNumberShortOne = resolver.FormatDisplayText(stream, "channel", "chat", {
+            channelId = 77,
+            override = { showNumber = true, nameStyle = "SHORT_ONE" },
+        })
+        local chatInvalidStyle = resolver.FormatDisplayText(stream, "channel", "chat", {
+            channelId = 77,
+            override = { showNumber = false, nameStyle = "INVALID_STYLE" },
+        })
+        local shelfOverrideFull = resolver.FormatDisplayText(stream, "channel", "shelf", {
+            channelId = 77,
+            override = { showNumber = false, nameStyle = "FULL" },
+        })
+        local oldShelfStyle = addon.db
+            and addon.db.profile
+            and addon.db.profile.shelf
+            and addon.db.profile.shelf.visual
+            and addon.db.profile.shelf.visual.display
+            and addon.db.profile.shelf.visual.display.nameStyle
+        if addon.db and addon.db.profile and addon.db.profile.shelf and addon.db.profile.shelf.visual and addon.db.profile.shelf.visual.display then
+            addon.db.profile.shelf.visual.display.nameStyle = "FULL"
+        end
+        local shelfProfileFull = resolver.FormatDisplayText(stream, "channel", "shelf", { channelId = 77 })
+        if addon.db and addon.db.profile and addon.db.profile.shelf and addon.db.profile.shelf.visual and addon.db.profile.shelf.visual.display then
+            addon.db.profile.shelf.visual.display.nameStyle = oldShelfStyle
+        end
+        addon.Tests.AssertEqual(full, "Candidate B", "FULL format mismatch")
+        addon.Tests.AssertEqual(shortOne, "T", "SHORT_ONE format mismatch")
+        addon.Tests.AssertEqual(shortTwo, "TS", "SHORT_TWO format mismatch")
+        addon.Tests.AssertEqual(chatNumberShortOne, "77.T", "chat display policy number+short mismatch")
+        addon.Tests.AssertEqual(chatInvalidStyle, "T", "chat invalid style should normalize to SHORT_ONE")
+        addon.Tests.AssertEqual(shelfOverrideFull, "T", "shelf override FULL should normalize to SHORT_ONE")
+        addon.Tests.AssertEqual(shelfProfileFull, "T", "shelf profile FULL should normalize to SHORT_ONE")
+    end)
+    _G.GetChannelName = oldGetChannelNameApi
+    if addon.ChannelCandidatesRegistry then
+        addon.ChannelCandidatesRegistry.GetChannelName = oldGetChannelNameMap
+        addon.ChannelCandidatesRegistry.BuildCanonicalIndex = oldBuildCanonicalIndex
+    end
+    if not ok then error(err, 0) end
+end
+
+function addon.Tests.TestChannelCandidatesRegistryValidation()
+    local registry = addon.ChannelCandidatesRegistry
+    addon.Tests.Assert(type(registry) == "table", "ChannelCandidatesRegistry missing")
+    addon.Tests.Assert(type(registry.Validate) == "function", "ChannelCandidatesRegistry.Validate missing")
+
+    local old = addon.CHANNEL_CANDIDATES
+    local oldAliases = addon.CHANNEL_CANDIDATE_ALIASES
+    local ok, err = pcall(function()
+        addon.CHANNEL_CANDIDATES = {
+            default = {
+                general = "General",
+                trade = "Trade",
+                localdefense = "LocalDefense",
+                services = "Service",
+                lfg = "LFG",
+                world = "World",
+            },
+        }
+        addon.CHANNEL_CANDIDATE_ALIASES = {
+            default = {
+                services = { "Trade (Services)" },
+            },
+        }
+        local valid, errs = registry:Validate("enUS")
+        addon.Tests.Assert(valid == true, "Validate should pass on non-conflicting candidates")
+        addon.Tests.Assert(type(errs) == "table", "Validate should return error table")
+
+        addon.CHANNEL_CANDIDATES = {
+            default = {
+                general = "General",
+                trade = "Trade",
+                localdefense = "LocalDefense",
+                services = "Trade",
+                lfg = "LFG",
+                world = "World",
+            },
+        }
+        addon.CHANNEL_CANDIDATE_ALIASES = {
+            default = {
+                services = { "Trade (Services)" },
+                lfg = { "Trade (Services)" },
+            },
+        }
+        valid, errs = registry:Validate("enUS")
+        addon.Tests.Assert(valid == false, "Validate should fail on duplicated alias")
+        addon.Tests.Assert(type(errs) == "table" and #errs > 0, "Validate should return conflict details")
+    end)
+    addon.CHANNEL_CANDIDATES = old
+    addon.CHANNEL_CANDIDATE_ALIASES = oldAliases
+    if not ok then error(err, 0) end
+end
+
+function addon.Tests.TestTradeServicesSeparation()
+    local resolver = addon.ChannelIdentityResolver
+    addon.Tests.Assert(type(resolver) == "table", "ChannelIdentityResolver missing")
+
+    local oldGetChannelNameMap = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.GetChannelName
+    local oldGetChannelAliases = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.GetChannelAliases
+    local oldBuildPrimaryCanonicalIndex = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.BuildPrimaryCanonicalIndex
+    local oldBuildMessageCanonicalIndex = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.BuildMessageCanonicalIndex
+    local oldBuildCanonicalIndex = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.BuildCanonicalIndex
+    local oldGetChannelNameApi = _G.GetChannelName
+    local ok, err = pcall(function()
+        addon.ChannelCandidatesValid = true
+        if addon.ChannelCandidatesRegistry then
+            addon.ChannelCandidatesRegistry.GetChannelName = function(_, _, candidatesId)
+                if candidatesId == "trade" then
+                    return "Trade"
+                end
+                if candidatesId == "services" then
+                    return "Service"
+                end
+                return nil
+            end
+            addon.ChannelCandidatesRegistry.GetChannelAliases = function(_, _, candidatesId)
+                if candidatesId == "services" then
+                    return { "Trade (Services)" }
+                end
+                return {}
+            end
+            addon.ChannelCandidatesRegistry.BuildPrimaryCanonicalIndex = function()
+                return {
+                    ["trade"] = "trade",
+                    ["service"] = "services",
+                }
+            end
+            addon.ChannelCandidatesRegistry.BuildMessageCanonicalIndex = function()
+                return {
+                    ["trade"] = "trade",
+                    ["service"] = "services",
+                    ["trade(services)"] = "services",
+                }
+            end
+            addon.ChannelCandidatesRegistry.BuildCanonicalIndex = function()
+                return {
+                    ["trade"] = "trade",
+                    ["service"] = "services",
+                }
+            end
+        end
+
+        _G.GetChannelName = function(arg)
+            if arg == "Trade" then return 2, "Trade - Realm" end
+            if arg == "Service" then return 4, "Service - Realm" end
+            return 0, nil
+        end
+
+        local trade = addon:GetStreamByKey("trade")
+        local services = addon:GetStreamByKey("services")
+        addon.Tests.Assert(type(trade) == "table", "Trade stream missing")
+        addon.Tests.Assert(type(services) == "table", "Services stream missing")
+
+        local tradeIdentity = resolver.ResolveDynamicActiveName(trade, {})
+        local servicesIdentity = resolver.ResolveDynamicActiveName(services, {})
+        addon.Tests.AssertEqual(tradeIdentity.channelId, 2, "Trade should resolve to channel 2")
+        addon.Tests.AssertEqual(servicesIdentity.channelId, 4, "Services should resolve to channel 4")
+
+        _G.GetChannelName = function(arg)
+            if arg == "Trade" then return 2, "Trade - Realm" end
+            if arg == "Service" then return 4, "Service - Realm" end
+            if arg == "Trade (Services)" then return 0, nil end
+            return 0, nil
+        end
+        local key = addon:GetChannelKey("CHAT_MSG_CHANNEL", nil, nil, nil, nil, nil, nil, nil, nil, "Trade (Services)")
+        addon.Tests.AssertEqual(key, "services", "Message alias should map to services")
+    end)
+    _G.GetChannelName = oldGetChannelNameApi
+    if addon.ChannelCandidatesRegistry then
+        addon.ChannelCandidatesRegistry.GetChannelName = oldGetChannelNameMap
+        addon.ChannelCandidatesRegistry.GetChannelAliases = oldGetChannelAliases
+        addon.ChannelCandidatesRegistry.BuildPrimaryCanonicalIndex = oldBuildPrimaryCanonicalIndex
+        addon.ChannelCandidatesRegistry.BuildMessageCanonicalIndex = oldBuildMessageCanonicalIndex
+        addon.ChannelCandidatesRegistry.BuildCanonicalIndex = oldBuildCanonicalIndex
+    end
+    if not ok then error(err, 0) end
+end
+
+function addon.Tests.TestResolveByChannelIdUsesPrimaryOnly()
+    local semantic = addon.ChannelSemanticResolver
+    addon.Tests.Assert(type(semantic) == "table", "ChannelSemanticResolver missing")
+    addon.Tests.Assert(type(semantic.ResolveStreamKey) == "function", "ResolveStreamKey missing")
+
+    local oldBuildPrimaryCanonicalIndex = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.BuildPrimaryCanonicalIndex
+    local oldBuildMessageCanonicalIndex = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.BuildMessageCanonicalIndex
+    local oldBuildCanonicalIndex = addon.ChannelCandidatesRegistry and addon.ChannelCandidatesRegistry.BuildCanonicalIndex
+    local oldGetChannelNameApi = _G.GetChannelName
+    local ok, err = pcall(function()
+        if addon.ChannelCandidatesRegistry then
+            addon.ChannelCandidatesRegistry.BuildPrimaryCanonicalIndex = function()
+                return {
+                    ["trade"] = "trade",
+                    ["service"] = "services",
+                }
+            end
+            addon.ChannelCandidatesRegistry.BuildMessageCanonicalIndex = function()
+                return {
+                    ["trade"] = "trade",
+                    ["service"] = "services",
+                    ["trade(services)"] = "services",
+                }
+            end
+            addon.ChannelCandidatesRegistry.BuildCanonicalIndex = function()
+                return {
+                    ["trade"] = "trade",
+                    ["service"] = "services",
+                }
+            end
+        end
+
+        _G.GetChannelName = function(arg)
+            if arg == 77 then return 77, "Trade (Services)" end
+            return 0, nil
+        end
+
+        local byIdOnly = semantic.ResolveStreamKey({ channelId = 77 })
+        addon.Tests.AssertEqual(byIdOnly, "unknown_dynamic", "Availability/id path must ignore alias-only names")
+
+        local byName = semantic.ResolveStreamKey({ channelName = "Trade (Services)" })
+        addon.Tests.AssertEqual(byName, "services", "Message/name path should allow alias names")
+    end)
+
+    _G.GetChannelName = oldGetChannelNameApi
+    if addon.ChannelCandidatesRegistry then
+        addon.ChannelCandidatesRegistry.BuildPrimaryCanonicalIndex = oldBuildPrimaryCanonicalIndex
+        addon.ChannelCandidatesRegistry.BuildMessageCanonicalIndex = oldBuildMessageCanonicalIndex
+        addon.ChannelCandidatesRegistry.BuildCanonicalIndex = oldBuildCanonicalIndex
+    end
+    if not ok then error(err, 0) end
+end
+
+function addon.Tests.TestSnapshotKeyDynamicCandidates()
+    local world = addon:GetStreamByKey("world")
+    addon.Tests.Assert(type(world) == "table", "World stream missing")
+    local identity = addon.ResolveStreamIdentity and addon:ResolveStreamIdentity(world, {}) or nil
+    addon.Tests.Assert(type(identity) == "table", "World identity missing")
+    addon.Tests.Assert(type(identity.candidates) == "table" and #identity.candidates > 0, "World candidates missing")
+
+    local candidate = identity.candidates[1]
+    local key = addon:GetChannelKey("CHAT_MSG_CHANNEL", nil, nil, nil, nil, nil, nil, nil, nil, candidate)
+    addon.Tests.AssertEqual(key, "world", "Snapshot key should resolve dynamic candidate to world")
+end
+
+function addon.Tests.TestNamePolicyAndAvailability()
+    addon.Tests.Assert(type(addon.NamePolicy) == "table", "NamePolicy missing")
+    addon.Tests.Assert(type(addon.NamePolicy.Resolve) == "function", "NamePolicy.Resolve missing")
+    addon.Tests.Assert(type(addon.AvailabilityResolver) == "table", "AvailabilityResolver missing")
+    addon.Tests.Assert(type(addon.AvailabilityResolver.Resolve) == "function", "AvailabilityResolver.Resolve missing")
+
+    local world = addon:GetStreamByKey("world")
+    addon.Tests.Assert(type(world) == "table", "World stream missing")
+    local named = addon.NamePolicy.Resolve(world, "channel", {})
+    addon.Tests.Assert(type(named) == "table", "NamePolicy.Resolve should return table")
+    addon.Tests.Assert(type(named.label) == "string" and named.label ~= "", "NamePolicy label missing")
+    addon.Tests.Assert(type(named.shortOne) == "string" and named.shortOne ~= "", "NamePolicy shortOne missing")
+    addon.Tests.Assert(type(named.shortTwo) == "string" and named.shortTwo ~= "", "NamePolicy shortTwo missing")
+
+    local sys = addon:GetStreamByKey("say")
+    local sysAvailability = addon.AvailabilityResolver.Resolve(sys and sys.key, "channel", {})
+    addon.Tests.AssertEqual(sysAvailability.state, "ready", "System channel should be ready")
+    addon.Tests.Assert(sysAvailability.available == true, "System channel should be available")
+end
+
 function addon.Tests.TestPool()
     local factoryCount = 0
     local resetCount = 0
@@ -138,6 +477,51 @@ function addon.Tests.TestRuleMatcherCacheLifecycle()
 
     local cleared = RM.ClearAllCaches()
     addon.Tests.Assert(cleared >= 2, "ClearAllCaches should clear all modes")
+end
+
+function addon.Tests.TestRegisterEventIdempotency()
+    addon.Tests.Assert(type(addon.InitEvents) == "function", "InitEvents missing")
+    addon.Tests.Assert(type(addon.RegisterEvent) == "function", "RegisterEvent missing")
+
+    addon:InitEvents()
+    addon.Tests.Assert(type(addon.eventFrame) == "table", "eventFrame missing after InitEvents")
+
+    local eventName = "PLAYER_ENTERING_WORLD"
+    local hitCount = 0
+    local sameFn = function()
+        hitCount = hitCount + 1
+    end
+
+    addon:RegisterEvent(eventName, sameFn)
+    addon:RegisterEvent(eventName, sameFn)
+
+    local handlers = addon.eventHandlers[eventName] or {}
+    addon.Tests.AssertEqual(#handlers, 1, "Duplicate handler should not be inserted")
+
+    local onEvent = addon.eventFrame:GetScript("OnEvent")
+    addon.Tests.Assert(type(onEvent) == "function", "OnEvent script missing")
+    onEvent(addon.eventFrame, eventName)
+    addon.Tests.AssertEqual(hitCount, 1, "Idempotent handler should fire once")
+
+    local secondHitCount = 0
+    local otherFn = function()
+        secondHitCount = secondHitCount + 1
+    end
+    addon:RegisterEvent(eventName, otherFn)
+    handlers = addon.eventHandlers[eventName] or {}
+    addon.Tests.AssertEqual(#handlers, 2, "Distinct handlers should coexist")
+
+    onEvent(addon.eventFrame, eventName)
+    addon.Tests.AssertEqual(hitCount, 2, "Primary handler should still run")
+    addon.Tests.AssertEqual(secondHitCount, 1, "Secondary handler should run")
+
+    local beforeInvalid = #handlers
+    addon:RegisterEvent("", sameFn)
+    addon:RegisterEvent(eventName, "not_a_function")
+    addon:RegisterEvent(nil, sameFn)
+    addon:RegisterEvent(eventName, nil)
+    local afterInvalid = #(addon.eventHandlers[eventName] or {})
+    addon.Tests.AssertEqual(afterInvalid, beforeInvalid, "Invalid inputs should not mutate handlers")
 end
 
 function addon.Tests.TestDIResolveSemantics()

@@ -11,15 +11,34 @@ local function RunPhase(label, fn)
     return true
 end
 
+local function RequireMethod(obj, methodName)
+    local fn = obj and obj[methodName]
+    if type(fn) ~= "function" then
+        error(string.format("missing required method: %s", tostring(methodName)))
+    end
+    return fn
+end
+
+local function WarnOptionalMissing(methodName)
+    if addon.Warn then
+        addon:Warn("Optional bootstrap method is missing: %s", tostring(methodName))
+    end
+end
+
 function addon:OnInitialize()
-    RunPhase("Phase1 Runtime", function()
-        if addon.BootstrapInitContainer then
-            addon:BootstrapInitContainer()
+    local runtimeReady = RunPhase("Phase1 Runtime", function()
+        local initContainer = RequireMethod(addon, "BootstrapInitContainer")
+        if initContainer(addon) ~= true then
+            error("service container not ready")
         end
     end)
+    if not runtimeReady then
+        return
+    end
 
     local dbReady = RunPhase("Phase2 Database", function()
-        if addon.BootstrapInitDatabase and not addon:BootstrapInitDatabase() then
+        local initDatabase = RequireMethod(addon, "BootstrapInitDatabase")
+        if initDatabase(addon) ~= true then
             error("database not ready")
         end
     end)
@@ -28,36 +47,42 @@ function addon:OnInitialize()
         return
     end
 
-    RunPhase("Phase3 Core Services", function()
-        if addon.InitPolicyEngine then addon:InitPolicyEngine() end
-        if addon.InitEnvironmentService then addon:InitEnvironmentService() end
-        if addon.InitFeatureRegistry then addon:InitFeatureRegistry() end
-        if addon.InitEvents then addon:InitEvents() end
+    local coreReady = RunPhase("Phase3 Core Services", function()
+        RequireMethod(addon, "ValidateChatEventDerivation")(addon)
+        RequireMethod(addon, "ValidateRegistryDefinitions")(addon)
+        RequireMethod(addon, "InitChatRuntimeMode")(addon)
+        RequireMethod(addon, "InitEnvironmentGate")(addon)
+        RequireMethod(addon, "InitRuntimeCoordinator")(addon)
+        RequireMethod(addon, "InitFeatureRegistry")(addon)
+        RequireMethod(addon, "InitEvents")(addon)
+
         if addon.RegisterSettings then
             local ok, err = pcall(addon.RegisterSettings, addon)
             if not ok and addon.Error then
                 addon:Error("Settings registration failed: %s", tostring(err))
             end
+        else
+            WarnOptionalMissing("RegisterSettings")
         end
     end)
+    if not coreReady then
+        return
+    end
 
-    RunPhase("Phase4 Frame Hooks", function()
-        if addon.SetupChatFrameHooks then
-            addon:SetupChatFrameHooks()
-        end
-        if addon.InitializeEventDispatcher then
-            addon:InitializeEventDispatcher()
-        end
+    local frameHooksReady = RunPhase("Phase4 Frame Hooks", function()
+        RequireMethod(addon, "InitializeEventDispatcher")(addon)
     end)
+    if not frameHooksReady then
+        return
+    end
 
-    RunPhase("Phase5 Modules", function()
-        if addon.BootstrapInitModules then
-            addon:BootstrapInitModules()
-        end
-        if addon.ReconcileFeatures then
-            addon:ReconcileFeatures()
-        end
+    local modulesReady = RunPhase("Phase5 Modules", function()
+        RequireMethod(addon, "BootstrapInitModules")(addon)
+        RequireMethod(addon, "ReconcileFeatures")(addon)
     end)
+    if not modulesReady then
+        return
+    end
 
     RunPhase("Phase6 Apply Settings", function()
         local L = addon.L
@@ -66,11 +91,16 @@ function addon:OnInitialize()
         else
             print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_LOADED"])
         end
-        if addon.ApplyAllSettings then
-            addon:ApplyAllSettings()
+        RequireMethod(addon, "ApplyAllSettings")(addon)
+
+        if addon.MemoryDiagnostics and addon.MemoryDiagnostics.StartSession then
+            addon.MemoryDiagnostics:StartSession()
         end
+
         if addon.BootstrapFinalizeContainer then
             addon:BootstrapFinalizeContainer()
+        else
+            WarnOptionalMissing("BootstrapFinalizeContainer")
         end
     end)
 end

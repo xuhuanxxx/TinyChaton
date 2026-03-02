@@ -77,8 +77,9 @@ CategoryBuilders.chat = function(rootCat)
     CreateSettingFromRegistry(subCat, "fontSize")
     CreateSettingFromRegistry(subCat, "fontOutline")
 
-    addon.AddSectionHeader(subCat, L["SECTION_CHAT_CHANNEL"])
-    CreateSettingFromRegistry(subCat, "channelNameFormat")
+    addon.AddSectionHeader(subCat, L["SECTION_DISPLAY_CHAT_CHANNEL"])
+    CreateSettingFromRegistry(subCat, "chatDisplayChannelShowNumber")
+    CreateSettingFromRegistry(subCat, "chatDisplayChannelNameStyle")
 
     addon.AddSectionHeader(subCat, L["SECTION_CHAT_CONTENT"])
     CreateSettingFromRegistry(subCat, "emoteRender")

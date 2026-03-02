@@ -34,15 +34,12 @@ function addon:InitDisplayCleanMessage()
         addon.chatFrameTransformers["clean_message"] = nil
     end
 
-    if addon.RegisterFeature then
-        addon:RegisterFeature("CleanMessage", {
-            requires = { "MUTATE_CHAT_DISPLAY" },
-            onEnable = EnableCleanMessage,
-            onDisable = DisableCleanMessage,
-        })
-    else
-        EnableCleanMessage()
-    end
+    addon:RegisterFeature("CleanMessage", {
+        requires = { "MUTATE_CHAT_DISPLAY" },
+        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
+        onEnable = EnableCleanMessage,
+        onDisable = DisableCleanMessage,
+    })
 end
 
 addon:RegisterModule("DisplayCleanMessage", addon.InitDisplayCleanMessage)

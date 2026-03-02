@@ -15,6 +15,7 @@ local type = type
 local tostring = tostring
 
 local channelListCache = { data = nil, timestamp = 0, TTL = 1 }
+local lastActionBlockedAt = 0
 
 local function GetCachedChannelList()
     local now = GetTime()
@@ -105,18 +106,25 @@ function addon.Shelf:GetOrder()
     end
 
     for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.SYSTEM or {}) do
-        table.insert(items, { key = stream.key, order = stream.order or 0, type = "channel" })
+        table.insert(items, { key = stream.key, priority = stream.priority, type = "channel", group = "SYSTEM" })
     end
 
     for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.DYNAMIC or {}) do
-        table.insert(items, { key = stream.key, order = stream.order or 0, type = "channel" })
+        table.insert(items, { key = stream.key, priority = stream.priority, type = "channel", group = "DYNAMIC" })
     end
 
     for _, reg in ipairs(addon.KIT_REGISTRY) do
-        table.insert(items, { key = reg.key, order = reg.order or 0, type = "kit" })
+        table.insert(items, { key = reg.key, priority = reg.priority, type = "kit", group = "KIT" })
     end
 
-    table.sort(items, function(a, b) return a.order < b.order end)
+    table.sort(items, function(a, b)
+        if addon.Utils and addon.Utils.CompareByPriority then
+            return addon.Utils.CompareByPriority(a, b, {
+                groupRankByValue = { SYSTEM = 1, DYNAMIC = 2, KIT = 3 },
+            })
+        end
+        return (a.priority or 0) < (b.priority or 0)
+    end)
 
     local order = {}
     for _, item in ipairs(items) do
@@ -178,15 +186,16 @@ function addon.Shelf:GetItemConfig(key)
 
         local path = addon:GetStreamPath(key)
         local isDynamic = path and path:match("%.DYNAMIC$") ~= nil
+        local identity = addon.ResolveStreamIdentity and addon:ResolveStreamIdentity(stream, {}) or nil
 
         return {
             type = "channel",
             key = stream.key,
-            label = stream.label,
-            shortKey = stream.shortKey,
+            label = (identity and identity.label) or stream.key,
+            shortOne = identity and identity.shortOne or nil,
+            shortTwo = identity and identity.shortTwo or nil,
             colors = stream.colors,
             isDynamic = isDynamic,
-            mappingKey = stream.mappingKey,
             leftClick = leftAction,
             rightClick = rightAction,
         }
@@ -221,11 +230,13 @@ function addon.Shelf:GetItemConfig(key)
                 rightAction = MapKitAction(defBindings.right, key)
             end
 
+            local identity = addon.ResolveDisplayIdentity and addon:ResolveDisplayIdentity(reg, "kit", {}) or nil
             return {
                 type = "kit",
                 key = reg.key,
-                label = reg.label,
-                short = reg.short,
+                label = (identity and identity.label) or reg.key,
+                shortOne = identity and identity.shortOne or nil,
+                shortTwo = identity and identity.shortTwo or nil,
                 colors = reg.colors,
                 leftClick = leftAction,
                 rightClick = rightAction,
@@ -249,32 +260,6 @@ function addon.Shelf:GetVisibleItems()
     -- System channels are not availability-checked and remain pin-driven.
     local dynamicMode = addon.db.profile.buttons.dynamicMode or "hide"
 
-    local channelList = GetCachedChannelList()
-    local joinedChannels = {}
-    for i = 1, #channelList, 3 do
-        local id, name = channelList[i], channelList[i + 1]
-        if id and name then
-            joinedChannels[#joinedChannels + 1] = { id = id, name = name }
-        end
-    end
-
-    local function findChannelByBaseName(baseName)
-        if not baseName or baseName == "" then return nil end
-        for _, entry in ipairs(joinedChannels) do
-            local name = entry.name
-            if name == baseName then
-                return entry.id
-            end
-            if name:sub(1, #baseName) == baseName then
-                local nextChar = name:sub(#baseName + 1, #baseName + 1)
-                if nextChar == "" or nextChar == " " or nextChar == "-" then
-                    return entry.id
-                end
-            end
-        end
-        return nil
-    end
-
     -- Iterate by buttonOrder
     for _, key in ipairs(buttonOrder) do
         local item = self:GetItemConfig(key)
@@ -297,36 +282,44 @@ function addon.Shelf:GetVisibleItems()
                 local isJoined = true
                 local channelNumber = nil
                 local shouldShow = true
+                local channelState = "ready"
 
                 -- Availability detection is intentionally scoped to dynamic channels only.
                 -- System channels do not have a unified joined/available API in this layer.
                 if isChannel and item.isDynamic then
-                    local realName = item.mappingKey and L[item.mappingKey]
-                    channelNumber = realName and findChannelByBaseName(realName) or nil
-                    isJoined = channelNumber ~= nil
+                    local availability = addon.AvailabilityResolver and addon.AvailabilityResolver.Resolve
+                        and addon.AvailabilityResolver.Resolve(item.key, "channel", {}) or nil
+                    channelNumber = availability and availability.channelId or nil
+                    isJoined = availability and availability.available == true or false
+                    channelState = (availability and availability.state) or "unjoined"
 
                     if not isJoined and dynamicMode == "hide" then
                         shouldShow = false
                     end
+                elseif isChannel then
+                    channelState = "ready"
                 end
 
                 if shouldShow then
                     local btnKey = channelNumber and tostring(channelNumber) or item.key
-                    local displayText = isChannel and addon:GetChannelLabel(item, channelNumber, "SHORT") or (item.short or item.label or key)
-
-                    local isMuted = false
-                    if item.isDynamic and isJoined and addon.VisibilityPolicy and addon.VisibilityPolicy.IsDynamicChannelMuted then
-                        isMuted = addon.VisibilityPolicy:IsDynamicChannelMuted(item.key)
-                    end
-
-                    local channelState = "joined"
-                    if isChannel and item.isDynamic then
-                        if not isJoined then
-                            channelState = "unjoined"
-                        elseif isMuted then
-                            channelState = "muted"
+                    local displayText
+                    if isChannel then
+                        local displayStream = addon:GetStreamByKey(item.key)
+                        displayText = addon:FormatDisplayText(displayStream or item, "channel", "shelf", { channelId = channelNumber })
+                    else
+                        local kitSpec = item
+                        if item.key then
+                            for _, reg in ipairs(addon.KIT_REGISTRY or {}) do
+                                if reg.key == item.key then
+                                    kitSpec = reg
+                                    break
+                                end
+                            end
                         end
+                        displayText = addon:FormatDisplayText(kitSpec, "kit", "shelf", {})
                     end
+
+                    local isMuted = (channelState == "muted")
 
                     table.insert(visibleItems, {
                         key = btnKey,
@@ -376,7 +369,24 @@ end
 function addon.Shelf:ExecuteAction(actionKey, ...)
     if not actionKey then return end
     local action = addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey]
-    if action and action.execute then
-        action.execute(...)
+    if not action or not action.execute then
+        return
     end
+
+    if addon.CanExecuteAction then
+        local allowed, reason = addon:CanExecuteAction(actionKey)
+        if not allowed then
+            if reason == "bypass_blocked" then
+                local now = GetTime()
+                if (now - lastActionBlockedAt) >= 1 then
+                    lastActionBlockedAt = now
+                    local prefix = (L and L["LABEL_ADDON_NAME"]) or "TinyChaton"
+                    print("|cff00ff00" .. prefix .. "|r: Action unavailable in instance bypass mode.")
+                end
+            end
+            return
+        end
+    end
+
+    action.execute(...)
 end

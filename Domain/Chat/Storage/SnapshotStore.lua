@@ -221,12 +221,6 @@ function addon:NormalizeSnapshotLimits()
     return storage, replay
 end
 
--- Backward aliases kept temporarily for intra-repo references.
-addon.GetSnapshotSettings = addon.GetSnapshotLimitsSettings
-addon.GetSnapshotEffectiveMaxTotal = addon.GetEffectiveSnapshotStorageLimit
-addon.SetSnapshotOverrideEnabled = addon.SetSnapshotStorageOverrideEnabled
-addon.SetSnapshotOverrideValue = addon.SetSnapshotStorageOverrideValue
-
 function addon:SetSnapshotLineCount(value)
     local db = EnsureCharSnapshotDB()
     local n = tonumber(value) or 0
@@ -265,7 +259,25 @@ local function OnSnapshotEvent(self, event, ...)
     local perChannel = addon:GetSnapshotStorage()
 
     local args = chatData.args
-    local channelKey = addon:GetChannelKey(event, addon.Utils.UnpackArgs(args))
+    local okChannelKey, channelKey = pcall(addon.GetChannelKey, addon, event, addon.Utils.UnpackArgs(args))
+    if not okChannelKey then
+        if addon.WarnOnce then
+            addon:WarnOnce(
+                "snapshot_store:channel_key:" .. tostring(event),
+                "SnapshotLogger failed to resolve channel key for %s: %s",
+                tostring(event),
+                tostring(channelKey)
+            )
+        elseif addon.Warn then
+            addon:Warn(
+                "SnapshotLogger failed to resolve channel key for %s: %s",
+                tostring(event),
+                tostring(channelKey)
+            )
+        end
+        addon.ChatData:Release(chatData)
+        return
+    end
 
     -- Check specific channel enabled
     local sc = contentSettings.snapshotChannels
@@ -286,7 +298,20 @@ local function OnSnapshotEvent(self, event, ...)
     end
 
     -- Capture data
-    local chatType = addon.EVENT_TO_CHANNEL_KEY[event] or "CHANNEL"
+    local chatType = addon.GetChatTypeByEvent and addon:GetChatTypeByEvent(event) or nil
+    if type(chatType) ~= "string" or chatType == "" then
+        if addon.WarnOnce then
+            addon:WarnOnce(
+                "snapshot_store:chat_type:" .. tostring(event),
+                "SnapshotLogger unmapped event chatType: %s",
+                tostring(event)
+            )
+        elseif addon.Warn then
+            addon:Warn("SnapshotLogger unmapped event chatType: %s", tostring(event))
+        end
+        addon.ChatData:Release(chatData)
+        return
+    end
     local channelId, channelBaseName
     if event == "CHAT_MSG_CHANNEL" then
         channelId = chatData.channelNumber
@@ -344,29 +369,23 @@ loggerFrame:SetScript("OnEvent", OnSnapshotEvent)
 
 local function RegisterSnapshotEvents()
     if loggerEnabled then return end
-    for event in pairs(addon.EVENT_TO_CHANNEL_KEY) do
+    for _, event in ipairs(addon.CHAT_EVENTS or {}) do
         loggerFrame:RegisterEvent(event)
     end
-    loggerFrame:RegisterEvent("CHAT_MSG_CHANNEL")
     loggerEnabled = true
 end
 
 local function UnregisterSnapshotEvents()
     if not loggerEnabled then return end
-    for event in pairs(addon.EVENT_TO_CHANNEL_KEY) do
+    for _, event in ipairs(addon.CHAT_EVENTS or {}) do
         loggerFrame:UnregisterEvent(event)
     end
-    loggerFrame:UnregisterEvent("CHAT_MSG_CHANNEL")
     loggerEnabled = false
 end
 
-if addon.RegisterFeature then
-    addon:RegisterFeature("SnapshotLogger", {
-        requires = { "READ_CHAT_EVENT", "PERSIST_CHAT_DATA" },
-        onEnable = RegisterSnapshotEvents,
-        onDisable = UnregisterSnapshotEvents,
-    })
-else
-    -- Fallback for older load orders
-    RegisterSnapshotEvents()
-end
+addon:RegisterFeature("SnapshotLogger", {
+    requires = { "READ_CHAT_EVENT", "PERSIST_CHAT_DATA" },
+    plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
+    onEnable = RegisterSnapshotEvents,
+    onDisable = UnregisterSnapshotEvents,
+})

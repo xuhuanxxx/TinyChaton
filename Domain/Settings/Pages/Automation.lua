@@ -78,7 +78,14 @@ CategoryBuilders.automation = function(rootCat)
     -- 2. Auto Join Channels
     addon.AddSectionHeader(cat, L["SECTION_AUTO_JOIN_CHANNELS"])
 
-    addon.AddNativeButton(cat, L["LABEL_AUTO_JOIN_CHANNELS"], L["ACTION_EDIT"], function()
+    addon.AddProxyMultiDropdown(cat, P .. "autoJoinDynamic",
+        L["LABEL_AUTO_JOIN_PRESET_CHANNELS"] or L["LABEL_AUTO_JOIN_CHANNELS"],
+        function() return addon:GetAutoJoinDynamicChannelsItems() end,
+        function() return addon:GetAutoJoinDynamicChannelSelection() end,
+        function(sel) addon:SetAutoJoinDynamicChannelSelection(sel) end,
+        L["TOOLTIP_AUTO_JOIN_PRESET_CHANNELS"] or L["TOOLTIP_AUTO_JOIN_CHANNELS"])
+
+    addon.AddNativeButton(cat, L["LABEL_AUTO_JOIN_CUSTOM_CHANNELS"] or L["LABEL_CUSTOM"], L["ACTION_EDIT"], function()
         local db = GetAutoDB()
         if not db then return end
         if type(db.customAutoJoinChannels) ~= "table" then
@@ -109,13 +116,13 @@ CategoryBuilders.automation = function(rootCat)
         end
 
         addon.UI.ShowEditor(
-            L["SECTION_AUTO_JOIN_CHANNELS"],
+            L["LABEL_AUTO_JOIN_CUSTOM_CHANNELS"] or L["SECTION_AUTO_JOIN_CHANNELS"],
             db,
             "customAutoJoinChannels",
-            L["TOOLTIP_AUTO_JOIN_CHANNELS"],
+            L["TOOLTIP_AUTO_JOIN_CUSTOM_CHANNELS"] or L["TOOLTIP_AUTO_JOIN_CHANNELS"],
             SanitizeChannels
         )
-    end, L["TOOLTIP_AUTO_JOIN_CHANNELS"])
+    end, L["TOOLTIP_AUTO_JOIN_CUSTOM_CHANNELS"] or L["TOOLTIP_AUTO_JOIN_CHANNELS"])
 
     addon.AddSectionHeader(cat, L["SECTION_COUNTDOWN_TIMER"])
 
@@ -124,6 +131,7 @@ CategoryBuilders.automation = function(rootCat)
 
 
     local function ResetAutomationData()
+        autoDB.autoJoinDynamicChannels = addon.Utils.DeepCopy(autoDef.autoJoinDynamicChannels or {})
         autoDB.customAutoJoinChannels = addon.Utils.DeepCopy(autoDef.customAutoJoinChannels)
         autoDB.welcome = addon.Utils.DeepCopy(autoDef.welcome)
         autoDB.welcomeGuild = addon.Utils.DeepCopy(autoDef.welcomeGuild)
@@ -142,6 +150,10 @@ CategoryBuilders.automation = function(rootCat)
         end
         if countdownSecondarySetting and countdownSecondarySetting.SetValue then
             countdownSecondarySetting:SetValue(autoDB.countdown and autoDB.countdown.secondarySeconds)
+        end
+        local autoJoinSetting = Settings.GetSetting(P .. "autoJoinDynamic")
+        if autoJoinSetting and autoJoinSetting.SetValue and autoJoinSetting.GetValue then
+            autoJoinSetting:SetValue(autoJoinSetting:GetValue())
         end
         RefreshTabSettings()
 

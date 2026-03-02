@@ -212,29 +212,79 @@ function addon:IterateAllStreams()
     end
 end
 
-local function BuildChatEvents()
-    local events = {}
-    local eventSet = {}
+local EXPLICIT_CHAT_EVENT_TYPES = {
+    CHAT_MSG_SYSTEM = "SYSTEM",
+}
 
+local function AddEventMapping(map, eventName, chatType, sourceName)
+    if type(eventName) ~= "string" or eventName == "" then
+        error("Invalid chat event name from " .. tostring(sourceName))
+    end
+    if type(chatType) ~= "string" or chatType == "" then
+        error("Invalid chatType for event " .. tostring(eventName) .. " from " .. tostring(sourceName))
+    end
+    local existing = map[eventName]
+    if existing and existing ~= chatType then
+        error(string.format("Chat event mapping conflict: %s => %s vs %s (source=%s)", eventName, existing, chatType, tostring(sourceName)))
+    end
+    map[eventName] = chatType
+end
+
+local function BuildEventToChatTypeFromRegistry()
+    local map = {}
     if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
-        for categoryKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
+        for subKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
             for _, stream in ipairs(category) do
                 if stream.events then
-                    for _, event in ipairs(stream.events) do
-                        if not eventSet[event] then
-                            eventSet[event] = true
-                            table.insert(events, event)
-                        end
+                    for _, eventName in ipairs(stream.events) do
+                        AddEventMapping(map, eventName, stream.chatType, stream.key or subKey)
                     end
                 end
             end
         end
     end
 
+    for eventName, chatType in pairs(EXPLICIT_CHAT_EVENT_TYPES) do
+        AddEventMapping(map, eventName, chatType, "EXPLICIT_CHAT_EVENT_TYPES")
+    end
+    return map
+end
+
+local function BuildChatEvents()
+    local events = {}
+    for eventName in pairs(addon.EVENT_TO_CHAT_TYPE or {}) do
+        events[#events + 1] = eventName
+    end
+    table.sort(events)
     return events
 end
 
+addon.EVENT_TO_CHAT_TYPE = BuildEventToChatTypeFromRegistry()
 addon.CHAT_EVENTS = BuildChatEvents()
+
+function addon:GetChatTypeByEvent(eventName)
+    if type(eventName) ~= "string" or eventName == "" then
+        return nil
+    end
+    return addon.EVENT_TO_CHAT_TYPE and addon.EVENT_TO_CHAT_TYPE[eventName] or nil
+end
+
+function addon:ValidateChatEventDerivation()
+    local map = addon.EVENT_TO_CHAT_TYPE
+    if type(map) ~= "table" then
+        error("EVENT_TO_CHAT_TYPE is not initialized")
+    end
+    for _, eventName in ipairs(addon.CHAT_EVENTS or {}) do
+        local chatType = map[eventName]
+        if type(chatType) ~= "string" or chatType == "" then
+            error("Missing chatType mapping for event: " .. tostring(eventName))
+        end
+    end
+    if map["CHAT_MSG_CHANNEL"] ~= "CHANNEL" then
+        error("CHAT_MSG_CHANNEL must map to CHANNEL")
+    end
+    return true
+end
 
 local function BuildChannelPins()
     local pins = {}
@@ -273,7 +323,7 @@ local function BuildSnapshotChannels()
 end
 
 addon.DEFAULTS = {
-    __version = 11,
+    __version = 14,
     enabled = true,
     profile = {
         buttons = {
@@ -292,6 +342,11 @@ addon.DEFAULTS = {
             anchor = addon.CONSTANTS.SHELF_DEFAULT_ANCHOR,
             direction = "horizontal",
             savedPoint = false,
+            visual = {
+                display = {
+                    nameStyle = "SHORT_ONE",
+                },
+            },
         },
         chat = {
             font = {
@@ -301,7 +356,12 @@ addon.DEFAULTS = {
                 outline = "NONE",
             },
             visual = {
-                channelNameFormat = "SHORT",
+                display = {
+                    channel = {
+                        showNumber = true,
+                        nameStyle = "SHORT_ONE",
+                    },
+                },
             },
             content = {
                 emoteRender = true,
@@ -344,6 +404,7 @@ addon.DEFAULTS = {
             welcomeGuild  = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("guild") },
             welcomeParty  = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("party") },
             welcomeRaid   = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("raid") },
+            autoJoinDynamicChannels = {},
             customAutoJoinChannels = {},
             countdown = { primarySeconds = 10, secondarySeconds = 5 },
         },

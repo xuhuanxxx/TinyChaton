@@ -1,8 +1,11 @@
 local addonName, addon = ...
 
 function addon:BootstrapInitContainer()
-    if not addon.InitServiceContainer then
-        return true
+    if type(addon.InitServiceContainer) ~= "function" then
+        if addon.Error then
+            addon:Error("Service container init method is missing")
+        end
+        return false
     end
 
     local ok, err = pcall(addon.InitServiceContainer, addon)

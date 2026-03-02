@@ -106,18 +106,25 @@ function addon.Shelf:GetOrder()
     end
 
     for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.SYSTEM or {}) do
-        table.insert(items, { key = stream.key, order = stream.order or 0, type = "channel" })
+        table.insert(items, { key = stream.key, priority = stream.priority, type = "channel", group = "SYSTEM" })
     end
 
     for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.DYNAMIC or {}) do
-        table.insert(items, { key = stream.key, order = stream.order or 0, type = "channel" })
+        table.insert(items, { key = stream.key, priority = stream.priority, type = "channel", group = "DYNAMIC" })
     end
 
     for _, reg in ipairs(addon.KIT_REGISTRY) do
-        table.insert(items, { key = reg.key, order = reg.order or 0, type = "kit" })
+        table.insert(items, { key = reg.key, priority = reg.priority, type = "kit", group = "KIT" })
     end
 
-    table.sort(items, function(a, b) return a.order < b.order end)
+    table.sort(items, function(a, b)
+        if addon.Utils and addon.Utils.CompareByPriority then
+            return addon.Utils.CompareByPriority(a, b, {
+                groupRankByValue = { SYSTEM = 1, DYNAMIC = 2, KIT = 3 },
+            })
+        end
+        return (a.priority or 0) < (b.priority or 0)
+    end)
 
     local order = {}
     for _, item in ipairs(items) do

@@ -45,6 +45,7 @@ Domain\Shelf\ShelfThemePresetRegistry.lua
 Config.lua
 
 Infrastructure\Runtime\Utils.lua
+Infrastructure\Runtime\RegistryValidation.lua
 Infrastructure\Runtime\ObjectPool.lua
 Infrastructure\Runtime\ChatRuntimeMode.lua
 Infrastructure\Runtime\RuntimeCoordinator.lua

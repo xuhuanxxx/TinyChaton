@@ -32,6 +32,9 @@ function addon:OnInitialize()
         if addon.ValidateChatEventDerivation then
             addon:ValidateChatEventDerivation()
         end
+        if addon.ValidateRegistryDefinitions then
+            addon:ValidateRegistryDefinitions()
+        end
         if addon.InitChatRuntimeMode then addon:InitChatRuntimeMode() end
         if addon.InitEnvironmentGate then addon:InitEnvironmentGate() end
         if addon.InitRuntimeCoordinator then addon:InitRuntimeCoordinator() end

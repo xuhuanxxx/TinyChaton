@@ -332,7 +332,12 @@ CategoryBuilders.buttons = function(rootCat)
                         end
                     end
                 end
-                table.sort(page.items, function(a, b) return (a.order or 0) < (b.order or 0) end)
+                table.sort(page.items, function(a, b)
+                    if addon.Utils and addon.Utils.CompareByPriority then
+                        return addon.Utils.CompareByPriority(a, b)
+                    end
+                    return (a.priority or 0) < (b.priority or 0)
+                end)
 
                 page.rows = {}
                 page.Refresh = function()

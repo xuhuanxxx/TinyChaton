@@ -59,7 +59,10 @@ function Dispatcher:RegisterMiddleware(stage, priority, name, fn)
 
     -- Sort by priority after insertion
     table.sort(self.middlewares[stage], function(a, b)
-        return a.priority < b.priority
+        if a.priority ~= b.priority then
+            return a.priority < b.priority
+        end
+        return tostring(a.name) < tostring(b.name)
     end)
 end
 

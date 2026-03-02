@@ -165,6 +165,67 @@ function addon.Utils.ValidatePath(path)
     return true
 end
 
+--- Resolve normalized priority value for sortable records.
+--- @param item table
+--- @return number
+function addon.Utils.GetPriority(item)
+    if type(item) ~= "table" then
+        return math.huge
+    end
+    if type(item.priority) ~= "number" then
+        return math.huge
+    end
+    return item.priority
+end
+
+--- Stable comparator for priority-ordered lists.
+--- Ordering:
+--- 1) priority ascending
+--- 2) domain rank (optional)
+--- 3) group rank (optional)
+--- 4) key/name lexical ascending
+--- @param a table
+--- @param b table
+--- @param opts table|nil
+--- @return boolean
+function addon.Utils.CompareByPriority(a, b, opts)
+    opts = type(opts) == "table" and opts or {}
+
+    local aPriority = addon.Utils.GetPriority(a)
+    local bPriority = addon.Utils.GetPriority(b)
+    if aPriority ~= bPriority then
+        return aPriority < bPriority
+    end
+
+    local domainRanks = opts.domainRankByValue
+    if type(domainRanks) == "table" then
+        local domainField = opts.domainField or "domain"
+        local aDomain = domainRanks[a and a[domainField] or nil] or math.huge
+        local bDomain = domainRanks[b and b[domainField] or nil] or math.huge
+        if aDomain ~= bDomain then
+            return aDomain < bDomain
+        end
+    end
+
+    local groupRanks = opts.groupRankByValue
+    if type(groupRanks) == "table" then
+        local groupField = opts.groupField or "group"
+        local aGroup = groupRanks[a and a[groupField] or nil] or math.huge
+        local bGroup = groupRanks[b and b[groupField] or nil] or math.huge
+        if aGroup ~= bGroup then
+            return aGroup < bGroup
+        end
+    end
+
+    local keyField = opts.keyField or "key"
+    local aKey = tostring(a and a[keyField] or "")
+    local bKey = tostring(b and b[keyField] or "")
+    if aKey ~= bKey then
+        return aKey < bKey
+    end
+    return false
+end
+
 --- Pack varargs preserving nil holes (Lua 5.1 compatible)
 --- @return table packed { n = argc, ... }
 function addon.Utils.PackArgs(...)

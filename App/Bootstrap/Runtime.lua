@@ -3,6 +3,13 @@ local addonName, addon = ...
 addon.chatFrameTransformers = addon.chatFrameTransformers or {}
 addon.callbacks = addon.callbacks or {}
 addon.moduleRegistry = addon.moduleRegistry or {}
+addon.PRIORITY_BASE = addon.PRIORITY_BASE or {
+    SYSTEM = 100,
+    DYNAMIC = 200,
+    KIT = 300,
+    COLORSET = 400,
+}
+addon.PRIORITY_STEP = addon.PRIORITY_STEP or 10
 
 -- No addon global bridge: keep runtime references explicit and local-only.
 if _G.TinyChaton == addon then

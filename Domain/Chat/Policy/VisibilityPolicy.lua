@@ -7,8 +7,8 @@ local function IsDynamicStreamKey(streamKey)
     if type(streamKey) ~= "string" or streamKey == "" then
         return false
     end
-    local kind = addon.GetStreamKind and addon:GetStreamKind(streamKey)
-    local group = addon.GetStreamGroup and addon:GetStreamGroup(streamKey)
+    local kind = addon:GetStreamKind(streamKey)
+    local group = addon:GetStreamGroup(streamKey)
     return kind == "channel" and group == "dynamic"
 end
 

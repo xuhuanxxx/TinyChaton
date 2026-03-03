@@ -383,9 +383,6 @@ function addon:InitConfig()
     self:SynchronizeConfig(false)
     EnsureDisplayConfig(addon.db and addon.db.profile)
     EnsureChannelCandidatesRegistry()
-    if self.BuildStreamIndex then
-        self:BuildStreamIndex()
-    end
 end
 
 function addon:RefreshAllSettings()

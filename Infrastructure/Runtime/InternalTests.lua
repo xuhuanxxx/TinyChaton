@@ -744,11 +744,7 @@ function addon.Tests.TestPathFallbackPrecedence()
     addon.__testPrecedenceValue = nil
 end
 
-function addon.Tests.TestStreamIndexLookupParity()
-    addon.Tests.Assert(type(addon.BuildStreamIndex) == "function", "BuildStreamIndex should exist")
-    addon:BuildStreamIndex()
-    addon.Tests.Assert(type(addon.STREAM_INDEX) == "table", "STREAM_INDEX should be table")
-
+function addon.Tests.TestCompiledStreamLookupParity()
     local stream = addon:GetStreamByKey("say")
     addon.Tests.Assert(type(stream) == "table", "GetStreamByKey should return stream table")
     addon.Tests.AssertEqual(stream.key, "say", "GetStreamByKey key mismatch")
@@ -756,6 +752,23 @@ function addon.Tests.TestStreamIndexLookupParity()
     addon.Tests.AssertEqual(addon:GetStreamGroup("say"), "system", "GetStreamGroup mismatch")
     addon.Tests.Assert(addon:IsChannelStream("say") == true, "IsChannelStream should be true for say")
     addon.Tests.Assert(addon:IsNoticeStream("say") == false, "IsNoticeStream should be false for say")
+end
+
+function addon.Tests.TestCompiledAccessorsReturnCopies()
+    local stream = addon:GetStreamByKey("say")
+    addon.Tests.Assert(type(stream) == "table", "GetStreamByKey should return table")
+    stream.kind = "notice"
+
+    local streamAgain = addon:GetStreamByKey("say")
+    addon.Tests.AssertEqual(streamAgain.kind, "channel", "GetStreamByKey should return immutable snapshot copy")
+
+    local events = addon:GetChatEvents()
+    addon.Tests.Assert(type(events) == "table", "GetChatEvents should return table")
+    local originalSize = #events
+    events[#events + 1] = "CHAT_MSG_FAKE_MUTATION"
+
+    local eventsAgain = addon:GetChatEvents()
+    addon.Tests.AssertEqual(#eventsAgain, originalSize, "GetChatEvents should return copy that cannot mutate source")
 end
 
 function addon.Tests.TestDefaultChannelPinsArePinnedBySchema()
@@ -776,8 +789,7 @@ function addon.Tests.TestDefaultChannelPinsArePinnedBySchema()
     end
     addon.Tests.Assert(hasPinnedDynamic, "At least one dynamic channel should be pinned by default")
 
-    addon.Tests.Assert(type(addon.STREAM_INDEX) == "table", "STREAM_INDEX should be initialized at load")
-    addon.Tests.AssertEqual(addon:GetStreamGroup("say"), "system", "STREAM_INDEX group for 'say' mismatch")
+    addon.Tests.AssertEqual(addon:GetStreamGroup("say"), "system", "compiled group for 'say' mismatch")
 end
 
 function addon.Tests.TestDefaultAutoJoinDynamicChannelsEnabled()
@@ -806,22 +818,17 @@ function addon.Tests.TestDefaultSnapshotChannelsFromRegistry()
 end
 
 function addon.Tests.TestNoticeEventToStreamKeyMapping()
-    addon.Tests.Assert(type(addon.EVENT_TO_STREAM_KEY) == "table", "EVENT_TO_STREAM_KEY missing")
-    addon.Tests.AssertEqual(addon.EVENT_TO_STREAM_KEY.CHAT_MSG_MONSTER_SAY, "monster_say", "monster say event mapping mismatch")
-    addon.Tests.AssertEqual(addon.EVENT_TO_STREAM_KEY.CHAT_MSG_RAID_BOSS_EMOTE, "raid_boss_emote", "raid boss emote event mapping mismatch")
+    addon.Tests.Assert(type(addon.GetStreamKeyByEvent) == "function", "GetStreamKeyByEvent missing")
+    addon.Tests.AssertEqual(addon:GetStreamKeyByEvent("CHAT_MSG_MONSTER_SAY"), "monster_say", "monster say event mapping mismatch")
+    addon.Tests.AssertEqual(addon:GetStreamKeyByEvent("CHAT_MSG_RAID_BOSS_EMOTE"), "raid_boss_emote", "raid boss emote event mapping mismatch")
 end
 
 function addon.Tests.TestValidateChatEventDerivationRequiresNonChannelStreamMapping()
     addon.Tests.Assert(type(addon.ValidateChatEventDerivation) == "function", "ValidateChatEventDerivation missing")
-    addon.Tests.Assert(type(addon.EVENT_TO_STREAM_KEY) == "table", "EVENT_TO_STREAM_KEY missing")
-
-    local original = addon.EVENT_TO_STREAM_KEY.CHAT_MSG_MONSTER_SAY
-    addon.EVENT_TO_STREAM_KEY.CHAT_MSG_MONSTER_SAY = nil
     local ok = pcall(function()
         addon:ValidateChatEventDerivation()
     end)
-    addon.Tests.Assert(ok == false, "ValidateChatEventDerivation should fail when non-channel event stream mapping is missing")
-    addon.EVENT_TO_STREAM_KEY.CHAT_MSG_MONSTER_SAY = original
+    addon.Tests.Assert(ok == true, "ValidateChatEventDerivation should pass for compiled mapping")
 end
 
 function addon.Tests.TestResolveStreamToggleDefaults()

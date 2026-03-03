@@ -50,7 +50,7 @@ function addon.Shelf:GetOrder()
         return {}
     end
 
-    for _, stream in addon:IterateAllStreams() do
+    for _, stream in addon:IterateCompiledStreams() do
         if addon:IsChannelStream(stream.key) then
             local group = addon:GetStreamGroup(stream.key)
             if group == "system" or group == "dynamic" then

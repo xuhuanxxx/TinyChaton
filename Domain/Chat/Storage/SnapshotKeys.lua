@@ -12,13 +12,12 @@ function addon:GetCharacterKey()
 end
 
 function addon:ResolveStreamKey(event, ...)
-    local streamMap = addon.EVENT_TO_STREAM_KEY
-    local mappedStreamKey = streamMap and streamMap[event]
+    local mappedStreamKey = addon:GetStreamKeyByEvent(event)
     if type(mappedStreamKey) == "string" and mappedStreamKey ~= "" and event ~= "CHAT_MSG_CHANNEL" then
         return mappedStreamKey
     end
 
-    local chatType = addon.GetChatTypeByEvent and addon:GetChatTypeByEvent(event) or nil
+    local chatType = addon:GetChatTypeByEvent(event)
 
     if event == "CHAT_MSG_CHANNEL" then
         local channelNumber = select(8, ...)

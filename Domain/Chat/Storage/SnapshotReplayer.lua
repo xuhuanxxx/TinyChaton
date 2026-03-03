@@ -420,8 +420,8 @@ local function IsStreamInFilter(stream, filter)
     if type(stream) ~= "table" then
         return false
     end
-    local group = addon.GetStreamGroup and addon:GetStreamGroup(stream.key) or stream.group
-    local kind = addon.GetStreamKind and addon:GetStreamKind(stream.key) or stream.kind
+    local group = addon:GetStreamGroup(stream.key)
+    local kind = addon:GetStreamKind(stream.key)
     if filter == "private" then
         return group == "private"
     end
@@ -439,7 +439,7 @@ end
 
 local function BuildChannelItems(filter, includePredicate)
     local items = {}
-    for _, stream in addon:IterateAllStreams() do
+    for _, stream in addon:IterateCompiledStreams() do
         if includePredicate(stream) and IsStreamInFilter(stream, filter) then
             local identity = addon.ResolveStreamIdentity and addon:ResolveStreamIdentity(stream, {}) or nil
             table.insert(items, {
@@ -515,7 +515,7 @@ end
 function addon:GetCopyChannelsItems(filter)
     -- filter: "private" | "system" | "dynamic" | "notice" | nil(全部)
     return BuildChannelItems(filter, function(stream)
-        return addon.GetStreamCapabilities and addon:GetStreamCapabilities(stream.key) ~= nil
+        return addon:GetStreamCapabilities(stream.key) ~= nil
     end)
 end
 

@@ -91,227 +91,112 @@ end
 
 -- Stream Helper Functions
 
-local function BuildStreamIndexFromRegistry(registry)
-    if type(registry) ~= "table" then
-        error("STREAM_REGISTRY is not initialized")
+local STREAM_COMPILED = addon.StreamRegistryCompiler:Compile(addon.STREAM_REGISTRY)
+
+local function CloneValue(value, seen)
+    if type(value) ~= "table" then
+        return value
     end
-
-    local byKey = {}
-    local pathByKey = {}
-    local rawByKey = {}
-    local kindByKey = {}
-    local groupByKey = {}
-    local capabilitiesByKey = {}
-    local streamKeysByGroup = {}
-    local outboundStreamKeys = {}
-    local dynamicStreamKeys = {}
-
-    local function ToLowerToken(value)
-        if type(value) ~= "string" or value == "" then
-            return nil
-        end
-        return string.lower(value)
+    seen = seen or {}
+    if seen[value] then
+        return seen[value]
     end
-
-    local function NormalizeKind(categoryKey, stream)
-        local declared = ToLowerToken(stream.kind)
-        if declared == "channel" or declared == "notice" then
-            return declared
-        end
-        error(string.format("Stream '%s' is missing valid kind", tostring(stream and stream.key)))
+    local out = {}
+    seen[value] = out
+    for key, nested in pairs(value) do
+        out[CloneValue(key, seen)] = CloneValue(nested, seen)
     end
-
-    local function NormalizeGroup(subKey, stream)
-        local declared = ToLowerToken(stream.group)
-        if declared == "system" or declared == "dynamic" or declared == "private" or declared == "alert" or declared == "log" then
-            return declared
-        end
-        error(string.format("Stream '%s' is missing valid group", tostring(stream and stream.key)))
-    end
-
-    local function NormalizeCapabilities(stream, kind, group)
-        local caps = stream.capabilities
-        if type(caps) ~= "table" then
-            error(string.format("Stream '%s' capabilities must be table", tostring(stream and stream.key)))
-        end
-        local out = {
-            inbound = caps.inbound == true,
-            outbound = caps.outbound == true,
-            snapshotDefault = caps.snapshotDefault == true,
-            copyDefault = caps.copyDefault == true,
-            supportsMute = caps.supportsMute == true,
-            supportsAutoJoin = caps.supportsAutoJoin == true,
-            pinnable = caps.pinnable == true,
-        }
-        for key, value in pairs(out) do
-            if type(caps[key]) ~= "boolean" then
-                error(string.format("Stream '%s' capabilities.%s must be boolean", tostring(stream and stream.key), tostring(key)))
-            end
-        end
-        return out
-    end
-
-    local function NormalizeStream(stream, categoryKey, subKey)
-        local normalized = {}
-        for key, value in pairs(stream or {}) do
-            normalized[key] = value
-        end
-        local kind = NormalizeKind(categoryKey, normalized)
-        local group = NormalizeGroup(subKey, normalized)
-        local capabilities = NormalizeCapabilities(normalized, kind, group)
-
-        normalized.kind = kind
-        normalized.group = group
-        normalized.capabilities = capabilities
-
-        -- Legacy mirrors are retained as normalized aliases.
-        normalized.defaultPinned = capabilities.pinnable == true
-        normalized.defaultSnapshotted = capabilities.snapshotDefault == true
-        normalized.defaultCopyable = capabilities.copyDefault == true
-        normalized.isInboundOnly = capabilities.outbound ~= true
-        if kind == "channel" and group == "dynamic" then
-            normalized.defaultAutoJoin = capabilities.supportsAutoJoin == true
-        else
-            normalized.defaultAutoJoin = nil
-        end
-
-        return normalized
-    end
-
-    for categoryKey, category in pairs(registry) do
-        if type(category) == "table" then
-            for subKey, subCategory in pairs(category) do
-                if type(subCategory) == "table" then
-                    for _, rawStream in ipairs(subCategory) do
-                        if type(rawStream) == "table" and type(rawStream.key) == "string" and rawStream.key ~= "" then
-                            if byKey[rawStream.key] then
-                                error(string.format("Duplicate stream key in STREAM_REGISTRY: %s", rawStream.key))
-                            end
-                            local stream = NormalizeStream(rawStream, categoryKey, subKey)
-                            byKey[stream.key] = stream
-                            rawByKey[stream.key] = rawStream
-                            pathByKey[stream.key] = tostring(categoryKey) .. "." .. tostring(subKey)
-                            kindByKey[stream.key] = stream.kind
-                            groupByKey[stream.key] = stream.group
-                            capabilitiesByKey[stream.key] = stream.capabilities
-
-                            if not streamKeysByGroup[stream.group] then
-                                streamKeysByGroup[stream.group] = {}
-                            end
-                            table.insert(streamKeysByGroup[stream.group], stream.key)
-                            if stream.capabilities and stream.capabilities.outbound == true then
-                                table.insert(outboundStreamKeys, stream.key)
-                            end
-                            if stream.kind == "channel" and stream.group == "dynamic" then
-                                table.insert(dynamicStreamKeys, stream.key)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    return {
-        byKey = byKey,
-        rawByKey = rawByKey,
-        pathByKey = pathByKey,
-        kindByKey = kindByKey,
-        groupByKey = groupByKey,
-        capabilitiesByKey = capabilitiesByKey,
-        streamKeysByGroup = streamKeysByGroup,
-        outboundStreamKeys = outboundStreamKeys,
-        dynamicStreamKeys = dynamicStreamKeys,
-    }
+    return out
 end
 
-function addon:BuildStreamIndex()
-    self.STREAM_INDEX = BuildStreamIndexFromRegistry(self.STREAM_REGISTRY)
-    self.STREAM_BY_KEY = self.STREAM_INDEX.byKey
-    self.STREAM_KEYS_BY_GROUP = self.STREAM_INDEX.streamKeysByGroup
-    self.OUTBOUND_STREAM_KEYS = self.STREAM_INDEX.outboundStreamKeys
-    self.DYNAMIC_STREAM_KEYS = self.STREAM_INDEX.dynamicStreamKeys
-end
-
-function addon:GetStreamPath(key)
-    local index = self.STREAM_INDEX
-    if not index or type(index.pathByKey) ~= "table" then
-        return nil
+local function GetCompiledRegistry()
+    local compiled = STREAM_COMPILED
+    if type(compiled) ~= "table" then
+        error("STREAM_COMPILED is not initialized")
     end
-    return index.pathByKey[key]
+    return compiled
 end
 
 function addon:GetStreamByKey(key)
-    local index = self.STREAM_INDEX
-    if not index or type(index.byKey) ~= "table" then
+    local compiled = GetCompiledRegistry()
+    local byKey = compiled.byKey
+    if type(byKey) ~= "table" then
         return nil
     end
-    return index.byKey[key]
+    return CloneValue(byKey[key])
 end
 
 function addon:IsChannelStream(key)
-    local index = self.STREAM_INDEX
-    if not index or type(index.kindByKey) ~= "table" then
-        return false
-    end
-    return index.kindByKey[key] == "channel"
+    local kind = self:GetStreamKind(key)
+    return kind == "channel"
 end
 
 function addon:IsNoticeStream(key)
-    local index = self.STREAM_INDEX
-    if not index or type(index.kindByKey) ~= "table" then
-        return false
-    end
-    return index.kindByKey[key] == "notice"
+    local kind = self:GetStreamKind(key)
+    return kind == "notice"
 end
 
 function addon:GetStreamKind(key)
-    local index = self.STREAM_INDEX
-    if not index or type(index.kindByKey) ~= "table" then
+    local compiled = GetCompiledRegistry()
+    local map = compiled.kindByKey
+    if type(map) ~= "table" then
         return nil
     end
-    return index.kindByKey[key]
+    return map[key]
 end
 
 function addon:GetStreamGroup(key)
-    local index = self.STREAM_INDEX
-    if not index or type(index.groupByKey) ~= "table" then
+    local compiled = GetCompiledRegistry()
+    local map = compiled.groupByKey
+    if type(map) ~= "table" then
         return nil
     end
-    return index.groupByKey[key]
+    return map[key]
 end
 
 function addon:GetStreamCapabilities(key)
-    local index = self.STREAM_INDEX
-    if not index or type(index.capabilitiesByKey) ~= "table" then
+    local compiled = GetCompiledRegistry()
+    local map = compiled.capabilitiesByKey
+    if type(map) ~= "table" then
         return nil
     end
-    return index.capabilitiesByKey[key]
+    return CloneValue(map[key])
 end
 
 function addon:GetStreamKeysByGroup(group)
-    local index = self.STREAM_INDEX
-    if not index or type(index.streamKeysByGroup) ~= "table" then
+    local compiled = GetCompiledRegistry()
+    local byGroup = compiled.streamKeysByGroup
+    if type(byGroup) ~= "table" then
         return {}
     end
     local key = type(group) == "string" and string.lower(group) or nil
-    return index.streamKeysByGroup[key] or {}
+    return CloneValue(byGroup[key] or {})
 end
 
 function addon:GetOutboundStreamKeys()
-    local index = self.STREAM_INDEX
-    if not index or type(index.outboundStreamKeys) ~= "table" then
-        return {}
-    end
-    return index.outboundStreamKeys
+    local compiled = GetCompiledRegistry()
+    return CloneValue(compiled.outboundStreamKeys or {})
 end
 
 function addon:GetDynamicStreamKeys()
-    local index = self.STREAM_INDEX
-    if not index or type(index.dynamicStreamKeys) ~= "table" then
-        return {}
+    local compiled = GetCompiledRegistry()
+    return CloneValue(compiled.dynamicStreamKeys or {})
+end
+
+function addon:IterateCompiledStreams()
+    local compiled = GetCompiledRegistry()
+    local orderedKeys = compiled.orderedStreamKeys or {}
+    local byKey = compiled.byKey or {}
+    local index = 0
+
+    return function()
+        index = index + 1
+        local streamKey = orderedKeys[index]
+        if not streamKey then
+            return nil
+        end
+        return index, CloneValue(byKey[streamKey])
     end
-    return index.dynamicStreamKeys
 end
 
 function addon:GetStreamProperty(stream, propertyName, fallbackValue)
@@ -325,147 +210,52 @@ function addon:ResolveStreamToggle(streamKey, configMap, capabilityField, fallba
     if type(configMap) == "table" and configMap[streamKey] ~= nil then
         return configMap[streamKey] == true
     end
-    local caps = self.GetStreamCapabilities and self:GetStreamCapabilities(streamKey) or nil
+    local caps = self:GetStreamCapabilities(streamKey)
     if type(caps) == "table" and type(capabilityField) == "string" and caps[capabilityField] ~= nil then
         return caps[capabilityField] == true
     end
     return fallbackValue == true
 end
 
---- Iterate over all streams (CHANNEL and NOTICE categories)
-function addon:IterateAllStreams()
-    if not self.STREAM_REGISTRY then return function() end end
-
-    local categories = { "CHANNEL", "NOTICE" }
-    local catIdx = 1
-    local subIdx = 1
-    local itemIdx = 0
-
-    local function getSubGroups(catKey)
-        local cat = self.STREAM_REGISTRY[catKey]
-        if not cat then return {} end
-        local keys = {}
-        for k in pairs(cat) do table.insert(keys, k) end
-        table.sort(keys)
-        return keys
-    end
-
-    local subGroups = getSubGroups(categories[catIdx])
-
-    return function()
-        while catIdx <= #categories do
-            local catKey = categories[catIdx]
-            local subKey = subGroups[subIdx]
-
-            if subKey then
-                local items = self.STREAM_REGISTRY[catKey][subKey]
-                itemIdx = itemIdx + 1
-
-                if items[itemIdx] then
-                    return itemIdx, items[itemIdx], catKey, subKey
-                else
-                    subIdx = subIdx + 1
-                    itemIdx = 0
-                end
-            else
-                catIdx = catIdx + 1
-                if catIdx <= #categories then
-                    subGroups = getSubGroups(categories[catIdx])
-                    subIdx = 1
-                    itemIdx = 0
-                end
-            end
-        end
-    end
-end
-
-local EXPLICIT_CHAT_EVENT_TYPES = {}
-
-local function AddEventMapping(map, eventName, chatType, sourceName)
-    if type(eventName) ~= "string" or eventName == "" then
-        error("Invalid chat event name from " .. tostring(sourceName))
-    end
-    if type(chatType) ~= "string" or chatType == "" then
-        error("Invalid chatType for event " .. tostring(eventName) .. " from " .. tostring(sourceName))
-    end
-    local existing = map[eventName]
-    if existing and existing ~= chatType then
-        error(string.format("Chat event mapping conflict: %s => %s vs %s (source=%s)", eventName, existing, chatType, tostring(sourceName)))
-    end
-    map[eventName] = chatType
-end
-
-local function BuildEventToChatTypeFromRegistry()
-    local map = {}
-    for _, stream, catKey, subKey in addon:IterateAllStreams() do
-        if type(stream.events) == "table" then
-            for _, eventName in ipairs(stream.events) do
-                AddEventMapping(map, eventName, stream.chatType, stream.key or (catKey .. "." .. subKey))
-            end
-        end
-    end
-
-    for eventName, chatType in pairs(EXPLICIT_CHAT_EVENT_TYPES) do
-        AddEventMapping(map, eventName, chatType, "EXPLICIT_CHAT_EVENT_TYPES")
-    end
-    return map
-end
-
-local function BuildEventToStreamKeyFromRegistry()
-    local map = {}
-    for _, stream, catKey, subKey in addon:IterateAllStreams() do
-        if type(stream.events) == "table" and type(stream.key) == "string" and stream.key ~= "" then
-            for _, eventName in ipairs(stream.events) do
-                if eventName ~= "CHAT_MSG_CHANNEL" then
-                    local existing = map[eventName]
-                    if existing and existing ~= stream.key then
-                        error(string.format(
-                            "Chat event stream mapping conflict: %s => %s vs %s (source=%s.%s)",
-                            tostring(eventName),
-                            tostring(existing),
-                            tostring(stream.key),
-                            tostring(catKey),
-                            tostring(subKey)
-                        ))
-                    end
-                    map[eventName] = stream.key
-                end
-            end
-        end
-    end
-    return map
-end
-
-local function BuildChatEvents()
-    local events = {}
-    for eventName in pairs(addon.EVENT_TO_CHAT_TYPE or {}) do
-        events[#events + 1] = eventName
-    end
-    table.sort(events)
-    return events
-end
-
-addon.EVENT_TO_CHAT_TYPE = BuildEventToChatTypeFromRegistry()
-addon.EVENT_TO_STREAM_KEY = BuildEventToStreamKeyFromRegistry()
-addon.CHAT_EVENTS = BuildChatEvents()
-
 function addon:GetChatTypeByEvent(eventName)
     if type(eventName) ~= "string" or eventName == "" then
         return nil
     end
-    return addon.EVENT_TO_CHAT_TYPE and addon.EVENT_TO_CHAT_TYPE[eventName] or nil
+    local compiled = GetCompiledRegistry()
+    local map = compiled.eventToChatType
+    return type(map) == "table" and map[eventName] or nil
+end
+
+function addon:GetChatEvents()
+    local compiled = GetCompiledRegistry()
+    return CloneValue(compiled.chatEvents or {})
+end
+
+function addon:GetStreamKeyByEvent(eventName)
+    if type(eventName) ~= "string" or eventName == "" then
+        return nil
+    end
+    local compiled = GetCompiledRegistry()
+    local map = compiled.eventToStreamKey
+    return type(map) == "table" and map[eventName] or nil
 end
 
 function addon:ValidateChatEventDerivation()
-    local map = addon.EVENT_TO_CHAT_TYPE
-    local streamMap = addon.EVENT_TO_STREAM_KEY
+    local compiled = GetCompiledRegistry()
+    local map = compiled.eventToChatType
+    local streamMap = compiled.eventToStreamKey
+    local chatEvents = compiled.chatEvents
     if type(map) ~= "table" then
-        error("EVENT_TO_CHAT_TYPE is not initialized")
+        error("Compiled eventToChatType is not initialized")
     end
     if type(streamMap) ~= "table" then
-        error("EVENT_TO_STREAM_KEY is not initialized")
+        error("Compiled eventToStreamKey is not initialized")
     end
-    for _, eventName in ipairs(addon.CHAT_EVENTS or {}) do
+    if type(chatEvents) ~= "table" then
+        error("Compiled chatEvents is not initialized")
+    end
+
+    for _, eventName in ipairs(chatEvents) do
         local chatType = map[eventName]
         if type(chatType) ~= "string" or chatType == "" then
             error("Missing chatType mapping for event: " .. tostring(eventName))
@@ -481,18 +271,12 @@ function addon:ValidateChatEventDerivation()
     if map["CHAT_MSG_CHANNEL"] ~= "CHANNEL" then
         error("CHAT_MSG_CHANNEL must map to CHANNEL")
     end
+
     return true
 end
-
-addon.STREAM_INDEX = BuildStreamIndexFromRegistry(addon.STREAM_REGISTRY)
-addon.STREAM_BY_KEY = addon.STREAM_INDEX.byKey
-addon.STREAM_KEYS_BY_GROUP = addon.STREAM_INDEX.streamKeysByGroup
-addon.OUTBOUND_STREAM_KEYS = addon.STREAM_INDEX.outboundStreamKeys
-addon.DYNAMIC_STREAM_KEYS = addon.STREAM_INDEX.dynamicStreamKeys
-
 local function BuildChannelPins()
     local pins = {}
-    for _, stream in addon:IterateAllStreams() do
+    for _, stream in addon:IterateCompiledStreams() do
         if stream.kind == "channel" then
             pins[stream.key] = addon:ResolveStreamToggle(stream.key, nil, "pinnable", false)
         end
@@ -511,7 +295,7 @@ end
 
 local function BuildSnapshotChannels()
     local channels = {}
-    for _, stream in addon:IterateAllStreams() do
+    for _, stream in addon:IterateCompiledStreams() do
         channels[stream.key] = addon:ResolveStreamToggle(stream.key, nil, "snapshotDefault", false)
     end
 
@@ -520,7 +304,7 @@ end
 
 local function BuildCopyChannels()
     local channels = {}
-    for _, stream in addon:IterateAllStreams() do
+    for _, stream in addon:IterateCompiledStreams() do
         channels[stream.key] = addon:ResolveStreamToggle(stream.key, nil, "copyDefault", false)
     end
     return channels
@@ -528,7 +312,7 @@ end
 
 local function BuildAutoJoinDynamicChannels()
     local selections = {}
-    for _, stream in addon:IterateAllStreams() do
+    for _, stream in addon:IterateCompiledStreams() do
         if stream.kind == "channel" and stream.group == "dynamic" then
             selections[stream.key] = addon:ResolveStreamToggle(stream.key, nil, "supportsAutoJoin", false)
         end

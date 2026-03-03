@@ -274,7 +274,7 @@ function Dispatcher:RegisterFilters()
 
     local events = {}
     local seen = {}
-    for _, eventName in ipairs(addon.CHAT_EVENTS or {}) do
+    for _, eventName in ipairs(addon:GetChatEvents()) do
         if not seen[eventName] then
             events[#events + 1] = eventName
             seen[eventName] = true

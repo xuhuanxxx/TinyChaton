@@ -58,9 +58,9 @@ local function BuildDynamicStreamDescriptors()
         return out, candidatesIdToStreamKey
     end
 
-    for _, stream in addon:IterateAllStreams() do
-        local kind = addon.GetStreamKind and addon:GetStreamKind(stream.key) or stream.kind
-        local group = addon.GetStreamGroup and addon:GetStreamGroup(stream.key) or stream.group
+    for _, stream in addon:IterateCompiledStreams() do
+        local kind = addon:GetStreamKind(stream.key)
+        local group = addon:GetStreamGroup(stream.key)
         if kind == "channel" and group == "dynamic" then
             local identity = stream and stream.identity or nil
             local candidatesId = identity and identity.candidatesId
@@ -317,7 +317,7 @@ function addon.ChannelSemanticResolver.ResolveDynamic(context)
         }
     end
 
-    local stream = addon.GetStreamByKey and addon:GetStreamByKey(streamKey) or nil
+    local stream = addon:GetStreamByKey(streamKey)
     local identity = stream and stream.identity or nil
     local candidatesId = identity and identity.candidatesId
     if type(candidatesId) ~= "string" or candidatesId == "" then

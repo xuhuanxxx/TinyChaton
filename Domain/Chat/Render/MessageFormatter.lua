@@ -182,7 +182,7 @@ function addon.MessageFormatter.BuildRealtimeLineFromChatData(chatData)
 
     local args = chatData.args
     local event = chatData.event
-    local chatType = addon.GetChatTypeByEvent and addon:GetChatTypeByEvent(event) or nil
+    local chatType = addon:GetChatTypeByEvent(event)
     if type(chatType) ~= "string" then
         return nil, "unmapped_event:" .. tostring(event)
     end

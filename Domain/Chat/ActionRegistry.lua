@@ -200,7 +200,7 @@ function addon:BuildActionRegistryFromDefinitions()
         if type(requirement) ~= "table" then
             return false
         end
-        local caps = addon.GetStreamCapabilities and addon:GetStreamCapabilities(streamKey) or nil
+        local caps = addon:GetStreamCapabilities(streamKey)
         if type(caps) ~= "table" then
             return false
         end
@@ -236,7 +236,7 @@ function addon:BuildActionRegistryFromDefinitions()
     -- 遍历所有 ACTION 定义
     for _, actionDef in ipairs(self.ACTION_DEFINITIONS or {}) do
         if actionDef.appliesTo and actionDef.appliesTo.streamCapabilities then
-            for _, stream in self:IterateAllStreams() do
+            for _, stream in self:IterateCompiledStreams() do
                 if self:IsChannelStream(stream.key) and StreamMatchesCapabilities(stream.key, actionDef.appliesTo.streamCapabilities) then
                     RegisterActionForStream(actionDef, stream)
                 end

@@ -3,7 +3,7 @@ local addonName, addon = ...
 addon.AvailabilityResolver = addon.AvailabilityResolver or {}
 
 local function ResolveChannelAvailability(streamKey, context)
-    local stream = addon.GetStreamByKey and addon:GetStreamByKey(streamKey) or nil
+    local stream = addon:GetStreamByKey(streamKey)
     if type(stream) ~= "table" then
         return {
             available = false,
@@ -12,8 +12,8 @@ local function ResolveChannelAvailability(streamKey, context)
         }
     end
 
-    local kind = addon.GetStreamKind and addon:GetStreamKind(streamKey) or stream.kind
-    local group = addon.GetStreamGroup and addon:GetStreamGroup(streamKey) or stream.group
+    local kind = addon:GetStreamKind(streamKey)
+    local group = addon:GetStreamGroup(streamKey)
     if kind ~= "channel" then
         return {
             available = true,

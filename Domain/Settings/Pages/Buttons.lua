@@ -27,7 +27,7 @@ CategoryBuilders.buttons = function(rootCat)
     local registryMap = {}
     local kitRegistryMap = {}
 
-    for _, stream in addon:IterateAllStreams() do
+    for _, stream in addon:IterateCompiledStreams() do
         registryMap[stream.key] = stream
     end
     for _, spec in ipairs(addon.KIT_REGISTRY or {}) do
@@ -371,7 +371,7 @@ CategoryBuilders.buttons = function(rootCat)
                         if filterFunc(reg) then table.insert(page.items, reg) end
                     end
                 else
-                    for _, stream in addon:IterateAllStreams() do
+                    for _, stream in addon:IterateCompiledStreams() do
                         if filterFunc(stream) then
                             table.insert(page.items, stream)
                         end

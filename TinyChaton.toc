@@ -36,6 +36,7 @@ App\Bootstrap\Lifecycle.lua
 Domain\Chat\Types.lua
 Domain\Chat\Contracts.lua
 Domain\Chat\StreamRegistry.lua
+Infrastructure\Runtime\StreamRegistryCompiler.lua
 Infrastructure\Runtime\ChannelSemanticResolver.lua
 Domain\Chat\ChannelCandidatesRegistry.lua
 Domain\Chat\ActionRegistry.lua
@@ -60,6 +61,7 @@ Infrastructure\WowApi\EnvironmentGate.lua
 Infrastructure\Runtime\FeatureRegistry.lua
 Infrastructure\WowApi\CVarSync.lua
 Infrastructure\Runtime\InternalTests.lua
+Infrastructure\Runtime\StreamRegistryCompilerTests.lua
 Infrastructure\Runtime\PerformanceBudget.lua
 Infrastructure\Runtime\Profiler.lua
 Infrastructure\Runtime\MemoryDiagnostics.lua

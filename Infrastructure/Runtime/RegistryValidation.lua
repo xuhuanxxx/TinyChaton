@@ -15,38 +15,6 @@ local function AssertPriority(item, label)
     end
 end
 
-local function AssertBooleanField(value, label)
-    if type(value) ~= "boolean" then
-        error(string.format("%s must be boolean", tostring(label)))
-    end
-end
-
-local function ValidateStreamCapabilities(capabilities, sourceLabel)
-    if type(capabilities) ~= "table" then
-        error(sourceLabel .. ".capabilities must be table")
-    end
-    AssertBooleanField(capabilities.inbound, sourceLabel .. ".capabilities.inbound")
-    AssertBooleanField(capabilities.outbound, sourceLabel .. ".capabilities.outbound")
-    AssertBooleanField(capabilities.snapshotDefault, sourceLabel .. ".capabilities.snapshotDefault")
-    AssertBooleanField(capabilities.copyDefault, sourceLabel .. ".capabilities.copyDefault")
-    AssertBooleanField(capabilities.supportsMute, sourceLabel .. ".capabilities.supportsMute")
-    AssertBooleanField(capabilities.supportsAutoJoin, sourceLabel .. ".capabilities.supportsAutoJoin")
-    AssertBooleanField(capabilities.pinnable, sourceLabel .. ".capabilities.pinnable")
-end
-
-local ALLOWED_KIND = {
-    channel = true,
-    notice = true,
-}
-
-local ALLOWED_GROUP = {
-    system = true,
-    dynamic = true,
-    private = true,
-    alert = true,
-    log = true,
-}
-
 local function ResolveChannelBindingActionKey(streamKey, bindingKey, actionSet)
     if actionSet[bindingKey] then
         return bindingKey
@@ -147,68 +115,19 @@ function addon:ValidateRegistryDefinitions()
         seen[priority] = itemKey
     end
 
-    for categoryKey, category in pairs(addon.STREAM_REGISTRY or {}) do
-        if type(category) == "table" then
-            for subKey, streams in pairs(category) do
-                if type(streams) == "table" then
-                    for index, stream in ipairs(streams) do
-                        local sourceLabel = string.format("STREAM_REGISTRY.%s.%s[%d]", tostring(categoryKey), tostring(subKey), index)
-                        if type(stream) ~= "table" then
-                            error(sourceLabel .. " must be table")
-                        end
-                        RegisterKey(stream.key, sourceLabel)
-                        AssertPriority(stream, sourceLabel)
-                        RegisterPriority(categoryKey .. "." .. subKey, stream.priority, stream.key)
+    if addon.IterateCompiledStreams then
+        for _, stream in addon:IterateCompiledStreams() do
+            local sourceLabel = string.format("STREAM_COMPILED.%s", tostring(stream and stream.key))
+            if type(stream) ~= "table" then
+                error(sourceLabel .. " must be table")
+            end
+            RegisterKey(stream.key, sourceLabel)
+            AssertPriority(stream, sourceLabel)
+            RegisterPriority(string.format("STREAM.%s.%s", tostring(stream.kind), tostring(stream.group)), stream.priority, stream.key)
 
-                        if categoryKey == "CHANNEL" or categoryKey == "NOTICE" then
-                            AssertNonEmptyString(stream.chatType, sourceLabel .. ".chatType")
-                            AssertBooleanField(stream.defaultPinned, sourceLabel .. ".defaultPinned")
-                            AssertBooleanField(stream.defaultSnapshotted, sourceLabel .. ".defaultSnapshotted")
-                            AssertBooleanField(stream.defaultCopyable, sourceLabel .. ".defaultCopyable")
-                            AssertBooleanField(stream.isInboundOnly, sourceLabel .. ".isInboundOnly")
-                            AssertNonEmptyString(stream.kind, sourceLabel .. ".kind")
-                            AssertNonEmptyString(stream.group, sourceLabel .. ".group")
-                            if not ALLOWED_KIND[stream.kind] then
-                                error(sourceLabel .. ".kind must be 'channel'|'notice'")
-                            end
-                            if not ALLOWED_GROUP[stream.group] then
-                                error(sourceLabel .. ".group is invalid")
-                            end
-                            ValidateStreamCapabilities(stream.capabilities, sourceLabel)
-
-                            if stream.events ~= nil and type(stream.events) ~= "table" then
-                                error(sourceLabel .. ".events must be table")
-                            end
-                            if type(stream.events) == "table" then
-                                for eventIndex, eventName in ipairs(stream.events) do
-                                    AssertNonEmptyString(eventName, sourceLabel .. ".events[" .. tostring(eventIndex) .. "]")
-                                end
-                            end
-
-                            if stream.kind == "notice" then
-                                if stream.capabilities.outbound ~= false then
-                                    error(sourceLabel .. ".capabilities.outbound must be false for notice kind")
-                                end
-                                if stream.capabilities.supportsAutoJoin ~= false then
-                                    error(sourceLabel .. ".capabilities.supportsAutoJoin must be false for notice kind")
-                                end
-                            end
-
-                            if stream.capabilities.outbound == true then
-                                ValidateBindings(stream.defaultBindings, ResolveChannelBindingActionKey, stream.key, sourceLabel, actionSet)
-                            elseif stream.defaultBindings ~= nil then
-                                error(sourceLabel .. ".defaultBindings is not allowed when capabilities.outbound=false")
-                            end
-
-                            if stream.defaultAutoJoin ~= nil then
-                                AssertBooleanField(stream.defaultAutoJoin, sourceLabel .. ".defaultAutoJoin")
-                                if stream.capabilities.supportsAutoJoin ~= true then
-                                    error(sourceLabel .. ".defaultAutoJoin is only allowed when capabilities.supportsAutoJoin=true")
-                                end
-                            end
-                        end
-                    end
-                end
+            local caps = addon:GetStreamCapabilities(stream.key)
+            if type(caps) == "table" and caps.outbound == true then
+                ValidateBindings(stream.defaultBindings, ResolveChannelBindingActionKey, stream.key, sourceLabel, actionSet)
             end
         end
     end

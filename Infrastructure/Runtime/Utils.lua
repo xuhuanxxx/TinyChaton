@@ -283,7 +283,7 @@ end
 function addon.Utils.FindChannelByKey(key)
     if type(key) ~= "string" or key == "" then return nil end
 
-    local direct = addon.GetStreamByKey and addon:GetStreamByKey(key) or nil
+    local direct = addon:GetStreamByKey(key)
     if direct then
         return direct
     end
@@ -335,7 +335,7 @@ function addon.Utils.FindDynamicStreamByChannelId(channelId)
     if type(streamKey) ~= "string" or streamKey == "" or streamKey == "unknown_dynamic" then
         return nil
     end
-    return addon.GetStreamByKey and addon:GetStreamByKey(streamKey) or nil
+    return addon:GetStreamByKey(streamKey)
 end
 
 -- Find registry item by various inputs
@@ -363,13 +363,13 @@ local function FindRegistryItem(input)
                 channelName = channelName,
             })
             if streamKey and streamKey ~= "unknown_dynamic" then
-                return addon.GetStreamByKey and addon:GetStreamByKey(streamKey) or nil
+                return addon:GetStreamByKey(streamKey)
             end
         end
         return nil
     end
 
-    for _, stream in addon:IterateAllStreams() do
+    for _, stream in addon:IterateCompiledStreams() do
         if chatType and chatType ~= "CHANNEL" and stream.chatType == chatType then
             return stream
         end

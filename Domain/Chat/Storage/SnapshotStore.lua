@@ -303,7 +303,7 @@ local function OnSnapshotEvent(self, event, ...)
     end
 
     -- Capture data
-    local chatType = addon.GetChatTypeByEvent and addon:GetChatTypeByEvent(event) or nil
+    local chatType = addon:GetChatTypeByEvent(event)
     if type(chatType) ~= "string" or chatType == "" then
         if addon.WarnOnce then
             addon:WarnOnce(
@@ -374,7 +374,7 @@ loggerFrame:SetScript("OnEvent", OnSnapshotEvent)
 
 local function RegisterSnapshotEvents()
     if loggerEnabled then return end
-    for _, event in ipairs(addon.CHAT_EVENTS or {}) do
+    for _, event in ipairs(addon:GetChatEvents()) do
         loggerFrame:RegisterEvent(event)
     end
     loggerEnabled = true
@@ -382,7 +382,7 @@ end
 
 local function UnregisterSnapshotEvents()
     if not loggerEnabled then return end
-    for _, event in ipairs(addon.CHAT_EVENTS or {}) do
+    for _, event in ipairs(addon:GetChatEvents()) do
         loggerFrame:UnregisterEvent(event)
     end
     loggerEnabled = false

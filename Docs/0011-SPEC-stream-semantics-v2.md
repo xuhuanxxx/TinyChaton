@@ -57,21 +57,21 @@ status: ACTIVE
 
 ## 编译期索引
 
-启动构建并公开：
+由 `StreamRegistryCompiler:Compile(registry)` 一次性构建并冻结：
 
-- `STREAM_BY_KEY`
-- `EVENT_TO_STREAM_KEY`（非 `CHAT_MSG_CHANNEL`）
-- `EVENT_TO_CHAT_TYPE`
-- `STREAM_KEYS_BY_GROUP`
-- `OUTBOUND_STREAM_KEYS`
-- `DYNAMIC_STREAM_KEYS`
+- `byKey`
+- `eventToStreamKey`（非 `CHAT_MSG_CHANNEL`）
+- `eventToChatType`
+- `streamKeysByGroup`
+- `outboundStreamKeys`
+- `dynamicStreamKeys`
 
 ## 统一解析入口
 
 `ResolveStreamKey(event, ...)` 规则：
 
 1. `event == CHAT_MSG_CHANNEL`：走动态频道语义解析。
-2. 其他 event：走 `EVENT_TO_STREAM_KEY[event]`。
+2. 其他 event：走 `GetStreamKeyByEvent(event)`。
 3. 非 `CHAT_MSG_CHANNEL` 且未映射：直接报错，不静默降级。
 
 ## Toggle 判定
@@ -96,9 +96,10 @@ status: ACTIVE
 ## BREAKING CHANGES
 
 1. 消费端禁止依赖 `subKey == "DYNAMIC"`、`GetStreamPath():match(...)` 做策略判断。
-2. 非 `CHAT_MSG_CHANNEL` 未映射事件会直接报错。
-3. `notice` 与 `system` 分组语义分离，`notice` 不并入 channel system。
-4. 旧字段仅作为镜像别名保留，不再是策略主来源。
+2. `BuildStreamIndex / IterateAllStreams / GetStreamPath` 已移除。
+3. 非 `CHAT_MSG_CHANNEL` 未映射事件会直接报错。
+4. `notice` 与 `system` 分组语义分离，`notice` 不并入 channel system。
+5. 旧字段仅作为镜像别名保留，不再是策略主来源。
 
 ## 验收要点
 

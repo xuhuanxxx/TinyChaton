@@ -42,10 +42,10 @@ end
 
 function addon:GetAutoJoinDynamicChannelsItems()
     local items = {}
-    for _, stream in self:IterateAllStreams() do
-        local kind = addon.GetStreamKind and addon:GetStreamKind(stream.key) or stream.kind
-        local group = addon.GetStreamGroup and addon:GetStreamGroup(stream.key) or stream.group
-        local caps = addon.GetStreamCapabilities and addon:GetStreamCapabilities(stream.key) or stream.capabilities
+    for _, stream in self:IterateCompiledStreams() do
+        local kind = addon:GetStreamKind(stream.key)
+        local group = addon:GetStreamGroup(stream.key)
+        local caps = addon:GetStreamCapabilities(stream.key)
         if kind == "channel" and group == "dynamic" and type(caps) == "table" and caps.supportsAutoJoin == true then
             local identity = addon.ResolveStreamIdentity and addon:ResolveStreamIdentity(stream, {}) or nil
             local label = (identity and identity.label) or ResolveDynamicChannelName(stream) or stream.key
@@ -111,10 +111,10 @@ function addon:ApplyAutoJoinSettings()
     local joinedByName = {}
 
     local selectedDynamic = self:GetAutoJoinDynamicChannelSelection()
-    for _, stream in self:IterateAllStreams() do
-        local kind = addon.GetStreamKind and addon:GetStreamKind(stream.key) or stream.kind
-        local group = addon.GetStreamGroup and addon:GetStreamGroup(stream.key) or stream.group
-        local caps = addon.GetStreamCapabilities and addon:GetStreamCapabilities(stream.key) or stream.capabilities
+    for _, stream in self:IterateCompiledStreams() do
+        local kind = addon:GetStreamKind(stream.key)
+        local group = addon:GetStreamGroup(stream.key)
+        local caps = addon:GetStreamCapabilities(stream.key)
         if kind == "channel" and group == "dynamic" and type(caps) == "table" and caps.supportsAutoJoin == true and selectedDynamic[stream.key] then
             TryJoinChannel(ResolveDynamicChannelName(stream), joinedByName)
         end

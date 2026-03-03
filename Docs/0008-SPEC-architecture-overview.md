@@ -22,6 +22,7 @@ status: ACTIVE
 
 2. Domain Registries
 - Stream Registry V2（`kind + group + capabilities`）
+- Stream Registry Compiler（唯一编译入口，消费端只读编译产物）
 - Action Registry（capability 过滤绑定）
 - Kit / Theme / Color registries
 

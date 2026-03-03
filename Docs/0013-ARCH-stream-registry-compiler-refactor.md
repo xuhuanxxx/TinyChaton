@@ -4,7 +4,7 @@ priority: P0
 created: 2026-03-04
 updated: 2026-03-04
 relates: [#0002, #0003, #0006, #0008, #0011, #0012]
-status: DRAFT
+status: ACTIVE
 ---
 
 # Stream Registry Compiler 重构蓝图
@@ -180,4 +180,3 @@ addon.StreamRegistryCompiler:Compile(registry) -> compiled
 - 9a8b10b
 - c45af29
 ```
-

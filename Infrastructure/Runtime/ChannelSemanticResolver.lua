@@ -54,7 +54,7 @@ local function BuildDynamicStreamDescriptors()
     local out = {}
     local candidatesIdToStreamKey = {}
 
-    if not addon.IterateAllStreams then
+    if not addon.IterateCompiledStreams then
         return out, candidatesIdToStreamKey
     end
 

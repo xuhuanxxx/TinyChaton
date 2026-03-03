@@ -43,7 +43,7 @@ function addon.Shelf:GetOrder()
 
     local items = {}
 
-    local hasStreamRegistry = addon.IterateAllStreams ~= nil
+    local hasStreamRegistry = addon.IterateCompiledStreams ~= nil
     local hasKitRegistry = addon.KIT_REGISTRY
 
     if not hasStreamRegistry or not hasKitRegistry then

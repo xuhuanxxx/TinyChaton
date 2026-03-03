@@ -234,7 +234,7 @@ function addon.ChannelCandidatesRegistry:Validate(locale)
         end
     end
 
-    if addon.IterateAllStreams then
+    if addon.IterateCompiledStreams then
         for _, stream in addon:IterateCompiledStreams() do
             local kind = addon:GetStreamKind(stream.key)
             local group = addon:GetStreamGroup(stream.key)

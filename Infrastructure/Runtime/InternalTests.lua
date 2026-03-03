@@ -870,6 +870,38 @@ function addon.Tests.TestActionRegistrySendActionDeduplicated()
     addon.Tests.Assert(registry.emote_send_emote == nil, "legacy emote_send action should be removed")
 end
 
+function addon.Tests.TestShelfDefaultOrderUsesCompiledStreams()
+    addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
+    addon.Tests.Assert(type(addon.Shelf.GetOrder) == "function", "Shelf.GetOrder missing")
+    addon.Tests.Assert(addon.db and addon.db.profile and addon.db.profile.buttons, "Buttons DB missing")
+
+    local oldOrder = addon.db.profile.buttons.buttonOrder
+    addon.db.profile.buttons.buttonOrder = nil
+
+    local order = addon.Shelf:GetOrder()
+    addon.Tests.Assert(type(order) == "table", "Shelf order should be table")
+    addon.Tests.Assert(#order > 0, "Shelf order should not be empty")
+
+    local hasSay = false
+    local hasAnyKit = false
+    local kitKeys = {}
+    for _, spec in ipairs(addon.KIT_REGISTRY or {}) do
+        kitKeys[spec.key] = true
+    end
+    for _, key in ipairs(order) do
+        if key == "say" then
+            hasSay = true
+        end
+        if kitKeys[key] then
+            hasAnyKit = true
+        end
+    end
+    addon.Tests.Assert(hasSay, "Shelf order should include system channel 'say'")
+    addon.Tests.Assert(hasAnyKit, "Shelf order should include at least one kit item")
+
+    addon.db.profile.buttons.buttonOrder = oldOrder
+end
+
 function addon.Tests.TestChatPipelineStageOrder()
     addon.Tests.Assert(type(addon.ChatPipeline) == "table", "ChatPipeline missing")
 

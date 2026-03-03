@@ -309,7 +309,7 @@ function addon.Tests.TestTradeServicesSeparation()
             if arg == "Trade (Services)" then return 0, nil end
             return 0, nil
         end
-        local key = addon:GetChannelKey("CHAT_MSG_CHANNEL", nil, nil, nil, nil, nil, nil, nil, nil, "Trade (Services)")
+        local key = addon:ResolveStreamKey("CHAT_MSG_CHANNEL", nil, nil, nil, nil, nil, nil, nil, nil, "Trade (Services)")
         addon.Tests.AssertEqual(key, "services", "Message alias should map to services")
     end)
     _G.GetChannelName = oldGetChannelNameApi
@@ -384,7 +384,7 @@ function addon.Tests.TestSnapshotKeyDynamicCandidates()
     addon.Tests.Assert(type(identity.candidates) == "table" and #identity.candidates > 0, "World candidates missing")
 
     local candidate = identity.candidates[1]
-    local key = addon:GetChannelKey("CHAT_MSG_CHANNEL", nil, nil, nil, nil, nil, nil, nil, nil, candidate)
+    local key = addon:ResolveStreamKey("CHAT_MSG_CHANNEL", nil, nil, nil, nil, nil, nil, nil, nil, candidate)
     addon.Tests.AssertEqual(key, "world", "Snapshot key should resolve dynamic candidate to world")
 end
 
@@ -752,7 +752,8 @@ function addon.Tests.TestStreamIndexLookupParity()
     local stream = addon:GetStreamByKey("say")
     addon.Tests.Assert(type(stream) == "table", "GetStreamByKey should return stream table")
     addon.Tests.AssertEqual(stream.key, "say", "GetStreamByKey key mismatch")
-    addon.Tests.AssertEqual(addon:GetStreamPath("say"), "CHANNEL.SYSTEM", "GetStreamPath mismatch")
+    addon.Tests.AssertEqual(addon:GetStreamKind("say"), "channel", "GetStreamKind mismatch")
+    addon.Tests.AssertEqual(addon:GetStreamGroup("say"), "system", "GetStreamGroup mismatch")
     addon.Tests.Assert(addon:IsChannelStream("say") == true, "IsChannelStream should be true for say")
     addon.Tests.Assert(addon:IsNoticeStream("say") == false, "IsNoticeStream should be false for say")
 end
@@ -776,7 +777,7 @@ function addon.Tests.TestDefaultChannelPinsArePinnedBySchema()
     addon.Tests.Assert(hasPinnedDynamic, "At least one dynamic channel should be pinned by default")
 
     addon.Tests.Assert(type(addon.STREAM_INDEX) == "table", "STREAM_INDEX should be initialized at load")
-    addon.Tests.AssertEqual(addon:GetStreamPath("say"), "CHANNEL.SYSTEM", "STREAM_INDEX path for 'say' mismatch")
+    addon.Tests.AssertEqual(addon:GetStreamGroup("say"), "system", "STREAM_INDEX group for 'say' mismatch")
 end
 
 function addon.Tests.TestDefaultAutoJoinDynamicChannelsEnabled()
@@ -801,6 +802,42 @@ function addon.Tests.TestDefaultSnapshotChannelsFromRegistry()
     addon.Tests.AssertEqual(channels.say, true, "System channel 'say' should be snapshotted by default")
     addon.Tests.AssertEqual(channels.whisper, true, "Private channel 'whisper' should be snapshotted by default")
     addon.Tests.AssertEqual(channels.general, true, "Dynamic channel 'general' should be snapshotted by default")
+    addon.Tests.AssertEqual(channels.monster_say, false, "Notice alert 'monster_say' should be disabled by default")
+end
+
+function addon.Tests.TestNoticeEventToStreamKeyMapping()
+    addon.Tests.Assert(type(addon.EVENT_TO_STREAM_KEY) == "table", "EVENT_TO_STREAM_KEY missing")
+    addon.Tests.AssertEqual(addon.EVENT_TO_STREAM_KEY.CHAT_MSG_MONSTER_SAY, "monster_say", "monster say event mapping mismatch")
+    addon.Tests.AssertEqual(addon.EVENT_TO_STREAM_KEY.CHAT_MSG_RAID_BOSS_EMOTE, "raid_boss_emote", "raid boss emote event mapping mismatch")
+end
+
+function addon.Tests.TestResolveStreamToggleDefaults()
+    addon.Tests.Assert(type(addon.ResolveStreamToggle) == "function", "ResolveStreamToggle missing")
+    addon.Tests.AssertEqual(addon:ResolveStreamToggle("say", nil, "snapshotDefault", false), true, "say snapshot default mismatch")
+    addon.Tests.AssertEqual(addon:ResolveStreamToggle("monster_say", nil, "snapshotDefault", true), false, "monster_say snapshot default mismatch")
+    addon.Tests.AssertEqual(addon:ResolveStreamToggle("monster_say", nil, "copyDefault", true), false, "monster_say copy default mismatch")
+end
+
+function addon.Tests.TestStreamGroupPartition()
+    local systemItems = addon:GetSnapshotChannelsItems("system")
+    local noticeItems = addon:GetSnapshotChannelsItems("notice")
+
+    local systemSet = {}
+    for _, item in ipairs(systemItems or {}) do
+        systemSet[item.key] = true
+        addon.Tests.AssertEqual(addon:GetStreamKind(item.key), "channel", "system filter should only contain channel streams")
+    end
+    for _, item in ipairs(noticeItems or {}) do
+        addon.Tests.AssertEqual(addon:GetStreamKind(item.key), "notice", "notice filter should only contain notice streams")
+        addon.Tests.Assert(systemSet[item.key] ~= true, "system filter should not include notice streams")
+    end
+end
+
+function addon.Tests.TestResolveStreamKeyUnmappedEventFails()
+    local ok = pcall(function()
+        addon:ResolveStreamKey("CHAT_MSG_FAKE_EVENT_FOR_TEST")
+    end)
+    addon.Tests.Assert(ok == false, "unmapped non-channel event should fail")
 end
 
 function addon.Tests.TestChatPipelineStageOrder()
@@ -1032,21 +1069,22 @@ function addon.Tests.TestStreamRegistryDefaultSchemaValidation()
     local reg = addon.STREAM_REGISTRY
     addon.Tests.Assert(type(reg) == "table", "STREAM_REGISTRY missing")
 
-    local originalDynamicPinned = reg.CHANNEL.DYNAMIC[1].defaultPinned
-    reg.CHANNEL.DYNAMIC[1].defaultPinned = nil
-    local okPinned = pcall(function()
+    local originalKind = reg.CHANNEL.DYNAMIC[1].kind
+    reg.CHANNEL.DYNAMIC[1].kind = nil
+    local okKind = pcall(function()
         addon:ValidateRegistryDefinitions()
     end)
-    addon.Tests.Assert(okPinned == false, "Registry validation should reject missing defaultPinned")
-    reg.CHANNEL.DYNAMIC[1].defaultPinned = originalDynamicPinned
+    addon.Tests.Assert(okKind == false, "Registry validation should reject missing kind")
+    reg.CHANNEL.DYNAMIC[1].kind = originalKind
 
-    local originalSystemAutoJoin = reg.CHANNEL.SYSTEM[1].defaultAutoJoin
-    reg.CHANNEL.SYSTEM[1].defaultAutoJoin = true
-    local okAutoJoin = pcall(function()
+    local notice = reg.NOTICE.ALERT[1]
+    local originalNoticeOutbound = notice.capabilities.outbound
+    notice.capabilities.outbound = true
+    local okNoticeOutbound = pcall(function()
         addon:ValidateRegistryDefinitions()
     end)
-    addon.Tests.Assert(okAutoJoin == false, "Registry validation should reject defaultAutoJoin outside CHANNEL.DYNAMIC")
-    reg.CHANNEL.SYSTEM[1].defaultAutoJoin = originalSystemAutoJoin
+    addon.Tests.Assert(okNoticeOutbound == false, "Registry validation should reject notice outbound=true")
+    notice.capabilities.outbound = originalNoticeOutbound
 
     local okFinal = pcall(function()
         addon:ValidateRegistryDefinitions()

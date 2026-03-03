@@ -235,8 +235,10 @@ function addon.ChannelCandidatesRegistry:Validate(locale)
     end
 
     if addon.IterateAllStreams then
-        for _, stream, catKey, subKey in addon:IterateAllStreams() do
-            if catKey == "CHANNEL" and subKey == "DYNAMIC" then
+        for _, stream in addon:IterateAllStreams() do
+            local kind = addon.GetStreamKind and addon:GetStreamKind(stream.key) or stream.kind
+            local group = addon.GetStreamGroup and addon:GetStreamGroup(stream.key) or stream.group
+            if kind == "channel" and group == "dynamic" then
                 local identity = stream and stream.identity or nil
                 local id = identity and identity.candidatesId
                 if type(id) ~= "string" or id == "" then

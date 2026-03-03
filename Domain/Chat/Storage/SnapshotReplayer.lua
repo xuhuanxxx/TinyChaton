@@ -416,30 +416,31 @@ end
 -- Snapshot Configuration Helpers
 -- ============================================
 
-local function IsStreamInFilter(stream, catKey, subKey, filter)
+local function IsStreamInFilter(stream, filter)
     if type(stream) ~= "table" then
         return false
     end
-    local isPrivate = (stream.chatType == "WHISPER" or stream.chatType == "BN_WHISPER")
+    local group = addon.GetStreamGroup and addon:GetStreamGroup(stream.key) or stream.group
+    local kind = addon.GetStreamKind and addon:GetStreamKind(stream.key) or stream.kind
     if filter == "private" then
-        return isPrivate
+        return group == "private"
     end
     if filter == "system" then
-        return catKey == "CHANNEL" and subKey == "SYSTEM"
+        return kind == "channel" and group == "system"
     end
     if filter == "dynamic" then
-        return catKey == "CHANNEL" and subKey == "DYNAMIC"
+        return kind == "channel" and group == "dynamic"
     end
     if filter == "notice" then
-        return catKey == "NOTICE"
+        return kind == "notice"
     end
     return (filter == nil)
 end
 
 local function BuildChannelItems(filter, includePredicate)
     local items = {}
-    for _, stream, catKey, subKey in addon:IterateAllStreams() do
-        if includePredicate(stream) and IsStreamInFilter(stream, catKey, subKey, filter) then
+    for _, stream in addon:IterateAllStreams() do
+        if includePredicate(stream) and IsStreamInFilter(stream, filter) then
             local identity = addon.ResolveStreamIdentity and addon:ResolveStreamIdentity(stream, {}) or nil
             table.insert(items, {
                 key = stream.key,
@@ -461,15 +462,15 @@ function addon:GetSnapshotChannelsItems(filter)
 end
 
 function addon:GetSnapshotChannelSelection(filter)
-    if not self.db or not self.db.profile.chat or not self.db.profile.chat.content.snapshotChannels then
-        return {}
-    end
-    local sc = self.db.profile.chat.content.snapshotChannels
+    local sc = self.db
+        and self.db.profile
+        and self.db.profile.chat
+        and self.db.profile.chat.content
+        and self.db.profile.chat.content.snapshotChannels
     local items = self:GetSnapshotChannelsItems(filter)
     local selection = {}
     for _, item in ipairs(items) do
-        -- 默认为选中状态（除非明确设为 false）
-        selection[item.key] = (sc[item.key] ~= false)
+        selection[item.key] = addon:ResolveStreamToggle(item.key, sc, "snapshotDefault", true)
     end
     return selection
 end
@@ -514,27 +515,17 @@ end
 function addon:GetCopyChannelsItems(filter)
     -- filter: "private" | "system" | "dynamic" | "notice" | nil(全部)
     return BuildChannelItems(filter, function(stream)
-        return stream.defaultCopyable ~= nil
+        return addon.GetStreamCapabilities and addon:GetStreamCapabilities(stream.key) ~= nil
     end)
 end
 
 function addon:GetCopyChannelSelection(filter)
     local interaction = self.db and self.db.profile and self.db.profile.chat and self.db.profile.chat.interaction
-    if not interaction then
-        return {}
-    end
-    local configured = interaction.copyChannels
+    local configured = interaction and interaction.copyChannels or nil
     local items = self:GetCopyChannelsItems(filter)
     local selection = {}
     for _, item in ipairs(items) do
-        local stream = addon.GetStreamByKey and addon:GetStreamByKey(item.key) or nil
-        local defaultCopyable = (type(stream) == "table") and (stream.defaultCopyable == true) or true
-        local value = (type(configured) == "table") and configured[item.key] or nil
-        if value == nil then
-            selection[item.key] = defaultCopyable
-        else
-            selection[item.key] = value == true
-        end
+        selection[item.key] = addon:ResolveStreamToggle(item.key, configured, "copyDefault", true)
     end
     return selection
 end
@@ -570,10 +561,7 @@ function addon:GetCopyChannelsSummary()
     local items = self:GetCopyChannelsItems()
     local selected = {}
     for _, item in ipairs(items) do
-        local stream = addon.GetStreamByKey and addon:GetStreamByKey(item.key) or nil
-        local defaultCopyable = (type(stream) == "table") and (stream.defaultCopyable == true) or true
-        local value = (type(configured) == "table") and configured[item.key] or nil
-        local enabled = (value == nil) and defaultCopyable or (value == true)
+        local enabled = addon:ResolveStreamToggle(item.key, configured, "copyDefault", true)
         if enabled then
             table.insert(selected, item.label)
         end

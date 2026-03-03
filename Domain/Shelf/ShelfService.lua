@@ -43,19 +43,20 @@ function addon.Shelf:GetOrder()
 
     local items = {}
 
-    local hasStreamRegistry = addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL
+    local hasStreamRegistry = addon.IterateAllStreams ~= nil
     local hasKitRegistry = addon.KIT_REGISTRY
 
     if not hasStreamRegistry or not hasKitRegistry then
         return {}
     end
 
-    for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.SYSTEM or {}) do
-        table.insert(items, { key = stream.key, priority = stream.priority, type = "channel", group = "SYSTEM" })
-    end
-
-    for _, stream in ipairs(addon.STREAM_REGISTRY.CHANNEL.DYNAMIC or {}) do
-        table.insert(items, { key = stream.key, priority = stream.priority, type = "channel", group = "DYNAMIC" })
+    for _, stream in addon:IterateAllStreams() do
+        if addon:IsChannelStream(stream.key) then
+            local group = addon:GetStreamGroup(stream.key)
+            if group == "system" or group == "dynamic" then
+                table.insert(items, { key = stream.key, priority = stream.priority, type = "channel", group = string.upper(group) })
+            end
+        end
     end
 
     for _, reg in ipairs(addon.KIT_REGISTRY) do
@@ -129,8 +130,7 @@ function addon.Shelf:GetItemConfig(key)
             rightAction = MapAction(defBindings.right, key)
         end
 
-        local path = addon:GetStreamPath(key)
-        local isDynamic = path and path:match("%.DYNAMIC$") ~= nil
+        local isDynamic = addon:GetStreamGroup(key) == "dynamic"
         local identity = addon.ResolveStreamIdentity and addon:ResolveStreamIdentity(stream, {}) or nil
 
         return {
@@ -201,7 +201,7 @@ function addon.Shelf:GetVisibleItems()
     local buttonOrder = self:GetOrder()
     local channelPins = addon.db.profile.buttons.channelPins or {}
     local kitPins = addon.db.profile.buttons.kitPins or {}
-    -- IMPORTANT: dynamicMode applies to CHANNEL.DYNAMIC only.
+    -- IMPORTANT: dynamicMode applies to stream group=dynamic only.
     -- System channels are not availability-checked and remain pin-driven.
     local dynamicMode = addon.db.profile.buttons.dynamicMode or "hide"
 

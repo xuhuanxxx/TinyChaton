@@ -3,8 +3,8 @@ local addonName, addon = ...
 addon.AvailabilityResolver = addon.AvailabilityResolver or {}
 
 local function ResolveChannelAvailability(streamKey, context)
-    local path = addon.GetStreamPath and addon:GetStreamPath(streamKey)
-    if type(path) ~= "string" or path == "" then
+    local stream = addon.GetStreamByKey and addon:GetStreamByKey(streamKey) or nil
+    if type(stream) ~= "table" then
         return {
             available = false,
             state = "blocked",
@@ -12,15 +12,17 @@ local function ResolveChannelAvailability(streamKey, context)
         }
     end
 
-    if path:match("^CHANNEL%.SYSTEM$") then
+    local kind = addon.GetStreamKind and addon:GetStreamKind(streamKey) or stream.kind
+    local group = addon.GetStreamGroup and addon:GetStreamGroup(streamKey) or stream.group
+    if kind ~= "channel" then
         return {
             available = true,
             state = "ready",
-            reason = "system",
+            reason = "non_channel_stream",
         }
     end
 
-    if not path:match("^CHANNEL%.DYNAMIC$") then
+    if group ~= "dynamic" then
         return {
             available = true,
             state = "ready",

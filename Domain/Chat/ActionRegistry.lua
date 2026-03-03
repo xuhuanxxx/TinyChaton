@@ -23,9 +23,8 @@ addon.ACTION_DEFINITIONS = {
         label = L["ACTION_PREFIX_SEND"],
         category = "channel",
         actionPlane = "USER_ACTION",
-        -- 声明此 ACTION 适用于哪些 Stream
         appliesTo = {
-            streamPaths = { "CHANNEL.SYSTEM", "CHANNEL.DYNAMIC" }
+            streamCapabilities = { outbound = true }
         },
         -- 执行函数接收 streamKey 参数
         execute = function(streamKey)
@@ -56,7 +55,7 @@ addon.ACTION_DEFINITIONS = {
         category = "channel",
         actionPlane = "CHAT_DATA",
         appliesTo = {
-            streamPaths = { "CHANNEL.DYNAMIC" }
+            streamCapabilities = { supportsMute = true }
         },
         execute = function(streamKey)
             if addon.VisibilityPolicy and addon.VisibilityPolicy.ToggleDynamicChannelMute then
@@ -248,40 +247,49 @@ addon.ACTION_DEFINITIONS = {
 function addon:BuildActionRegistryFromDefinitions()
     local registry = {}
 
+    local function StreamMatchesCapabilities(streamKey, requirement)
+        if type(requirement) ~= "table" then
+            return false
+        end
+        local caps = addon.GetStreamCapabilities and addon:GetStreamCapabilities(streamKey) or nil
+        if type(caps) ~= "table" then
+            return false
+        end
+        for capKey, expected in pairs(requirement) do
+            if caps[capKey] ~= expected then
+                return false
+            end
+        end
+        return true
+    end
+
+    local function RegisterActionForStream(actionDef, stream)
+        local fullKey = actionDef.key .. "_" .. stream.key
+        local label = actionDef.getLabel and actionDef.getLabel(stream.key) or actionDef.label
+
+        if actionDef.category == "channel" and actionDef.key:match("send") then
+            label = L["ACTION_PREFIX_SEND"] .. (label or "")
+        end
+
+        registry[fullKey] = {
+            key = fullKey,
+            label = label,
+            tooltip = actionDef.getTooltip and actionDef.getTooltip(stream.key) or nil,
+            streamKey = stream.key,
+            category = actionDef.category,
+            actionPlane = actionDef.actionPlane or "UI_ONLY",
+            execute = function(...)
+                actionDef.execute(stream.key, ...)
+            end
+        }
+    end
+
     -- 遍历所有 ACTION 定义
     for _, actionDef in ipairs(self.ACTION_DEFINITIONS or {}) do
-        -- 如果 ACTION 声明了 streamPaths
-        if actionDef.appliesTo and actionDef.appliesTo.streamPaths then
-            for _, pathPattern in ipairs(actionDef.appliesTo.streamPaths) do
-                -- 查找匹配此路径的所有 Stream
-                for categoryKey, category in pairs(self.STREAM_REGISTRY or {}) do
-                    for subKey, subCategory in pairs(category) do
-                        local currentPath = categoryKey .. "." .. subKey
-                        if currentPath == pathPattern then
-                            -- 为这个子类别下的所有 Stream 生成 ACTION
-                            for _, stream in ipairs(subCategory) do
-                                local fullKey = actionDef.key .. "_" .. stream.key
-                                local label = actionDef.getLabel and actionDef.getLabel(stream.key) or actionDef.label
-                                
-                                -- 统一前缀处理
-                                if actionDef.category == "channel" and actionDef.key:match("send") then
-                                    label = L["ACTION_PREFIX_SEND"] .. (label or "")
-                                end
-
-                                registry[fullKey] = {
-                                    key = fullKey,
-                                    label = label,
-                                    tooltip = actionDef.getTooltip and actionDef.getTooltip(stream.key) or nil,
-                                    streamKey = stream.key,
-                                    category = actionDef.category,
-                                    actionPlane = actionDef.actionPlane or "UI_ONLY",
-                                    execute = function(...)
-                                        actionDef.execute(stream.key, ...)
-                                    end
-                                }
-                            end
-                        end
-                    end
+        if actionDef.appliesTo and actionDef.appliesTo.streamCapabilities then
+            for _, stream in self:IterateAllStreams() do
+                if self:IsChannelStream(stream.key) and StreamMatchesCapabilities(stream.key, actionDef.appliesTo.streamCapabilities) then
+                    RegisterActionForStream(actionDef, stream)
                 end
             end
         end
@@ -289,25 +297,10 @@ function addon:BuildActionRegistryFromDefinitions()
         -- 如果 ACTION 声明了特定的 streamKeys
         if actionDef.appliesTo and actionDef.appliesTo.streamKeys then
             for _, streamKey in ipairs(actionDef.appliesTo.streamKeys) do
-                local fullKey = actionDef.key .. "_" .. streamKey
-                local label = actionDef.getLabel and actionDef.getLabel(streamKey) or actionDef.label
-
-                -- 统一前缀处理
-                if actionDef.category == "channel" and actionDef.key:match("send") then
-                    label = L["ACTION_PREFIX_SEND"] .. (label or "")
+                local stream = self:GetStreamByKey(streamKey)
+                if stream then
+                    RegisterActionForStream(actionDef, stream)
                 end
-
-                registry[fullKey] = {
-                    key = fullKey,
-                    label = label,
-                    tooltip = actionDef.getTooltip and actionDef.getTooltip(streamKey) or nil,
-                    streamKey = streamKey,
-                    category = actionDef.category,
-                    actionPlane = actionDef.actionPlane or "UI_ONLY",
-                    execute = function(...)
-                        actionDef.execute(streamKey, ...)
-                    end
-                }
             end
         end
 

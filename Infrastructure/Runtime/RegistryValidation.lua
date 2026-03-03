@@ -21,6 +21,32 @@ local function AssertBooleanField(value, label)
     end
 end
 
+local function ValidateStreamCapabilities(capabilities, sourceLabel)
+    if type(capabilities) ~= "table" then
+        error(sourceLabel .. ".capabilities must be table")
+    end
+    AssertBooleanField(capabilities.inbound, sourceLabel .. ".capabilities.inbound")
+    AssertBooleanField(capabilities.outbound, sourceLabel .. ".capabilities.outbound")
+    AssertBooleanField(capabilities.snapshotDefault, sourceLabel .. ".capabilities.snapshotDefault")
+    AssertBooleanField(capabilities.copyDefault, sourceLabel .. ".capabilities.copyDefault")
+    AssertBooleanField(capabilities.supportsMute, sourceLabel .. ".capabilities.supportsMute")
+    AssertBooleanField(capabilities.supportsAutoJoin, sourceLabel .. ".capabilities.supportsAutoJoin")
+    AssertBooleanField(capabilities.pinnable, sourceLabel .. ".capabilities.pinnable")
+end
+
+local ALLOWED_KIND = {
+    channel = true,
+    notice = true,
+}
+
+local ALLOWED_GROUP = {
+    system = true,
+    dynamic = true,
+    private = true,
+    alert = true,
+    log = true,
+}
+
 local function ResolveChannelBindingActionKey(streamKey, bindingKey, actionSet)
     if actionSet[bindingKey] then
         return bindingKey
@@ -146,6 +172,16 @@ function addon:ValidateRegistryDefinitions()
                             AssertBooleanField(stream.defaultSnapshotted, sourceLabel .. ".defaultSnapshotted")
                             AssertBooleanField(stream.defaultCopyable, sourceLabel .. ".defaultCopyable")
                             AssertBooleanField(stream.isInboundOnly, sourceLabel .. ".isInboundOnly")
+                            AssertNonEmptyString(stream.kind, sourceLabel .. ".kind")
+                            AssertNonEmptyString(stream.group, sourceLabel .. ".group")
+                            if not ALLOWED_KIND[stream.kind] then
+                                error(sourceLabel .. ".kind must be 'channel'|'notice'")
+                            end
+                            if not ALLOWED_GROUP[stream.group] then
+                                error(sourceLabel .. ".group is invalid")
+                            end
+                            ValidateStreamCapabilities(stream.capabilities, sourceLabel)
+
                             if stream.events ~= nil and type(stream.events) ~= "table" then
                                 error(sourceLabel .. ".events must be table")
                             end
@@ -155,19 +191,25 @@ function addon:ValidateRegistryDefinitions()
                                 end
                             end
 
-                            if categoryKey == "CHANNEL" then
-                                if subKey == "DYNAMIC" then
-                                    AssertBooleanField(stream.defaultAutoJoin, sourceLabel .. ".defaultAutoJoin")
-                                elseif stream.defaultAutoJoin ~= nil then
-                                    error(sourceLabel .. ".defaultAutoJoin is only allowed for CHANNEL.DYNAMIC")
+                            if stream.kind == "notice" then
+                                if stream.capabilities.outbound ~= false then
+                                    error(sourceLabel .. ".capabilities.outbound must be false for notice kind")
                                 end
+                                if stream.capabilities.supportsAutoJoin ~= false then
+                                    error(sourceLabel .. ".capabilities.supportsAutoJoin must be false for notice kind")
+                                end
+                            end
+
+                            if stream.capabilities.outbound == true then
                                 ValidateBindings(stream.defaultBindings, ResolveChannelBindingActionKey, stream.key, sourceLabel, actionSet)
-                            else
-                                if stream.defaultAutoJoin ~= nil then
-                                    error(sourceLabel .. ".defaultAutoJoin is not allowed for NOTICE streams")
-                                end
-                                if stream.defaultBindings ~= nil then
-                                    error(sourceLabel .. ".defaultBindings is not allowed for NOTICE streams")
+                            elseif stream.defaultBindings ~= nil then
+                                error(sourceLabel .. ".defaultBindings is not allowed when capabilities.outbound=false")
+                            end
+
+                            if stream.defaultAutoJoin ~= nil then
+                                AssertBooleanField(stream.defaultAutoJoin, sourceLabel .. ".defaultAutoJoin")
+                                if stream.capabilities.supportsAutoJoin ~= true then
+                                    error(sourceLabel .. ".defaultAutoJoin is only allowed when capabilities.supportsAutoJoin=true")
                                 end
                             end
                         end

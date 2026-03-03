@@ -27,7 +27,7 @@ CategoryBuilders.buttons = function(rootCat)
     local registryMap = {}
     local kitRegistryMap = {}
 
-    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+    for _, stream in addon:IterateAllStreams() do
         registryMap[stream.key] = stream
     end
     for _, spec in ipairs(addon.KIT_REGISTRY or {}) do
@@ -371,8 +371,8 @@ CategoryBuilders.buttons = function(rootCat)
                         if filterFunc(reg) then table.insert(page.items, reg) end
                     end
                 else
-                    for _, stream, catKey, subKey in addon:IterateAllStreams() do
-                        if filterFunc(stream, catKey, subKey) then
+                    for _, stream in addon:IterateAllStreams() do
+                        if filterFunc(stream) then
                             table.insert(page.items, stream)
                         end
                     end
@@ -395,11 +395,14 @@ CategoryBuilders.buttons = function(rootCat)
                 return page
             end
 
-            local p1 = SetupPage("system", function(stream, catKey, subKey)
-                return catKey == "CHANNEL" and subKey == "SYSTEM" and not stream.isSystemMsg and not stream.isNotStorable
+            local p1 = SetupPage("system", function(stream)
+                return addon:IsChannelStream(stream.key)
+                    and addon:GetStreamGroup(stream.key) == "system"
+                    and not stream.isSystemMsg
+                    and not stream.isNotStorable
             end, "channel")
-            local p2 = SetupPage("dynamic", function(stream, catKey, subKey)
-                return catKey == "CHANNEL" and subKey == "DYNAMIC"
+            local p2 = SetupPage("dynamic", function(stream)
+                return addon:IsChannelStream(stream.key) and addon:GetStreamGroup(stream.key) == "dynamic"
             end, "channel")
             local p3 = SetupPage("kit", function(r) return true end, "kit")
 

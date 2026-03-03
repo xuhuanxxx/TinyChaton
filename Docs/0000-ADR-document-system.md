@@ -2,7 +2,7 @@
 id: 0000
 priority: P2
 created: 2026-03-02
-updated: 2026-03-02
+updated: 2026-03-04
 assignee: 
 relates: []
 status: ACTIVE
@@ -186,5 +186,7 @@ TODO-ACTIVE-2026-03-02-chat-taint.md
 - ✅ 规范已写入 `AGENT.md` 第 7 节
 - ✅ 创建 `Docs/.next-id` 初始化序号为 1
 - ✅ 创建本 ADR 作为序号 0000
+- ✅ 新增 `#0011 Stream Registry V2 语义规格`
+- ✅ 新增 `#0012 Stream Registry V2 迁移架构说明`
 - 待验证: 实际使用中测试流程和模板完整性
 - 待补充: 可选创建 `Docs/README.md` 作为文档索引（按需）

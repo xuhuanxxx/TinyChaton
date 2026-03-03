@@ -263,7 +263,7 @@ local function OnSnapshotEvent(self, event, ...)
     local perChannel = addon:GetSnapshotStorage()
 
     local args = chatData.args
-    local okChannelKey, channelKey = pcall(addon.GetChannelKey, addon, event, addon.Utils.UnpackArgs(args))
+    local okChannelKey, channelKey = pcall(addon.ResolveStreamKey, addon, event, addon.Utils.UnpackArgs(args))
     if not okChannelKey then
         if addon.WarnOnce then
             addon:WarnOnce(
@@ -284,13 +284,10 @@ local function OnSnapshotEvent(self, event, ...)
     end
 
     -- Check specific channel enabled (config override > stream default)
-    local stream = addon.GetStreamByKey and addon:GetStreamByKey(channelKey) or nil
-    local defaultSnapshotted = (type(stream) == "table") and (stream.defaultSnapshotted == true) or true
-    local enabledForSnapshot = defaultSnapshotted
     local sc = contentSettings.snapshotChannels
-    if type(sc) == "table" and sc[channelKey] ~= nil then
-        enabledForSnapshot = sc[channelKey] == true
-    end
+    local enabledForSnapshot = addon.ResolveStreamToggle
+        and addon:ResolveStreamToggle(channelKey, sc, "snapshotDefault", true)
+        or true
     if not enabledForSnapshot then
         addon.ChatData:Release(chatData)
         return

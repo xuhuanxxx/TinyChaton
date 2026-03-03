@@ -11,7 +11,7 @@ function addon:GetCharacterKey()
     return name .. "-" .. realm
 end
 
-function addon:GetChannelKey(event, ...)
+function addon:ResolveStreamKey(event, ...)
     local streamMap = addon.EVENT_TO_STREAM_KEY
     local mappedStreamKey = streamMap and streamMap[event]
     if type(mappedStreamKey) == "string" and mappedStreamKey ~= "" and event ~= "CHAT_MSG_CHANNEL" then
@@ -48,5 +48,5 @@ function addon:GetChannelKey(event, ...)
         return mappedStreamKey
     end
 
-    error("Unmapped chat event in GetChannelKey: " .. tostring(event))
+    error("Unmapped chat event in ResolveStreamKey: " .. tostring(event))
 end

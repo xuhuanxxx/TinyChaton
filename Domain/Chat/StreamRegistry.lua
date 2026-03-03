@@ -482,6 +482,82 @@ addon.STREAM_REGISTRY = {
     }
 }
 
+local function InferGroup(categoryKey, subKey)
+    if categoryKey == "NOTICE" then
+        if subKey == "ALERT" then
+            return "alert"
+        end
+        if subKey == "LOG" then
+            return "log"
+        end
+        return "system"
+    end
+
+    if subKey == "PRIVATE" then
+        return "private"
+    end
+    if subKey == "DYNAMIC" then
+        return "dynamic"
+    end
+    return "system"
+end
+
+local function InferCapabilities(kind, group, stream)
+    local oldInboundOnly = stream.isInboundOnly == true
+    local outbound = not oldInboundOnly
+    local caps = {}
+    if type(stream.capabilities) == "table" then
+        for k, v in pairs(stream.capabilities) do
+            caps[k] = v
+        end
+    end
+
+    if kind == "notice" then
+        outbound = false
+    end
+
+    caps.inbound = (caps.inbound ~= nil) and (caps.inbound == true) or true
+    caps.outbound = (caps.outbound ~= nil) and (caps.outbound == true) or outbound
+    caps.snapshotDefault = (caps.snapshotDefault ~= nil) and (caps.snapshotDefault == true) or (stream.defaultSnapshotted == true)
+    caps.copyDefault = (caps.copyDefault ~= nil) and (caps.copyDefault == true) or (stream.defaultCopyable == true)
+    caps.supportsMute = (caps.supportsMute ~= nil) and (caps.supportsMute == true) or (kind == "channel" and group == "dynamic")
+    caps.supportsAutoJoin = (caps.supportsAutoJoin ~= nil) and (caps.supportsAutoJoin == true) or (kind == "channel" and group == "dynamic" and stream.defaultAutoJoin == true)
+    caps.pinnable = (caps.pinnable ~= nil) and (caps.pinnable == true) or (stream.defaultPinned == true)
+
+    if kind == "notice" then
+        caps.outbound = false
+        caps.supportsAutoJoin = false
+        caps.supportsMute = false
+    end
+
+    return caps
+end
+
+for categoryKey, category in pairs(addon.STREAM_REGISTRY) do
+    if type(category) == "table" then
+        for subKey, streams in pairs(category) do
+            if type(streams) == "table" then
+                for _, stream in ipairs(streams) do
+                    local kind = (categoryKey == "NOTICE") and "notice" or "channel"
+                    local group = InferGroup(categoryKey, subKey)
+                    stream.kind = stream.kind or kind
+                    stream.group = stream.group or group
+                    stream.capabilities = InferCapabilities(stream.kind, stream.group, stream)
+                    stream.defaultSnapshotted = stream.capabilities.snapshotDefault == true
+                    stream.defaultCopyable = stream.capabilities.copyDefault == true
+                    stream.isInboundOnly = stream.capabilities.outbound ~= true
+                    stream.defaultPinned = stream.capabilities.pinnable == true
+                    if stream.capabilities.supportsAutoJoin == true then
+                        stream.defaultAutoJoin = stream.defaultAutoJoin == true
+                    else
+                        stream.defaultAutoJoin = nil
+                    end
+                end
+            end
+        end
+    end
+end
+
 -- Action Implementation Helpers
 -- 这些函数被 Libs/Registry/Actions.lua 中的 ACTION_DEFINITIONS 调用
 -- 它们封装了底层的 WoW API 调用逻辑

@@ -24,17 +24,11 @@ local function IsClickToCopyEnabledForLine(line)
         return true
     end
 
-    local stream = addon.GetStreamByKey and addon:GetStreamByKey(streamKey) or nil
-    local defaultCopyable = (type(stream) == "table") and (stream.defaultCopyable == true) or true
-
     local copyChannels = interaction.copyChannels
-    if type(copyChannels) == "table" then
-        local configured = copyChannels[streamKey]
-        if configured ~= nil then
-            return configured == true
-        end
+    if addon.ResolveStreamToggle then
+        return addon:ResolveStreamToggle(streamKey, copyChannels, "copyDefault", true)
     end
-    return defaultCopyable
+    return true
 end
 
 -- =========================================================================
@@ -203,8 +197,8 @@ function addon.MessageFormatter.BuildRealtimeLineFromChatData(chatData)
     end
 
     local registryKey
-    if addon.GetChannelKey and type(args) == "table" and addon.Utils and addon.Utils.UnpackArgs then
-        registryKey = addon:GetChannelKey(event, addon.Utils.UnpackArgs(args))
+    if addon.ResolveStreamKey and type(args) == "table" and addon.Utils and addon.Utils.UnpackArgs then
+        registryKey = addon:ResolveStreamKey(event, addon.Utils.UnpackArgs(args))
     end
 
     local classFilename

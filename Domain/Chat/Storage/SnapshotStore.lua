@@ -187,6 +187,7 @@ function addon:GetEffectiveSnapshotReplayLimit()
     local defaultValue = (c and c.SNAPSHOT_REPLAY_MAX_DEFAULT) or 1000
     local minValue = (c and c.SNAPSHOT_REPLAY_MAX_MIN) or 1
     local maxValue = (c and c.SNAPSHOT_REPLAY_MAX_MAX) or 100000
+    local systemCap = 200
 
     local settings = self:GetSnapshotLimitsSettings()
     local useOverride = settings.snapshotReplayOverrideEnabled == true
@@ -198,6 +199,9 @@ function addon:GetEffectiveSnapshotReplayLimit()
     end
 
     effective = ClampLimit(effective, minValue, maxValue, defaultValue)
+    if effective > systemCap then
+        effective = systemCap
+    end
     local storageLimit = self:GetEffectiveSnapshotStorageLimit()
     if effective > storageLimit then
         effective = storageLimit
@@ -279,13 +283,17 @@ local function OnSnapshotEvent(self, event, ...)
         return
     end
 
-    -- Check specific channel enabled
+    -- Check specific channel enabled (config override > stream default)
+    local stream = addon.GetStreamByKey and addon:GetStreamByKey(channelKey) or nil
+    local defaultSnapshotted = (type(stream) == "table") and (stream.defaultSnapshotted == true) or true
+    local enabledForSnapshot = defaultSnapshotted
     local sc = contentSettings.snapshotChannels
-    if sc then
-        if sc[channelKey] == false then
-            addon.ChatData:Release(chatData)
-            return
-        end
+    if type(sc) == "table" and sc[channelKey] ~= nil then
+        enabledForSnapshot = sc[channelKey] == true
+    end
+    if not enabledForSnapshot then
+        addon.ChatData:Release(chatData)
+        return
     end
 
     if not perChannel[channelKey] then

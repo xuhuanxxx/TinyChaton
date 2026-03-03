@@ -13,6 +13,30 @@ addon.MessageFormatter = {}
 -- Constants
 local DEFAULT_TIMESTAMP_COLOR = "FF888888"
 
+local function IsClickToCopyEnabledForLine(line)
+    local interaction = addon.db and addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.interaction
+    if not interaction or interaction.clickToCopy == false then
+        return false
+    end
+
+    local streamKey = line and (line.registryKey or line.channelKey) or nil
+    if type(streamKey) ~= "string" or streamKey == "" then
+        return true
+    end
+
+    local stream = addon.GetStreamByKey and addon:GetStreamByKey(streamKey) or nil
+    local defaultCopyable = (type(stream) == "table") and (stream.defaultCopyable == true) or true
+
+    local copyChannels = interaction.copyChannels
+    if type(copyChannels) == "table" then
+        local configured = copyChannels[streamKey]
+        if configured ~= nil then
+            return configured == true
+        end
+    end
+    return defaultCopyable
+end
+
 -- =========================================================================
 -- Timestamp Formatting
 -- =========================================================================
@@ -221,12 +245,7 @@ function addon.MessageFormatter.BuildDisplayLine(line, options)
     local preferConfig = options and options.preferTimestampConfig == true
 
     local timestamp = addon.MessageFormatter.GetTimestamp(line.time, msgColor, preferConfig)
-    if timestamp ~= ""
-        and addon.db
-        and addon.db.profile
-        and addon.db.profile.chat
-        and addon.db.profile.chat.interaction
-        and addon.db.profile.chat.interaction.clickToCopy ~= false then
+    if timestamp ~= "" and IsClickToCopyEnabledForLine(line) then
         local colorHex = addon.MessageFormatter.ResolveTimestampColor(msgColor, preferConfig)
         local plainText = addon.MessageFormatter.GetTimestampText(line.time)
         timestamp = addon:CreateClickableTimestamp(plainText, contentForCopy, colorHex)

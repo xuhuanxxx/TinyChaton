@@ -26,6 +26,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 0,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -41,6 +43,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 1,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -56,6 +60,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 2,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -71,6 +77,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 3,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -86,6 +94,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 4,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -101,6 +111,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 5,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -116,6 +128,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 6,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -131,6 +145,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 7,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -148,6 +164,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 8,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -163,6 +181,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 9,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
         },
@@ -184,6 +204,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 0,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
@@ -201,6 +223,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 1,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
@@ -218,6 +242,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 2,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
@@ -235,6 +261,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 3,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
@@ -252,6 +280,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 4,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
@@ -269,6 +299,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 5,
                 defaultPinned = true,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
@@ -289,6 +321,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 6,
                 defaultPinned = false,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
             {
@@ -304,6 +338,8 @@ addon.STREAM_REGISTRY = {
                 priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 7,
                 defaultPinned = false,
                 defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
         }
@@ -317,12 +353,132 @@ addon.STREAM_REGISTRY = {
         LOG = {},
 
         -- [SYSTEM] 系统提示
-        -- 保留结构供未来扩展
-        SYSTEM = {},
+        SYSTEM = {
+            {
+                key = "system",
+                chatType = "SYSTEM",
+                identity = {
+                    labelKey = "STREAM_SYSTEM_NOTICE_LABEL",
+                    shortOneKey = "STREAM_SYSTEM_NOTICE_SHORT_ONE",
+                    shortTwoKey = "STREAM_SYSTEM_NOTICE_SHORT_TWO",
+                },
+                events = { "CHAT_MSG_SYSTEM" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 10,
+                defaultPinned = false,
+                defaultSnapshotted = true,
+                defaultCopyable = true,
+                isInboundOnly = true,
+            },
+        },
 
         -- [ALERT] 警告类（Boss喊话、表情）
-        -- 保留结构供未来扩展
-        ALERT = {}
+        ALERT = {
+            {
+                key = "monster_say",
+                chatType = "SYSTEM",
+                identity = {
+                    labelKey = "STREAM_MONSTER_SAY_LABEL",
+                    shortOneKey = "STREAM_MONSTER_SAY_SHORT_ONE",
+                    shortTwoKey = "STREAM_MONSTER_SAY_SHORT_TWO",
+                },
+                events = { "CHAT_MSG_MONSTER_SAY" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 20,
+                defaultPinned = false,
+                defaultSnapshotted = false,
+                defaultCopyable = false,
+                isInboundOnly = true,
+            },
+            {
+                key = "monster_yell",
+                chatType = "SYSTEM",
+                identity = {
+                    labelKey = "STREAM_MONSTER_YELL_LABEL",
+                    shortOneKey = "STREAM_MONSTER_YELL_SHORT_ONE",
+                    shortTwoKey = "STREAM_MONSTER_YELL_SHORT_TWO",
+                },
+                events = { "CHAT_MSG_MONSTER_YELL" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 21,
+                defaultPinned = false,
+                defaultSnapshotted = false,
+                defaultCopyable = false,
+                isInboundOnly = true,
+            },
+            {
+                key = "monster_emote",
+                chatType = "SYSTEM",
+                identity = {
+                    labelKey = "STREAM_MONSTER_EMOTE_LABEL",
+                    shortOneKey = "STREAM_MONSTER_EMOTE_SHORT_ONE",
+                    shortTwoKey = "STREAM_MONSTER_EMOTE_SHORT_TWO",
+                },
+                events = { "CHAT_MSG_MONSTER_EMOTE" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 22,
+                defaultPinned = false,
+                defaultSnapshotted = false,
+                defaultCopyable = false,
+                isInboundOnly = true,
+            },
+            {
+                key = "monster_whisper",
+                chatType = "SYSTEM",
+                identity = {
+                    labelKey = "STREAM_MONSTER_WHISPER_LABEL",
+                    shortOneKey = "STREAM_MONSTER_WHISPER_SHORT_ONE",
+                    shortTwoKey = "STREAM_MONSTER_WHISPER_SHORT_TWO",
+                },
+                events = { "CHAT_MSG_MONSTER_WHISPER" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 23,
+                defaultPinned = false,
+                defaultSnapshotted = false,
+                defaultCopyable = false,
+                isInboundOnly = true,
+            },
+            {
+                key = "monster_party",
+                chatType = "SYSTEM",
+                identity = {
+                    labelKey = "STREAM_MONSTER_PARTY_LABEL",
+                    shortOneKey = "STREAM_MONSTER_PARTY_SHORT_ONE",
+                    shortTwoKey = "STREAM_MONSTER_PARTY_SHORT_TWO",
+                },
+                events = { "CHAT_MSG_MONSTER_PARTY" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 24,
+                defaultPinned = false,
+                defaultSnapshotted = false,
+                defaultCopyable = false,
+                isInboundOnly = true,
+            },
+            {
+                key = "raid_boss_emote",
+                chatType = "SYSTEM",
+                identity = {
+                    labelKey = "STREAM_RAID_BOSS_EMOTE_LABEL",
+                    shortOneKey = "STREAM_RAID_BOSS_EMOTE_SHORT_ONE",
+                    shortTwoKey = "STREAM_RAID_BOSS_EMOTE_SHORT_TWO",
+                },
+                events = { "CHAT_MSG_RAID_BOSS_EMOTE" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 25,
+                defaultPinned = false,
+                defaultSnapshotted = false,
+                defaultCopyable = false,
+                isInboundOnly = true,
+            },
+            {
+                key = "raid_boss_whisper",
+                chatType = "SYSTEM",
+                identity = {
+                    labelKey = "STREAM_RAID_BOSS_WHISPER_LABEL",
+                    shortOneKey = "STREAM_RAID_BOSS_WHISPER_SHORT_ONE",
+                    shortTwoKey = "STREAM_RAID_BOSS_WHISPER_SHORT_TWO",
+                },
+                events = { "CHAT_MSG_RAID_BOSS_WHISPER" },
+                priority = (PRI_BASE.SYSTEM or 100) + PRI_STEP * 26,
+                defaultPinned = false,
+                defaultSnapshotted = false,
+                defaultCopyable = false,
+                isInboundOnly = true,
+            },
+        }
     }
 }
 

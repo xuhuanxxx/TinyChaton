@@ -116,6 +116,12 @@ CategoryBuilders.chat = function(rootCat)
         function() return addon:GetSnapshotChannelSelection("dynamic") end,
         function(sel) addon:SetSnapshotChannelSelection("dynamic", sel) end,
         L["TOOLTIP_SNAPSHOT_DYNAMIC"])
+    addon.AddProxyMultiDropdown(subCat, P .. "snapshotNotice",
+        L["LABEL_SNAPSHOT_NOTICE"],
+        function() return addon:GetSnapshotChannelsItems("notice") end,
+        function() return addon:GetSnapshotChannelSelection("notice") end,
+        function(sel) addon:SetSnapshotChannelSelection("notice", sel) end,
+        L["TOOLTIP_SNAPSHOT_NOTICE"])
 
 
     addon.AddSectionHeader(subCat, L["SECTION_CHAT_INTERACTION"])
@@ -124,6 +130,30 @@ CategoryBuilders.chat = function(rootCat)
     CreateSettingFromRegistry(subCat, "timestampFormat")
     CreateSettingFromRegistry(subCat, "timestampColor")
     CreateSettingFromRegistry(subCat, "clickToCopy")
+    addon.AddProxyMultiDropdown(subCat, P .. "copyPersonal",
+        L["LABEL_COPY_PERSONAL"],
+        function() return addon:GetCopyChannelsItems("private") end,
+        function() return addon:GetCopyChannelSelection("private") end,
+        function(sel) addon:SetCopyChannelSelection("private", sel) end,
+        L["TOOLTIP_COPY_PERSONAL"])
+    addon.AddProxyMultiDropdown(subCat, P .. "copySystem",
+        L["LABEL_COPY_SYSTEM"],
+        function() return addon:GetCopyChannelsItems("system") end,
+        function() return addon:GetCopyChannelSelection("system") end,
+        function(sel) addon:SetCopyChannelSelection("system", sel) end,
+        L["TOOLTIP_COPY_SYSTEM"])
+    addon.AddProxyMultiDropdown(subCat, P .. "copyDynamic",
+        L["LABEL_COPY_DYNAMIC"],
+        function() return addon:GetCopyChannelsItems("dynamic") end,
+        function() return addon:GetCopyChannelSelection("dynamic") end,
+        function(sel) addon:SetCopyChannelSelection("dynamic", sel) end,
+        L["TOOLTIP_COPY_DYNAMIC"])
+    addon.AddProxyMultiDropdown(subCat, P .. "copyNotice",
+        L["LABEL_COPY_NOTICE"],
+        function() return addon:GetCopyChannelsItems("notice") end,
+        function() return addon:GetCopyChannelSelection("notice") end,
+        function(sel) addon:SetCopyChannelSelection("notice", sel) end,
+        L["TOOLTIP_COPY_NOTICE"])
     CreateSettingFromRegistry(subCat, "linkHover")
     CreateSettingFromRegistry(subCat, "sticky")
     CreateSettingFromRegistry(subCat, "tabCycle")
@@ -132,11 +162,17 @@ CategoryBuilders.chat = function(rootCat)
         category = subCat,
         writeDefaults = {
             "chat.content.snapshotChannels",
+            "chat.interaction.copyChannels",
         },
         refreshControls = {
             { type = "multidropdown", variable = P .. "snapshotPersonal", selectionFromPath = "chat.content.snapshotChannels" },
             { type = "multidropdown", variable = P .. "snapshotSystem", selectionFromPath = "chat.content.snapshotChannels" },
             { type = "multidropdown", variable = P .. "snapshotDynamic", selectionFromPath = "chat.content.snapshotChannels" },
+            { type = "multidropdown", variable = P .. "snapshotNotice", selectionFromPath = "chat.content.snapshotChannels" },
+            { type = "multidropdown", variable = P .. "copyPersonal", selectionFromPath = "chat.interaction.copyChannels" },
+            { type = "multidropdown", variable = P .. "copySystem", selectionFromPath = "chat.interaction.copyChannels" },
+            { type = "multidropdown", variable = P .. "copyDynamic", selectionFromPath = "chat.interaction.copyChannels" },
+            { type = "multidropdown", variable = P .. "copyNotice", selectionFromPath = "chat.interaction.copyChannels" },
         },
     })
 

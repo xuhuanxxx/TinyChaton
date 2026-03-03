@@ -12,13 +12,13 @@ function addon:GetCharacterKey()
 end
 
 function addon:GetChannelKey(event, ...)
-    local chatType = addon.GetChatTypeByEvent and addon:GetChatTypeByEvent(event) or nil
-    if chatType and chatType ~= "CHANNEL" then
-        if chatType == "INSTANCE_CHAT" then
-            return "instance"
-        end
-        return string.lower(chatType)
+    local streamMap = addon.EVENT_TO_STREAM_KEY
+    local mappedStreamKey = streamMap and streamMap[event]
+    if type(mappedStreamKey) == "string" and mappedStreamKey ~= "" and event ~= "CHAT_MSG_CHANNEL" then
+        return mappedStreamKey
     end
+
+    local chatType = addon.GetChatTypeByEvent and addon:GetChatTypeByEvent(event) or nil
 
     if event == "CHAT_MSG_CHANNEL" then
         local channelNumber = select(8, ...)
@@ -42,6 +42,10 @@ function addon:GetChannelKey(event, ...)
         end
 
         return UNKNOWN_DYNAMIC
+    end
+
+    if mappedStreamKey then
+        return mappedStreamKey
     end
 
     error("Unmapped chat event in GetChannelKey: " .. tostring(event))

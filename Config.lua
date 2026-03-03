@@ -52,10 +52,10 @@ addon.CONSTANTS = {
     SNAPSHOT_STORAGE_MAX_MIN = 1000,
     SNAPSHOT_STORAGE_MAX_MAX = 20000,
     SNAPSHOT_STORAGE_MAX_STEP = 500,
-    SNAPSHOT_REPLAY_MAX_DEFAULT = 1000,
-    SNAPSHOT_REPLAY_MAX_MIN = 100,
-    SNAPSHOT_REPLAY_MAX_MAX = 20000,
-    SNAPSHOT_REPLAY_MAX_STEP = 100,
+    SNAPSHOT_REPLAY_MAX_DEFAULT = 200,
+    SNAPSHOT_REPLAY_MAX_MIN = 10,
+    SNAPSHOT_REPLAY_MAX_MAX = 200,
+    SNAPSHOT_REPLAY_MAX_STEP = 10,
 
     -- Cache & Limits
     MESSAGE_CACHE_MAX_AGE = 600,   -- Domain/Chat/Render/Transformers/TimestampInteraction.lua
@@ -236,20 +236,39 @@ end
 
 local function BuildEventToChatTypeFromRegistry()
     local map = {}
-    if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
-        for subKey, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
-            for _, stream in ipairs(category) do
-                if stream.events then
-                    for _, eventName in ipairs(stream.events) do
-                        AddEventMapping(map, eventName, stream.chatType, stream.key or subKey)
-                    end
-                end
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        if type(stream.events) == "table" then
+            for _, eventName in ipairs(stream.events) do
+                AddEventMapping(map, eventName, stream.chatType, stream.key or (catKey .. "." .. subKey))
             end
         end
     end
 
     for eventName, chatType in pairs(EXPLICIT_CHAT_EVENT_TYPES) do
         AddEventMapping(map, eventName, chatType, "EXPLICIT_CHAT_EVENT_TYPES")
+    end
+    return map
+end
+
+local function BuildEventToStreamKeyFromRegistry()
+    local map = {}
+    for _, stream, catKey, subKey in addon:IterateAllStreams() do
+        if stream.chatType ~= "CHANNEL" and type(stream.events) == "table" and type(stream.key) == "string" and stream.key ~= "" then
+            for _, eventName in ipairs(stream.events) do
+                local existing = map[eventName]
+                if existing and existing ~= stream.key then
+                    error(string.format(
+                        "Chat event stream mapping conflict: %s => %s vs %s (source=%s.%s)",
+                        tostring(eventName),
+                        tostring(existing),
+                        tostring(stream.key),
+                        tostring(catKey),
+                        tostring(subKey)
+                    ))
+                end
+                map[eventName] = stream.key
+            end
+        end
     end
     return map
 end
@@ -264,6 +283,7 @@ local function BuildChatEvents()
 end
 
 addon.EVENT_TO_CHAT_TYPE = BuildEventToChatTypeFromRegistry()
+addon.EVENT_TO_STREAM_KEY = BuildEventToStreamKeyFromRegistry()
 addon.CHAT_EVENTS = BuildChatEvents()
 
 function addon:GetChatTypeByEvent(eventName)
@@ -275,13 +295,21 @@ end
 
 function addon:ValidateChatEventDerivation()
     local map = addon.EVENT_TO_CHAT_TYPE
+    local streamMap = addon.EVENT_TO_STREAM_KEY
     if type(map) ~= "table" then
         error("EVENT_TO_CHAT_TYPE is not initialized")
+    end
+    if type(streamMap) ~= "table" then
+        error("EVENT_TO_STREAM_KEY is not initialized")
     end
     for _, eventName in ipairs(addon.CHAT_EVENTS or {}) do
         local chatType = map[eventName]
         if type(chatType) ~= "string" or chatType == "" then
             error("Missing chatType mapping for event: " .. tostring(eventName))
+        end
+        local streamKey = streamMap[eventName]
+        if streamKey ~= nil and (type(streamKey) ~= "string" or streamKey == "") then
+            error("Invalid stream key mapping for event: " .. tostring(eventName))
         end
     end
     if map["CHAT_MSG_CHANNEL"] ~= "CHANNEL" then
@@ -316,15 +344,18 @@ end
 
 local function BuildSnapshotChannels()
     local channels = {}
-
-    if addon.STREAM_REGISTRY and addon.STREAM_REGISTRY.CHANNEL then
-        for _, category in pairs(addon.STREAM_REGISTRY.CHANNEL) do
-            for _, stream in ipairs(category) do
-                channels[stream.key] = stream.defaultSnapshotted == true
-            end
-        end
+    for _, stream in addon:IterateAllStreams() do
+        channels[stream.key] = stream.defaultSnapshotted == true
     end
 
+    return channels
+end
+
+local function BuildCopyChannels()
+    local channels = {}
+    for _, stream in addon:IterateAllStreams() do
+        channels[stream.key] = stream.defaultCopyable == true
+    end
     return channels
 end
 
@@ -392,6 +423,7 @@ addon.DEFAULTS = {
             },
             interaction = {
                 clickToCopy = true,
+                copyChannels = BuildCopyChannels(),
                 linkHover = true,
                 timestampColor = "FF888888",
                 sticky = true,

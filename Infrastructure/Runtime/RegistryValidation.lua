@@ -140,15 +140,12 @@ function addon:ValidateRegistryDefinitions()
                         AssertPriority(stream, sourceLabel)
                         RegisterPriority(categoryKey .. "." .. subKey, stream.priority, stream.key)
 
-                        if categoryKey == "CHANNEL" then
+                        if categoryKey == "CHANNEL" or categoryKey == "NOTICE" then
                             AssertNonEmptyString(stream.chatType, sourceLabel .. ".chatType")
                             AssertBooleanField(stream.defaultPinned, sourceLabel .. ".defaultPinned")
                             AssertBooleanField(stream.defaultSnapshotted, sourceLabel .. ".defaultSnapshotted")
-                            if subKey == "DYNAMIC" then
-                                AssertBooleanField(stream.defaultAutoJoin, sourceLabel .. ".defaultAutoJoin")
-                            elseif stream.defaultAutoJoin ~= nil then
-                                error(sourceLabel .. ".defaultAutoJoin is only allowed for CHANNEL.DYNAMIC")
-                            end
+                            AssertBooleanField(stream.defaultCopyable, sourceLabel .. ".defaultCopyable")
+                            AssertBooleanField(stream.isInboundOnly, sourceLabel .. ".isInboundOnly")
                             if stream.events ~= nil and type(stream.events) ~= "table" then
                                 error(sourceLabel .. ".events must be table")
                             end
@@ -157,7 +154,22 @@ function addon:ValidateRegistryDefinitions()
                                     AssertNonEmptyString(eventName, sourceLabel .. ".events[" .. tostring(eventIndex) .. "]")
                                 end
                             end
-                            ValidateBindings(stream.defaultBindings, ResolveChannelBindingActionKey, stream.key, sourceLabel, actionSet)
+
+                            if categoryKey == "CHANNEL" then
+                                if subKey == "DYNAMIC" then
+                                    AssertBooleanField(stream.defaultAutoJoin, sourceLabel .. ".defaultAutoJoin")
+                                elseif stream.defaultAutoJoin ~= nil then
+                                    error(sourceLabel .. ".defaultAutoJoin is only allowed for CHANNEL.DYNAMIC")
+                                end
+                                ValidateBindings(stream.defaultBindings, ResolveChannelBindingActionKey, stream.key, sourceLabel, actionSet)
+                            else
+                                if stream.defaultAutoJoin ~= nil then
+                                    error(sourceLabel .. ".defaultAutoJoin is not allowed for NOTICE streams")
+                                end
+                                if stream.defaultBindings ~= nil then
+                                    error(sourceLabel .. ".defaultBindings is not allowed for NOTICE streams")
+                                end
+                            end
                         end
                     end
                 end

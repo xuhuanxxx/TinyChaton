@@ -902,6 +902,45 @@ function addon.Tests.TestShelfDefaultOrderUsesCompiledStreams()
     addon.db.profile.buttons.buttonOrder = oldOrder
 end
 
+function addon.Tests.TestMessageFormatterChannelLinkArgShape()
+    addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
+    addon.Tests.Assert(type(addon.MessageFormatter.GetChannelTag) == "function", "MessageFormatter.GetChannelTag missing")
+
+    local dynamic = addon.MessageFormatter.GetChannelTag({
+        chatType = "CHANNEL",
+        channelId = 6,
+        registryKey = "world",
+        channelBaseName = "World",
+    })
+    addon.Tests.Assert(type(dynamic) == "string", "Dynamic channel tag should be string")
+    addon.Tests.Assert(dynamic:find("|Hchannel:CHANNEL:6|h", 1, true) ~= nil, "Dynamic channel link should use CHANNEL:<id>")
+
+    local say = addon.MessageFormatter.GetChannelTag({
+        chatType = "SAY",
+        registryKey = "say",
+    })
+    addon.Tests.Assert(type(say) == "string", "SAY channel tag should be string")
+    addon.Tests.Assert(say:find("|Hchannel:SAY|h", 1, true) ~= nil, "SAY link should use chatType")
+
+    local instance = addon.MessageFormatter.GetChannelTag({
+        chatType = "INSTANCE_CHAT",
+        registryKey = "instance",
+    })
+    addon.Tests.Assert(type(instance) == "string", "INSTANCE channel tag should be string")
+    addon.Tests.Assert(instance:find("|Hchannel:INSTANCE|h", 1, true) ~= nil, "INSTANCE_CHAT link should normalize to INSTANCE")
+
+    local dynamicWithoutId = addon.MessageFormatter.GetChannelTag({
+        chatType = "CHANNEL",
+        channelId = nil,
+        registryKey = "world",
+        channelBaseName = "World",
+    })
+    addon.Tests.Assert(type(dynamicWithoutId) == "string", "Dynamic-without-id tag should be string")
+    addon.Tests.Assert(dynamicWithoutId:find("|Hchannel:CHANNEL|h", 1, true) ~= nil, "CHANNEL without id should fall back to CHANNEL")
+    addon.Tests.Assert(dynamicWithoutId:find("|Hchannel:nil|h", 1, true) == nil, "CHANNEL link should never contain nil")
+    addon.Tests.Assert(dynamicWithoutId:find("|Hchannel:%d+|h") == nil, "CHANNEL link should not use naked numeric chatType")
+end
+
 function addon.Tests.TestChatPipelineStageOrder()
     addon.Tests.Assert(type(addon.ChatPipeline) == "table", "ChatPipeline missing")
 

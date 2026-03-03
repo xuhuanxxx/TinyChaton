@@ -101,6 +101,31 @@ local function ResolveColorChatType(line)
     return line.chatType
 end
 
+local function ResolveChannelLinkArg(line)
+    if type(line) ~= "table" then
+        return "SYSTEM"
+    end
+
+    local chatType = line.chatType
+    if type(chatType) ~= "string" or chatType == "" then
+        return "SYSTEM"
+    end
+
+    if chatType == "CHANNEL" then
+        local channelId = tonumber(line.channelId)
+        if channelId and channelId > 0 then
+            return "CHANNEL:" .. tostring(channelId)
+        end
+        return "CHANNEL"
+    end
+
+    if chatType == "INSTANCE_CHAT" then
+        return "INSTANCE"
+    end
+
+    return chatType
+end
+
 --- Resolve display color for a line.
 --- @param line table
 --- @return number, number, number
@@ -142,15 +167,7 @@ function addon.MessageFormatter.GetChannelTag(line)
         channelTag = string.format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, channelNameDisplay)
     end
 
-    local linkType = "channel"
-    local linkArg = line.channelId or line.chatType
-    
-    if line.chatType == "CHANNEL" then
-        linkArg = line.channelId
-    elseif line.chatType == "INSTANCE_CHAT" then
-        linkArg = "INSTANCE"
-    end
-    
+    local linkArg = ResolveChannelLinkArg(line)
     return string.format("|Hchannel:%s|h%s|h", linkArg, channelTag)
 end
 

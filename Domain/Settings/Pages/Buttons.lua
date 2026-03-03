@@ -129,20 +129,38 @@ CategoryBuilders.buttons = function(rootCat)
 
         local visibleItems = addon.Shelf and addon.Shelf:GetVisibleItems() or {}
         local currentTheme = addon:GetShelfThemeProperties()
-
-        local previewButtonSize = 30
-        local previewSpacing = 2
+        local previewButtonSize = currentTheme.buttonSize or addon.CONSTANTS.SHELF_DEFAULT_BUTTON_SIZE
+        local previewSpacing = currentTheme.spacing or addon.CONSTANTS.SHELF_DEFAULT_SPACING
+        local previewScale = currentTheme.scale or addon.CONSTANTS.SHELF_DEFAULT_SCALE
+        local previewAlpha = currentTheme.alpha or addon.CONSTANTS.SHELF_DEFAULT_ALPHA
 
         local elements = {}
-        local totalWidth = (#visibleItems * previewButtonSize) + ((#visibleItems - 1) * previewSpacing)
+        local buttonSizes = {}
+        local totalWidth = 0
+        for _, info in ipairs(visibleItems) do
+            local size = addon.Shelf and addon.Shelf.ResolveButtonSize
+                and addon.Shelf:ResolveButtonSize(info.text, currentTheme, previewButtonSize)
+                or { previewButtonSize, previewButtonSize }
+            table.insert(buttonSizes, size)
+            totalWidth = totalWidth + (size[1] or previewButtonSize)
+        end
+        if #visibleItems > 1 then
+            totalWidth = totalWidth + ((#visibleItems - 1) * previewSpacing)
+        end
         local startX = (container:GetWidth() - totalWidth) / 2
+        local currentX = startX
+
+        container:SetScale(previewScale)
+        container:SetAlpha(previewAlpha)
 
         for i, info in ipairs(visibleItems) do
+            local size = buttonSizes[i] or { previewButtonSize, previewButtonSize }
             table.insert(elements, addon.ShelfButton:Create({
-                key = info.key, text = info.text, item = info.item, size = previewButtonSize, theme = currentTheme,
+                key = info.key, text = info.text, item = info.item, size = size, theme = currentTheme,
                 channelState = info.channelState,
-                point = {"LEFT", container, "LEFT", startX + (i-1)*(previewButtonSize+previewSpacing), 0},
+                point = {"LEFT", container, "LEFT", currentX, 0},
             }))
+            currentX = currentX + (size[1] or previewButtonSize) + previewSpacing
         end
         TR.Reconciler:Render(container, elements)
     end

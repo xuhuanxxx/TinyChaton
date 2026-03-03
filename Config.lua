@@ -40,6 +40,8 @@ addon.CONSTANTS = {
     SHELF_DEFAULT_THEME = "Modern",
     SHELF_DEFAULT_COLORSET = "rainbow",
     SHELF_DEFAULT_ANCHOR = "chat_top",
+    SHELF_BUTTON_TEXT_HPAD = 8,
+    SHELF_BUTTON_MAX_WIDTH_FACTOR = 1.9,
 
     -- Chat Defaults
     CHAT_DEFAULT_FONT = "STANDARD",

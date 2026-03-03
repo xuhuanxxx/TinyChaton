@@ -179,6 +179,80 @@ if not TR then
     error("TinyReactor not initialized")
 end
 
+local SHELF_BUTTON_TEXT_HPAD = (addon.CONSTANTS and addon.CONSTANTS.SHELF_BUTTON_TEXT_HPAD) or 8
+local SHELF_BUTTON_MAX_WIDTH_FACTOR = (addon.CONSTANTS and addon.CONSTANTS.SHELF_BUTTON_MAX_WIDTH_FACTOR) or 1.9
+local DEFAULT_FONT_PATH = "Fonts\\FRIZQT__.TTF"
+
+local measureContainer = nil
+local measureFontString = nil
+
+local function ResolveThemeFontPath(theme, fallbackFont)
+    local themeFont = theme and theme.font
+    local fontToUse
+
+    if themeFont == "STANDARD" then
+        fontToUse = STANDARD_TEXT_FONT
+    elseif themeFont == "CHAT" then
+        fontToUse = UNIT_NAME_FONT
+    elseif themeFont == "DAMAGE" then
+        fontToUse = DAMAGE_TEXT_FONT
+    elseif themeFont and themeFont ~= "" then
+        fontToUse = themeFont
+    else
+        fontToUse = fallbackFont
+    end
+
+    if type(fontToUse) ~= "string" then
+        return DEFAULT_FONT_PATH
+    end
+    return fontToUse
+end
+
+local function EnsureMeasureFontString()
+    if measureFontString then
+        return measureFontString
+    end
+
+    if not measureContainer then
+        measureContainer = CF("Frame", nil, UIParent)
+        measureContainer:Hide()
+    end
+
+    measureFontString = measureContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    return measureFontString
+end
+
+function addon.Shelf:ResolveButtonSize(text, theme, btnSize)
+    local height = tonumber(btnSize) or addon.CONSTANTS.SHELF_DEFAULT_BUTTON_SIZE or 30
+    if type(text) ~= "string" or text == "" then
+        return { height, height }
+    end
+
+    local fs = EnsureMeasureFontString()
+    if not fs then
+        return { height, height }
+    end
+
+    local currentFont, _, currentOutline = fs:GetFont()
+    local fontSize = (theme and theme.fontSize) or addon.CONSTANTS.SHELF_DEFAULT_FONT_SIZE or 14
+    local outline = currentOutline or ""
+    local fontPath = ResolveThemeFontPath(theme, currentFont)
+
+    fs:SetFont(fontPath, fontSize, outline)
+    fs:SetText(text)
+
+    local textWidth = fs:GetStringWidth()
+    if not textWidth or textWidth <= 0 then
+        return { height, height }
+    end
+
+    local maxWidth = math.ceil(height * SHELF_BUTTON_MAX_WIDTH_FACTOR)
+    local width = math.ceil(textWidth + (SHELF_BUTTON_TEXT_HPAD * 2))
+    width = math.min(math.max(width, height), maxWidth)
+
+    return { width, height }
+end
+
 local ShelfButton = TR:Component("ShelfButton")
 addon.ShelfButton = ShelfButton
 
@@ -188,10 +262,11 @@ function ShelfButton:Render(props)
     local theme = visualSpec.themeProps or props.theme or addon:GetShelfThemeProperties()
     local textColor = visualSpec.textColor or addon:GetButtonColor(props.item)
     local state = props.channelState or "joined"
+    local buttonSize = props.size
 
     return TR:CreateElement("Button", {
         key = props.key,
-        size = {props.size or 30, props.size or 30},
+        size = buttonSize,
         point = props.point,
         text = props.text,
         textColor = textColor,
@@ -242,19 +317,7 @@ function ShelfButton:Render(props)
                 local fs = btnSelf:GetFontString()
                 if fs then
                     local font, _, outline = fs:GetFont()
-                    if not font then font = "Fonts\\FRIZQT__.TTF" end
-
-                    local themeFont = theme.font
-                    local fontToUse
-
-                    if themeFont == "STANDARD" then fontToUse = STANDARD_TEXT_FONT
-                    elseif themeFont == "CHAT" then fontToUse = UNIT_NAME_FONT
-                    elseif themeFont == "DAMAGE" then fontToUse = DAMAGE_TEXT_FONT
-                    elseif themeFont and themeFont ~= "" then fontToUse = themeFont
-                    else fontToUse = font end
-
-                    if type(fontToUse) ~= "string" then fontToUse = "Fonts\\FRIZQT__.TTF" end
-
+                    local fontToUse = ResolveThemeFontPath(theme, font)
                     fs:SetFont(fontToUse, theme.fontSize, outline)
                 end
             end
@@ -268,7 +331,9 @@ function ShelfButton:Render(props)
             end
 
             local overlay = btnSelf.StatusOverlay
-            local s = (props.size or 30) * 0.8
+            local width = (buttonSize and buttonSize[1]) or 30
+            local height = (buttonSize and buttonSize[2]) or 30
+            local s = math.min(width, height) * 0.8
             overlay:SetSize(s, s)
 
             if state == "unjoined" then
@@ -320,10 +385,10 @@ function addon.Shelf:Render()
 
     local btnSize = currentTheme.buttonSize or addon.CONSTANTS.SHELF_DEFAULT_BUTTON_SIZE
     local spacing = currentTheme.spacing or addon.CONSTANTS.SHELF_DEFAULT_SPACING
-    local currentX = 0
 
     local elements = {}
     local buttonElements = {}
+    local buttonSizes = {}
 
     local themeAlpha = shelfVisualSpec.alpha or currentTheme.alpha or 1.0
     local themeScale = shelfVisualSpec.scale or currentTheme.scale or 1.0
@@ -369,14 +434,18 @@ function addon.Shelf:Render()
 
         local buttonVisualSpec = addon.ShelfVisualSpecResolver and addon.ShelfVisualSpecResolver.ResolveButtonVisualSpec
             and addon.ShelfVisualSpecResolver:ResolveButtonVisualSpec(item, { themeKey = themeKey }) or {}
+        local buttonTheme = buttonVisualSpec.themeProps or currentTheme
+        local buttonBaseSize = buttonTheme.buttonSize or btnSize
+        local buttonSize = self:ResolveButtonSize(info.text, buttonTheme, buttonBaseSize)
+        table.insert(buttonSizes, buttonSize)
 
         table.insert(buttonElements, addon.ShelfButton:Create({
             key = info.key,
             text = info.text,
             item = item,
             channelState = info.channelState,
-            size = btnSize,
-            theme = currentTheme,
+            size = buttonSize,
+            theme = buttonTheme,
             visualSpec = buttonVisualSpec,
 
             tooltip = tooltip,
@@ -392,8 +461,6 @@ function addon.Shelf:Render()
                 end
             end or nil,
         }))
-
-        currentX = currentX + btnSize + spacing
     end
 
     -- Root Layout: HStack or VStack based on direction setting
@@ -419,19 +486,7 @@ function addon.Shelf:Render()
                     local fs = child:GetFontString()
                     if fs then
                         local font, _, outline = fs:GetFont()
-                        if not font then font = "Fonts\\FRIZQT__.TTF" end
-
-                        local themeFont = currentTheme.font
-                        local fontToUse
-
-                        if themeFont == "STANDARD" then fontToUse = STANDARD_TEXT_FONT
-                        elseif themeFont == "CHAT" then fontToUse = UNIT_NAME_FONT
-                        elseif themeFont == "DAMAGE" then fontToUse = DAMAGE_TEXT_FONT
-                        elseif themeFont and themeFont ~= "" then fontToUse = themeFont
-                        else fontToUse = font end
-
-                        if type(fontToUse) ~= "string" then fontToUse = "Fonts\\FRIZQT__.TTF" end
-
+                        local fontToUse = ResolveThemeFontPath(currentTheme, font)
                         fs:SetFont(fontToUse, currentTheme.fontSize, outline)
                     end
                 end
@@ -443,11 +498,24 @@ function addon.Shelf:Render()
 
     local count = #buttonElements
     if count > 0 then
-        local totalLength = (count * btnSize) + ((count - 1) * spacing)
+        local totalMainAxis = 0
+        local maxCrossAxis = 0
+        for _, size in ipairs(buttonSizes) do
+            local w = size[1] or btnSize
+            local h = size[2] or btnSize
+            if direction == "vertical" then
+                totalMainAxis = totalMainAxis + h
+                maxCrossAxis = math.max(maxCrossAxis, w)
+            else
+                totalMainAxis = totalMainAxis + w
+                maxCrossAxis = math.max(maxCrossAxis, h)
+            end
+        end
+        totalMainAxis = totalMainAxis + ((count - 1) * spacing)
         if direction == "vertical" then
-            Shelf:SetSize(btnSize, totalLength)
+            Shelf:SetSize(maxCrossAxis, totalMainAxis)
         else
-            Shelf:SetSize(totalLength, btnSize)
+            Shelf:SetSize(totalMainAxis, maxCrossAxis)
         end
     else
         Shelf:SetSize(btnSize, btnSize)

@@ -811,6 +811,19 @@ function addon.Tests.TestNoticeEventToStreamKeyMapping()
     addon.Tests.AssertEqual(addon.EVENT_TO_STREAM_KEY.CHAT_MSG_RAID_BOSS_EMOTE, "raid_boss_emote", "raid boss emote event mapping mismatch")
 end
 
+function addon.Tests.TestValidateChatEventDerivationRequiresNonChannelStreamMapping()
+    addon.Tests.Assert(type(addon.ValidateChatEventDerivation) == "function", "ValidateChatEventDerivation missing")
+    addon.Tests.Assert(type(addon.EVENT_TO_STREAM_KEY) == "table", "EVENT_TO_STREAM_KEY missing")
+
+    local original = addon.EVENT_TO_STREAM_KEY.CHAT_MSG_MONSTER_SAY
+    addon.EVENT_TO_STREAM_KEY.CHAT_MSG_MONSTER_SAY = nil
+    local ok = pcall(function()
+        addon:ValidateChatEventDerivation()
+    end)
+    addon.Tests.Assert(ok == false, "ValidateChatEventDerivation should fail when non-channel event stream mapping is missing")
+    addon.EVENT_TO_STREAM_KEY.CHAT_MSG_MONSTER_SAY = original
+end
+
 function addon.Tests.TestResolveStreamToggleDefaults()
     addon.Tests.Assert(type(addon.ResolveStreamToggle) == "function", "ResolveStreamToggle missing")
     addon.Tests.AssertEqual(addon:ResolveStreamToggle("say", nil, "snapshotDefault", false), true, "say snapshot default mismatch")
@@ -838,6 +851,16 @@ function addon.Tests.TestResolveStreamKeyUnmappedEventFails()
         addon:ResolveStreamKey("CHAT_MSG_FAKE_EVENT_FOR_TEST")
     end)
     addon.Tests.Assert(ok == false, "unmapped non-channel event should fail")
+end
+
+function addon.Tests.TestActionRegistrySendActionDeduplicated()
+    addon.Tests.Assert(type(addon.BuildActionRegistryFromDefinitions) == "function", "BuildActionRegistryFromDefinitions missing")
+    local registry = addon:BuildActionRegistryFromDefinitions()
+    addon.Tests.Assert(type(registry) == "table", "ACTION registry build failed")
+    addon.Tests.Assert(registry.send_whisper ~= nil, "send_whisper should exist")
+    addon.Tests.Assert(registry.send_emote ~= nil, "send_emote should exist")
+    addon.Tests.Assert(registry.whisper_send_whisper == nil, "legacy whisper_send action should be removed")
+    addon.Tests.Assert(registry.emote_send_emote == nil, "legacy emote_send action should be removed")
 end
 
 function addon.Tests.TestChatPipelineStageOrder()
@@ -1076,6 +1099,22 @@ function addon.Tests.TestStreamRegistryDefaultSchemaValidation()
     end)
     addon.Tests.Assert(okKind == false, "Registry validation should reject missing kind")
     reg.CHANNEL.DYNAMIC[1].kind = originalKind
+
+    local originalGroup = reg.CHANNEL.DYNAMIC[1].group
+    reg.CHANNEL.DYNAMIC[1].group = nil
+    local okGroup = pcall(function()
+        addon:ValidateRegistryDefinitions()
+    end)
+    addon.Tests.Assert(okGroup == false, "Registry validation should reject missing group")
+    reg.CHANNEL.DYNAMIC[1].group = originalGroup
+
+    local originalCaps = reg.CHANNEL.DYNAMIC[1].capabilities
+    reg.CHANNEL.DYNAMIC[1].capabilities = nil
+    local okCaps = pcall(function()
+        addon:ValidateRegistryDefinitions()
+    end)
+    addon.Tests.Assert(okCaps == false, "Registry validation should reject missing capabilities")
+    reg.CHANNEL.DYNAMIC[1].capabilities = originalCaps
 
     local notice = reg.NOTICE.ALERT[1]
     local originalNoticeOutbound = notice.capabilities.outbound

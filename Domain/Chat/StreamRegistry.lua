@@ -3,6 +3,53 @@ local OpenChat = _G["Chat" .. "Frame_OpenChat"]
 local PRI_BASE = addon.PRIORITY_BASE or {}
 local PRI_STEP = addon.PRIORITY_STEP or 10
 
+local CAPS_CHANNEL_SYSTEM = {
+    inbound = true, outbound = true, snapshotDefault = true, copyDefault = true,
+    supportsMute = false, supportsAutoJoin = false, pinnable = true,
+}
+local CAPS_CHANNEL_DYNAMIC = {
+    inbound = true, outbound = true, snapshotDefault = true, copyDefault = true,
+    supportsMute = true, supportsAutoJoin = true, pinnable = true,
+}
+local CAPS_CHANNEL_PRIVATE = {
+    inbound = true, outbound = true, snapshotDefault = true, copyDefault = true,
+    supportsMute = false, supportsAutoJoin = false, pinnable = false,
+}
+local CAPS_NOTICE_SYSTEM = {
+    inbound = true, outbound = false, snapshotDefault = true, copyDefault = true,
+    supportsMute = false, supportsAutoJoin = false, pinnable = false,
+}
+local CAPS_NOTICE_ALERT = {
+    inbound = true, outbound = false, snapshotDefault = false, copyDefault = false,
+    supportsMute = false, supportsAutoJoin = false, pinnable = false,
+}
+
+local function CopyCaps(caps)
+    local out = {}
+    for key, value in pairs(caps or {}) do
+        out[key] = value == true
+    end
+    return out
+end
+
+local function BuildStreamList(kind, group, caps, streams)
+    for _, stream in ipairs(streams or {}) do
+        stream.kind = kind
+        stream.group = group
+        stream.capabilities = CopyCaps(caps)
+        stream.defaultPinned = stream.capabilities.pinnable == true
+        stream.defaultSnapshotted = stream.capabilities.snapshotDefault == true
+        stream.defaultCopyable = stream.capabilities.copyDefault == true
+        stream.isInboundOnly = stream.capabilities.outbound ~= true
+        if stream.capabilities.supportsAutoJoin == true then
+            stream.defaultAutoJoin = stream.defaultAutoJoin == true
+        else
+            stream.defaultAutoJoin = nil
+        end
+    end
+    return streams
+end
+
 -- STREAM_REGISTRY
 -- 消息流层级注册表 - Stream > Channel / Notice 架构
 -- 流默认行为由显式 schema 字段声明（defaultPinned/defaultSnapshotted/defaultAutoJoin）
@@ -12,7 +59,7 @@ addon.STREAM_REGISTRY = {
     -- 默认能力：defaultPinned = true, defaultSnapshotted = true
     CHANNEL = {
         -- [SYSTEM] 系统内置频道
-        SYSTEM = {
+        SYSTEM = BuildStreamList("channel", "system", CAPS_CHANNEL_SYSTEM, {
             {
                 key = "say",
                 chatType = "SAY",
@@ -185,11 +232,11 @@ addon.STREAM_REGISTRY = {
                 isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
-        },
+        }),
 
         -- [DYNAMIC] 动态加入频道（需要服务器ID）
         -- Shelf availability detection is intentionally scoped to this group only.
-        DYNAMIC = {
+        DYNAMIC = BuildStreamList("channel", "dynamic", CAPS_CHANNEL_DYNAMIC, {
             {
                 key = "general",
                 chatType = "CHANNEL",
@@ -304,10 +351,10 @@ addon.STREAM_REGISTRY = {
                 defaultAutoJoin = true,
                 defaultBindings = { left = "send", right = "mute_toggle" },
             },
-        },
+        }),
 
         -- [PRIVATE] 私聊类频道
-        PRIVATE = {
+        PRIVATE = BuildStreamList("channel", "private", CAPS_CHANNEL_PRIVATE, {
             {
                 key = "whisper",
                 chatType = "WHISPER",
@@ -342,7 +389,7 @@ addon.STREAM_REGISTRY = {
                 isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
-        }
+        })
     },
 
     -- [NOTICE] 纯通知类消息流（系统生成、无发送行为）
@@ -353,7 +400,7 @@ addon.STREAM_REGISTRY = {
         LOG = {},
 
         -- [SYSTEM] 系统提示
-        SYSTEM = {
+        SYSTEM = BuildStreamList("notice", "system", CAPS_NOTICE_SYSTEM, {
             {
                 key = "system",
                 chatType = "SYSTEM",
@@ -369,10 +416,10 @@ addon.STREAM_REGISTRY = {
                 defaultCopyable = true,
                 isInboundOnly = true,
             },
-        },
+        }),
 
         -- [ALERT] 警告类（Boss喊话、表情）
-        ALERT = {
+        ALERT = BuildStreamList("notice", "alert", CAPS_NOTICE_ALERT, {
             {
                 key = "monster_say",
                 chatType = "SYSTEM",
@@ -478,85 +525,9 @@ addon.STREAM_REGISTRY = {
                 defaultCopyable = false,
                 isInboundOnly = true,
             },
-        }
+        })
     }
 }
-
-local function InferGroup(categoryKey, subKey)
-    if categoryKey == "NOTICE" then
-        if subKey == "ALERT" then
-            return "alert"
-        end
-        if subKey == "LOG" then
-            return "log"
-        end
-        return "system"
-    end
-
-    if subKey == "PRIVATE" then
-        return "private"
-    end
-    if subKey == "DYNAMIC" then
-        return "dynamic"
-    end
-    return "system"
-end
-
-local function InferCapabilities(kind, group, stream)
-    local oldInboundOnly = stream.isInboundOnly == true
-    local outbound = not oldInboundOnly
-    local caps = {}
-    if type(stream.capabilities) == "table" then
-        for k, v in pairs(stream.capabilities) do
-            caps[k] = v
-        end
-    end
-
-    if kind == "notice" then
-        outbound = false
-    end
-
-    caps.inbound = (caps.inbound ~= nil) and (caps.inbound == true) or true
-    caps.outbound = (caps.outbound ~= nil) and (caps.outbound == true) or outbound
-    caps.snapshotDefault = (caps.snapshotDefault ~= nil) and (caps.snapshotDefault == true) or (stream.defaultSnapshotted == true)
-    caps.copyDefault = (caps.copyDefault ~= nil) and (caps.copyDefault == true) or (stream.defaultCopyable == true)
-    caps.supportsMute = (caps.supportsMute ~= nil) and (caps.supportsMute == true) or (kind == "channel" and group == "dynamic")
-    caps.supportsAutoJoin = (caps.supportsAutoJoin ~= nil) and (caps.supportsAutoJoin == true) or (kind == "channel" and group == "dynamic" and stream.defaultAutoJoin == true)
-    caps.pinnable = (caps.pinnable ~= nil) and (caps.pinnable == true) or (stream.defaultPinned == true)
-
-    if kind == "notice" then
-        caps.outbound = false
-        caps.supportsAutoJoin = false
-        caps.supportsMute = false
-    end
-
-    return caps
-end
-
-for categoryKey, category in pairs(addon.STREAM_REGISTRY) do
-    if type(category) == "table" then
-        for subKey, streams in pairs(category) do
-            if type(streams) == "table" then
-                for _, stream in ipairs(streams) do
-                    local kind = (categoryKey == "NOTICE") and "notice" or "channel"
-                    local group = InferGroup(categoryKey, subKey)
-                    stream.kind = stream.kind or kind
-                    stream.group = stream.group or group
-                    stream.capabilities = InferCapabilities(stream.kind, stream.group, stream)
-                    stream.defaultSnapshotted = stream.capabilities.snapshotDefault == true
-                    stream.defaultCopyable = stream.capabilities.copyDefault == true
-                    stream.isInboundOnly = stream.capabilities.outbound ~= true
-                    stream.defaultPinned = stream.capabilities.pinnable == true
-                    if stream.capabilities.supportsAutoJoin == true then
-                        stream.defaultAutoJoin = stream.defaultAutoJoin == true
-                    else
-                        stream.defaultAutoJoin = nil
-                    end
-                end
-            end
-        end
-    end
-end
 
 -- Action Implementation Helpers
 -- 这些函数被 Libs/Registry/Actions.lua 中的 ACTION_DEFINITIONS 调用
@@ -598,7 +569,12 @@ function addon:ActionSend(chatType, channelKey, channelName)
             return
         end
     else
-        local cmd = SLASH_COMMANDS[chatType] or string.lower(chatType)
+        local cmd
+        if chatType == "WHISPER" or chatType == "BN_WHISPER" then
+            cmd = "w"
+        else
+            cmd = SLASH_COMMANDS[chatType] or string.lower(chatType)
+        end
         OpenChat("/" .. cmd .. " ")
     end
 end

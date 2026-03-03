@@ -61,6 +61,7 @@ status: ACTIVE
 ## 校验规则
 
 - `kind/group/capabilities` 必填且合法。
+- 不允许通过 category/subKey 推断并回写缺失字段。
 - `kind=notice` 时必须 `outbound=false`、`supportsAutoJoin=false`。
 - `outbound=false` 时 `defaultBindings` 禁止出现。
 - event 映射冲突必须报错。

@@ -52,12 +52,6 @@ local function ResolveChannelBindingActionKey(streamKey, bindingKey, actionSet)
         return bindingKey
     end
     if bindingKey == "send" then
-        if streamKey == "whisper" or streamKey == "bn_whisper" then
-            return "whisper_send_" .. streamKey
-        end
-        if streamKey == "emote" then
-            return "emote_send_" .. streamKey
-        end
         return "send_" .. streamKey
     end
     if bindingKey == "mute_toggle" then

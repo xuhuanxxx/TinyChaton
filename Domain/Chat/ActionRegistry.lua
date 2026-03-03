@@ -1,5 +1,4 @@
 local addonName, addon = ...
-local OpenChat = _G["Chat" .. "Frame_OpenChat"]
 local L = addon.L
 
 local function ResolveStreamLabel(stream)
@@ -75,56 +74,6 @@ addon.ACTION_DEFINITIONS = {
         end,
         getTooltip = function()
             return L["TOOLTIP_MUTE_TOGGLE"]
-        end
-    },
-
-    -- =====================================================================
-    -- [WHISPER_SEND] 私聊发送（特殊处理）
-    -- =====================================================================
-    {
-        key = "whisper_send",
-        label = L["ACTION_PREFIX_SEND"],
-        category = "channel",
-        actionPlane = "USER_ACTION",
-        appliesTo = {
-            streamKeys = { "whisper", "bn_whisper" }
-        },
-        execute = function(streamKey)
-            if streamKey == "whisper" then
-                OpenChat("/w ")
-            elseif streamKey == "bn_whisper" then
-                OpenChat("/w ")
-            end
-        end,
-        getLabel = function(streamKey)
-            local stream = addon:GetStreamByKey(streamKey)
-            return ResolveStreamLabel(stream)
-        end,
-        getTooltip = function()
-            return L["TOOLTIP_SEND_TO"]
-        end
-    },
-
-    -- =====================================================================
-    -- [EMOTE_SEND] 表情发送
-    -- =====================================================================
-    {
-        key = "emote_send",
-        label = L["ACTION_PREFIX_SEND"],
-        category = "channel",
-        actionPlane = "USER_ACTION",
-        appliesTo = {
-            streamKeys = { "emote" }
-        },
-        execute = function()
-            OpenChat("/e ")
-        end,
-        getLabel = function(streamKey)
-            local stream = addon:GetStreamByKey(streamKey)
-            return ResolveStreamLabel(stream)
-        end,
-        getTooltip = function()
-            return L["TOOLTIP_SEND_TO"]
         end
     },
 

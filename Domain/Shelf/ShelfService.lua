@@ -103,14 +103,7 @@ function addon.Shelf:GetItemConfig(key)
 
             -- Map short key to full ACTION key
             if actionKey == "send" then
-                -- Check if this is a special stream (whisper, emote)
-                if itemKey == "whisper" or itemKey == "bn_whisper" then
-                    return "whisper_send_" .. itemKey
-                elseif itemKey == "emote" then
-                    return "emote_send_" .. itemKey
-                else
-                    return "send_" .. itemKey
-                end
+                return "send_" .. itemKey
             elseif actionKey == "mute_toggle" then
                 return "mute_toggle_" .. itemKey
             else

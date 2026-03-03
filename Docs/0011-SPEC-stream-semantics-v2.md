@@ -53,6 +53,7 @@ status: ACTIVE
   - `capabilities.supportsAutoJoin=false`
 - `capabilities.outbound=false` 时，`defaultBindings` 不允许出现。
 - `events` 中每个 event 必须是非空字符串。
+- schema 缺失不得在编译期自动补齐；缺字段必须在启动校验时失败。
 
 ## 编译期索引
 

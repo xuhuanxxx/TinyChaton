@@ -118,43 +118,44 @@ local function BuildStreamIndexFromRegistry(registry)
         if declared == "channel" or declared == "notice" then
             return declared
         end
-        return (categoryKey == "CHANNEL") and "channel" or "notice"
+        error(string.format("Stream '%s' is missing valid kind", tostring(stream and stream.key)))
     end
 
     local function NormalizeGroup(subKey, stream)
         local declared = ToLowerToken(stream.group)
-        if declared then
+        if declared == "system" or declared == "dynamic" or declared == "private" or declared == "alert" or declared == "log" then
             return declared
         end
-        return ToLowerToken(subKey) or "system"
+        error(string.format("Stream '%s' is missing valid group", tostring(stream and stream.key)))
     end
 
     local function NormalizeCapabilities(stream, kind, group)
-        local caps = type(stream.capabilities) == "table" and stream.capabilities or {}
-        local supportsDynamic = (kind == "channel" and group == "dynamic")
-        local outboundDefault = (kind == "channel") and (stream.isInboundOnly ~= true)
-        local out = {
-            inbound = (caps.inbound ~= false),
-            outbound = (caps.outbound ~= nil) and (caps.outbound == true) or outboundDefault,
-            snapshotDefault = (caps.snapshotDefault ~= nil) and (caps.snapshotDefault == true) or (stream.defaultSnapshotted == true),
-            copyDefault = (caps.copyDefault ~= nil) and (caps.copyDefault == true) or (stream.defaultCopyable == true),
-            supportsMute = (caps.supportsMute ~= nil) and (caps.supportsMute == true) or supportsDynamic,
-            supportsAutoJoin = (caps.supportsAutoJoin ~= nil) and (caps.supportsAutoJoin == true)
-                or (supportsDynamic and stream.defaultAutoJoin == true),
-            pinnable = (caps.pinnable ~= nil) and (caps.pinnable == true) or (stream.defaultPinned == true),
-        }
-
-        if kind == "notice" then
-            out.outbound = false
-            out.supportsMute = false
-            out.supportsAutoJoin = false
+        local caps = stream.capabilities
+        if type(caps) ~= "table" then
+            error(string.format("Stream '%s' capabilities must be table", tostring(stream and stream.key)))
         end
-
+        local out = {
+            inbound = caps.inbound == true,
+            outbound = caps.outbound == true,
+            snapshotDefault = caps.snapshotDefault == true,
+            copyDefault = caps.copyDefault == true,
+            supportsMute = caps.supportsMute == true,
+            supportsAutoJoin = caps.supportsAutoJoin == true,
+            pinnable = caps.pinnable == true,
+        }
+        for key, value in pairs(out) do
+            if type(caps[key]) ~= "boolean" then
+                error(string.format("Stream '%s' capabilities.%s must be boolean", tostring(stream and stream.key), tostring(key)))
+            end
+        end
         return out
     end
 
     local function NormalizeStream(stream, categoryKey, subKey)
-        local normalized = addon.Utils and addon.Utils.DeepCopy and addon.Utils.DeepCopy(stream) or stream
+        local normalized = {}
+        for key, value in pairs(stream or {}) do
+            normalized[key] = value
+        end
         local kind = NormalizeKind(categoryKey, normalized)
         local group = NormalizeGroup(subKey, normalized)
         local capabilities = NormalizeCapabilities(normalized, kind, group)
@@ -187,14 +188,6 @@ local function BuildStreamIndexFromRegistry(registry)
                                 error(string.format("Duplicate stream key in STREAM_REGISTRY: %s", rawStream.key))
                             end
                             local stream = NormalizeStream(rawStream, categoryKey, subKey)
-                            rawStream.kind = stream.kind
-                            rawStream.group = stream.group
-                            rawStream.capabilities = addon.Utils and addon.Utils.DeepCopy and addon.Utils.DeepCopy(stream.capabilities) or stream.capabilities
-                            rawStream.defaultPinned = stream.defaultPinned
-                            rawStream.defaultSnapshotted = stream.defaultSnapshotted
-                            rawStream.defaultCopyable = stream.defaultCopyable
-                            rawStream.isInboundOnly = stream.isInboundOnly
-                            rawStream.defaultAutoJoin = stream.defaultAutoJoin
                             byKey[stream.key] = stream
                             rawByKey[stream.key] = rawStream
                             pathByKey[stream.key] = tostring(categoryKey) .. "." .. tostring(subKey)
@@ -478,6 +471,9 @@ function addon:ValidateChatEventDerivation()
             error("Missing chatType mapping for event: " .. tostring(eventName))
         end
         local streamKey = streamMap[eventName]
+        if eventName ~= "CHAT_MSG_CHANNEL" and (type(streamKey) ~= "string" or streamKey == "") then
+            error("Missing stream key mapping for non-channel event: " .. tostring(eventName))
+        end
         if streamKey ~= nil and (type(streamKey) ~= "string" or streamKey == "") then
             error("Invalid stream key mapping for event: " .. tostring(eventName))
         end

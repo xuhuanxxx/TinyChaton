@@ -38,7 +38,7 @@ status: ACTIVE
 
 ## 运行时约束
 
-- 发送动作只应绑定到 `capabilities.outbound=true` 的 stream。
+- 发送动作只保留单一路径：`send_<streamKey>`，并且只绑定到 `capabilities.outbound=true` 的 stream。
 - 静音动作只应绑定到 `capabilities.supportsMute=true` 的 stream。
 - BYPASS 模式下执行权限仍由 `actionPlane` + `IsPlaneAllowed` 决定。
 

@@ -26,7 +26,7 @@ status: ACTIVE
 
 - `Domain/Chat/Storage/SnapshotKeys.lua`
   - 新增 `ResolveStreamKey` 作为统一入口。
-  - `GetChannelKey` 降级为薄别名。
+  - 移除 `GetChannelKey` 入口，统一调用 `ResolveStreamKey`。
 
 ### 策略消费端
 

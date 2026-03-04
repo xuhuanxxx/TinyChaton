@@ -13,6 +13,11 @@ addon.ChatHighlight = addon.ChatHighlight or {}
 
 function addon.ChatHighlight.Process(chatData)
     if not addon.db or not addon.db.enabled then return false end
+    local streamKey = chatData and chatData.streamKey
+    if type(streamKey) ~= "string" or streamKey == "" then return false end
+    if not addon.GetStreamKind or addon:GetStreamKind(streamKey) ~= "channel" then
+        return false
+    end
 
     local config = addon.db.profile and addon.db.profile.filter and addon.db.profile.filter.highlight
     if not config or not config.enabled then return false end
@@ -94,13 +99,14 @@ local function ParseDisplayLine(text)
     return text:sub(1, bodyStart - 1), text:sub(bodyStart), author
 end
 
-function addon.ChatHighlight.ApplyToDisplayText(text)
+function addon.ChatHighlight.ApplyToDisplayText(text, streamKey)
     local prefix, body, author = ParseDisplayLine(text)
     local pureName = author and author:match("([^%-]+)") or author
     local chatData = {
         text = body,
         name = pureName,
         authorLower = pureName and string.lower(pureName) or "",
+        streamKey = streamKey,
     }
 
     if addon.ChatHighlight.Process(chatData) then
@@ -114,7 +120,11 @@ local function HighlightTransformer(frame, text, r, g, b, extraArgs)
     if not addon.db or not addon.db.enabled then
         return text, r, g, b, extraArgs
     end
-    return addon.ChatHighlight.ApplyToDisplayText(text), r, g, b, extraArgs
+    local streamKey = type(extraArgs) == "table" and extraArgs.streamKey or nil
+    if (type(streamKey) ~= "string" or streamKey == "") and type(text) == "string" then
+        streamKey = text:match("|Htinychat:send:([^|]+)|h")
+    end
+    return addon.ChatHighlight.ApplyToDisplayText(text, streamKey), r, g, b, extraArgs
 end
 
 function addon:InitDisplayHighlight()

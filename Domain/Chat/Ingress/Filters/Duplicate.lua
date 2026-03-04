@@ -49,6 +49,11 @@ function addon.Filters.DuplicateProcess(chatData)
     if not addon.db or not addon.db.enabled then return end
     local chatContent = addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.content
     if not chatContent or not chatContent.repeatFilter then return end
+    local streamKey = chatData and chatData.streamKey
+    if type(streamKey) ~= "string" or streamKey == "" then return false end
+    if addon.GetStreamKind and addon:GetStreamKind(streamKey) ~= "channel" then
+        return false
+    end
 
     local author = chatData.author
     local msg = chatData.text

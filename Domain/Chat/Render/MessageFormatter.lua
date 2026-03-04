@@ -284,7 +284,11 @@ function addon:RenderChatLine(line, frame, options)
     end
 
     local targetFrame = frame or ChatFrame1
+    local streamKey = type(line) == "table" and (line.registryKey or line.channelKey) or nil
     local extraArgs = addon.Utils.PackArgs(r, g, b)
+    if type(streamKey) == "string" and streamKey ~= "" then
+        extraArgs.streamKey = streamKey
+    end
     if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
         displayLine, r, g, b, extraArgs = addon.Gateway.Display:Transform(targetFrame, displayLine, r, g, b, extraArgs)
     end
@@ -295,6 +299,9 @@ function addon:RenderChatLine(line, frame, options)
         extraArgs.n = #extraArgs
     end
     extraArgs[1], extraArgs[2], extraArgs[3] = r, g, b
+    if type(streamKey) == "string" and streamKey ~= "" and (type(extraArgs.streamKey) ~= "string" or extraArgs.streamKey == "") then
+        extraArgs.streamKey = streamKey
+    end
 
     return displayLine, r, g, b, extraArgs
 end

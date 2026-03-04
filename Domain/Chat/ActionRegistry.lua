@@ -46,7 +46,7 @@ addon.ACTION_DEFINITIONS = {
     },
 
     -- =====================================================================
-    -- [MUTE_TOGGLE] Dynamic channel visibility toggle
+    -- [MUTE_TOGGLE] Stream visibility toggle
     -- =====================================================================
     {
         key = "mute_toggle",
@@ -57,7 +57,9 @@ addon.ACTION_DEFINITIONS = {
             streamCapabilities = { supportsMute = true }
         },
         execute = function(streamKey)
-            if addon.VisibilityPolicy and addon.VisibilityPolicy.ToggleDynamicChannelMute then
+            if addon.VisibilityPolicy and addon.VisibilityPolicy.ToggleStreamBlocked then
+                addon.VisibilityPolicy:ToggleStreamBlocked(streamKey)
+            elseif addon.VisibilityPolicy and addon.VisibilityPolicy.ToggleDynamicChannelMute then
                 addon.VisibilityPolicy:ToggleDynamicChannelMute(streamKey)
             end
             if addon.RefreshShelf then

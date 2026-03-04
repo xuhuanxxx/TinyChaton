@@ -327,7 +327,6 @@ addon.DEFAULTS = {
         buttons = {
             enabled = true,
             dynamicMode = "mark",
-            mutedDynamicChannels = {},
             channelPins = BuildChannelPins(),
             kitPins = BuildKitPins(),
             buttonOrder = nil,
@@ -379,6 +378,7 @@ addon.DEFAULTS = {
         },
         filter = {
             mode = "disabled", -- "blacklist", "whitelist", "disabled"
+            streamBlocked = {},
             blacklist = {
                 names = {},
                 keywords = {},

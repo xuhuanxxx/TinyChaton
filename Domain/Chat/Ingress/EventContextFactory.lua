@@ -24,6 +24,7 @@ local addonName, addon = ...
 ---@field flags string|nil
 ---@field channelNumber number|nil
 ---@field channelName string|nil
+---@field streamKey string|nil
 
 addon.ChatData = {}
 
@@ -78,6 +79,14 @@ function addon.ChatData:New(frame, event, ...)
     chatData.flags = flags
     chatData.channelNumber = channelNumber
     chatData.channelName = channelName
+    chatData.streamKey = nil
+
+    if addon.ResolveStreamKey and addon.Utils and addon.Utils.UnpackArgs then
+        local ok, streamKey = pcall(addon.ResolveStreamKey, addon, event, addon.Utils.UnpackArgs(args))
+        if ok and type(streamKey) == "string" and streamKey ~= "" then
+            chatData.streamKey = streamKey
+        end
+    end
 
     if addon.ValidateContract then
         addon:ValidateContract("EventContext", chatData)

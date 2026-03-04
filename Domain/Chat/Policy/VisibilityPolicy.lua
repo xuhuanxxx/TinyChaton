@@ -12,33 +12,42 @@ local function IsDynamicStreamKey(streamKey)
     return kind == "channel" and group == "dynamic"
 end
 
-local function EnsureMutedConfig()
-    if not addon.db or not addon.db.profile or not addon.db.profile.buttons then
-        return nil
+local function IsChannelStreamKey(streamKey)
+    if type(streamKey) ~= "string" or streamKey == "" then
+        return false
     end
-    if type(addon.db.profile.buttons.mutedDynamicChannels) ~= "table" then
-        addon.db.profile.buttons.mutedDynamicChannels = {}
-    end
-    return addon.db.profile.buttons.mutedDynamicChannels
+    return addon:GetStreamKind(streamKey) == "channel"
 end
 
-local function ResolveDynamicStreamKeyFromChannel(channelId, channelName)
-    local resolver = addon.ChannelSemanticResolver
-    if not resolver or type(resolver.ResolveStreamKey) ~= "function" then
+local function EnsureStreamBlockedConfig()
+    if not addon.db or not addon.db.profile then
         return nil
     end
-    local streamKey = resolver.ResolveStreamKey({
-        chatType = "CHANNEL",
-        channelId = channelId,
-        channelName = channelName,
-    })
-    if type(streamKey) ~= "string" or streamKey == "" or streamKey == "unknown_dynamic" then
+    local filter = addon.db.profile.filter
+    if type(filter) ~= "table" then
+        addon.db.profile.filter = {}
+        filter = addon.db.profile.filter
+    end
+    if type(filter.streamBlocked) ~= "table" then
+        filter.streamBlocked = {}
+    end
+    return filter.streamBlocked
+end
+
+local function ResolveStreamKeyFromChatData(chatData)
+    if type(chatData) ~= "table" then
         return nil
     end
-    if not IsDynamicStreamKey(streamKey) then
-        return nil
+    if type(chatData.streamKey) == "string" and chatData.streamKey ~= "" then
+        return chatData.streamKey
     end
-    return streamKey
+    if addon.ResolveStreamKey and addon.Utils and addon.Utils.UnpackArgs and type(chatData.event) == "string" and type(chatData.args) == "table" then
+        local ok, streamKey = pcall(addon.ResolveStreamKey, addon, chatData.event, addon.Utils.UnpackArgs(chatData.args))
+        if ok and type(streamKey) == "string" and streamKey ~= "" then
+            return streamKey
+        end
+    end
+    return nil
 end
 
 local function BuildAuthorFields(author)
@@ -48,6 +57,11 @@ end
 
 local function EvaluateRuleVisibility(chatData, includeDuplicate)
     if not chatData then
+        return true
+    end
+
+    local streamKey = ResolveStreamKeyFromChatData(chatData)
+    if not IsChannelStreamKey(streamKey) then
         return true
     end
 
@@ -86,31 +100,60 @@ local function ReturnDecision(visible, reason)
     return decision.visible
 end
 
-function Policy:IsDynamicChannelMuted(streamKey)
-    local muted = EnsureMutedConfig()
-    if not muted or not IsDynamicStreamKey(streamKey) then
+function Policy:IsStreamBlocked(streamKey)
+    local blocked = EnsureStreamBlockedConfig()
+    if not blocked or type(streamKey) ~= "string" or streamKey == "" then
         return false
     end
-    return muted[streamKey] == true
+    return blocked[streamKey] == true
+end
+
+function Policy:SetStreamBlocked(streamKey, shouldBlock)
+    if type(streamKey) ~= "string" or streamKey == "" then
+        return false
+    end
+    local blocked = EnsureStreamBlockedConfig()
+    if not blocked then
+        return false
+    end
+    if shouldBlock == true then
+        blocked[streamKey] = true
+        return true
+    end
+    blocked[streamKey] = nil
+    return false
+end
+
+function Policy:ToggleStreamBlocked(streamKey)
+    if type(streamKey) ~= "string" or streamKey == "" then
+        return false
+    end
+    local blocked = EnsureStreamBlockedConfig()
+    if not blocked then
+        return false
+    end
+
+    if blocked[streamKey] == true then
+        blocked[streamKey] = nil
+        return false
+    end
+
+    blocked[streamKey] = true
+    return true
+end
+
+function Policy:IsDynamicChannelMuted(streamKey)
+    if not IsDynamicStreamKey(streamKey) then
+        return false
+    end
+    return self:IsStreamBlocked(streamKey)
 end
 
 function Policy:ToggleDynamicChannelMute(streamKey)
     if not IsDynamicStreamKey(streamKey) then
         return false
     end
-
-    local muted = EnsureMutedConfig()
-    if not muted then
-        return false
-    end
-
-    if muted[streamKey] then
-        muted[streamKey] = nil
-    else
-        muted[streamKey] = true
-    end
-
-    return muted[streamKey] == true
+    return self:ToggleStreamBlocked(streamKey)
 end
 
 function Policy:IsVisibleRealtime(chatData)
@@ -122,16 +165,12 @@ function Policy:IsVisibleRealtime(chatData)
         return ReturnDecision(false, "rule_blocked")
     end
 
-    if chatData.event ~= "CHAT_MSG_CHANNEL" then
-        return ReturnDecision(true, "non_dynamic_event")
+    local streamKey = ResolveStreamKeyFromChatData(chatData)
+    if type(streamKey) == "string" and streamKey ~= "" and self:IsStreamBlocked(streamKey) then
+        return ReturnDecision(false, "stream_blocked")
     end
 
-    local streamKey = ResolveDynamicStreamKeyFromChannel(chatData.channelNumber, chatData.channelName)
-    if not streamKey then
-        return ReturnDecision(true, "dynamic_stream_not_resolved")
-    end
-
-    return ReturnDecision(not self:IsDynamicChannelMuted(streamKey), "dynamic_mute_check")
+    return ReturnDecision(true, "visible")
 end
 
 function Policy:IsVisibleSnapshotLine(line, frame)
@@ -153,6 +192,7 @@ function Policy:IsVisibleSnapshotLine(line, frame)
         authorLower = authorLower,
         channelNumber = line.channelId,
         channelName = line.channelBaseName,
+        streamKey = line.channelKey,
         metadata = {},
     }
 
@@ -160,14 +200,10 @@ function Policy:IsVisibleSnapshotLine(line, frame)
         return ReturnDecision(false, "rule_blocked")
     end
 
-    local streamKey = line.channelKey
-    if not IsDynamicStreamKey(streamKey) then
-        streamKey = ResolveDynamicStreamKeyFromChannel(line.channelId, line.channelBaseName)
+    local streamKey = type(line.channelKey) == "string" and line.channelKey or nil
+    if streamKey and self:IsStreamBlocked(streamKey) then
+        return ReturnDecision(false, "stream_blocked")
     end
 
-    if not streamKey then
-        return ReturnDecision(true, "dynamic_stream_not_resolved")
-    end
-
-    return ReturnDecision(not self:IsDynamicChannelMuted(streamKey), "dynamic_mute_check")
+    return ReturnDecision(true, "visible")
 end

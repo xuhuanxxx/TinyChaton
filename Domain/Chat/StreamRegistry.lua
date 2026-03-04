@@ -5,7 +5,7 @@ local PRI_STEP = addon.PRIORITY_STEP or 10
 
 local CAPS_CHANNEL_SYSTEM = {
     inbound = true, outbound = true, snapshotDefault = true, copyDefault = true,
-    supportsMute = false, supportsAutoJoin = false, pinnable = true,
+    supportsMute = true, supportsAutoJoin = false, pinnable = true,
 }
 local CAPS_CHANNEL_DYNAMIC = {
     inbound = true, outbound = true, snapshotDefault = true, copyDefault = true,
@@ -37,6 +37,12 @@ local function BuildStreamList(kind, group, caps, streams)
         stream.kind = kind
         stream.group = group
         stream.capabilities = CopyCaps(caps)
+        if stream.capabilities.supportsMute == true then
+            stream.defaultBindings = stream.defaultBindings or {}
+            if stream.defaultBindings.right == nil then
+                stream.defaultBindings.right = "mute_toggle"
+            end
+        end
         stream.defaultPinned = stream.capabilities.pinnable == true
         stream.defaultSnapshotted = stream.capabilities.snapshotDefault == true
         stream.defaultCopyable = stream.capabilities.copyDefault == true

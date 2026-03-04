@@ -254,8 +254,12 @@ function Dispatcher:OnChatEvent(frame, event, ...)
         and addon.Gateway.Display.Transform then
         local msg = packedArgs[1]
         local transformedMsg = msg
+        local transformExtraArgs = addon.Utils.PackArgs()
+        if type(chatData.streamKey) == "string" and chatData.streamKey ~= "" then
+            transformExtraArgs.streamKey = chatData.streamKey
+        end
         local ok, nextMsg = pcall(function()
-            local outMsg = addon.Gateway.Display:Transform(frame, msg, nil, nil, nil, addon.Utils.PackArgs())
+            local outMsg = addon.Gateway.Display:Transform(frame, msg, nil, nil, nil, transformExtraArgs)
             return outMsg
         end)
         if ok and type(nextMsg) == "string" then

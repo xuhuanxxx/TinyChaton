@@ -7,6 +7,7 @@ addon.ChatContracts.EventContext = {
     event = "string",
     text = "string|nil",
     author = "string|nil",
+    streamKey = "string|nil",
     metadata = "table",
 }
 

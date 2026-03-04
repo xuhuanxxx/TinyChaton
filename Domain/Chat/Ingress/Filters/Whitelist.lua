@@ -17,6 +17,11 @@ function addon.Filters.WhitelistProcess(chatData)
     if not addon.db or not addon.db.enabled then return false end
     local filterSettings = addon.db.profile and addon.db.profile.filter
     if not filterSettings or filterSettings.mode ~= "whitelist" then return false end
+    local streamKey = chatData and chatData.streamKey
+    if type(streamKey) ~= "string" or streamKey == "" then return false end
+    if addon.GetStreamKind and addon:GetStreamKind(streamKey) ~= "channel" then
+        return false
+    end
 
     local cache = GetRuleCache()
     if not cache then return false end

@@ -21,6 +21,7 @@ CategoryBuilders.filters = function(rootCat)
     if not filterDB then
         addon.db.profile.filter = {
             mode = "disabled",
+            streamBlocked = {},
             blacklist = { names = {}, keywords = {} },
             whitelist = { names = {}, keywords = {} },
             highlight = { enabled = true, names = {}, keywords = {}, color = "FF00FF00" }
@@ -29,6 +30,7 @@ CategoryBuilders.filters = function(rootCat)
     end
     if not filterDB.blacklist then filterDB.blacklist = { names = {}, keywords = {} } end
     if not filterDB.whitelist then filterDB.whitelist = { names = {}, keywords = {} } end
+    if not filterDB.streamBlocked then filterDB.streamBlocked = {} end
     if not filterDB.highlight then filterDB.highlight = { enabled = true, names = {}, keywords = {}, color = "FF00FF00" } end
 
     -- ========================================

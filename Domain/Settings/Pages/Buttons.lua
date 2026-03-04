@@ -18,7 +18,6 @@ CategoryBuilders.buttons = function(rootCat)
         channelPins = {},
         kitPins = {},
         dynamicMode = "mark",
-        mutedDynamicChannels = {},
     }
 
     local function GetCP() local db = GetButtonsDB(); return db and db.channelPins or {} end
@@ -430,7 +429,6 @@ CategoryBuilders.buttons = function(rootCat)
             "buttons.kitPins",
             "buttons.buttonOrder",
             "buttons.bindings",
-            "buttons.mutedDynamicChannels",
         },
         postRefresh = function()
             if addon.RefreshShelf then addon:RefreshShelf() end

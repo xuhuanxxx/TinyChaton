@@ -2,7 +2,7 @@
 id: 0003
 priority: P0
 created: 2026-03-02
-updated: 2026-03-04
+updated: 2026-03-05
 relates: [#0001, #0002, #0011]
 status: ACTIVE
 ---
@@ -40,6 +40,7 @@ status: ACTIVE
 
 - 发送动作只保留单一路径：`send_<streamKey>`，并且只绑定到 `capabilities.outbound=true` 的 stream。
 - 静音动作只应绑定到 `capabilities.supportsMute=true` 的 stream。
+- `mute_toggle` 的落地配置统一写入 `profile.filter.streamBlocked[streamKey]`。
 - BYPASS 模式下执行权限仍由 `actionPlane` + `IsPlaneAllowed` 决定。
 
 ## BREAKING CHANGES
@@ -50,4 +51,5 @@ status: ACTIVE
 
 - `send` 动作只生成在 outbound stream。
 - `mute_toggle` 动作只生成在 supportsMute stream。
+- system + dynamic 中 `supportsMute=true` 的 stream 均应生成 `mute_toggle_<streamKey>`。
 - `notice` stream 不生成发送动作。

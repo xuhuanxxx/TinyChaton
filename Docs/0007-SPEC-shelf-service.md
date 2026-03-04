@@ -2,8 +2,8 @@
 id: 0007
 priority: P1
 created: 2026-03-02
-updated: 2026-03-02
-relates: [#0002, #0003]
+updated: 2026-03-05
+relates: [#0002, #0003, #0014]
 status: ACTIVE
 ---
 
@@ -32,7 +32,7 @@ status: ACTIVE
 **数据源**：
 - `STREAM_REGISTRY.CHANNEL.*`：所有频道流
 - `addon.db.profile.buttons.channelPins`：Pin 状态
-- `addon.db.profile.buttons.mutedDynamicChannels`：静音状态
+- `addon.db.profile.filter.streamBlocked`：屏蔽状态（统一配置）
 
 **生成规则**：
 1. 遍历所有 `CHANNEL` 类别的 Stream
@@ -43,8 +43,8 @@ status: ACTIVE
 3. 检查动态频道可用性：
    - 静态频道（如 `SAY`, `GUILD`）：始终生成
    - 动态频道（如 `CHANNEL`）：检查 `GetChannelList()` 是否存在
-4. 检查静音状态：
-   - `mutedDynamicChannels[stream.key] == true`：跳过（不显示）
+4. 检查屏蔽状态：
+   - `streamBlocked[stream.key] == true`：跳过（不显示）
    - 否则：生成按钮
 
 **按钮数据**：
@@ -144,7 +144,7 @@ GetCachedChannelList() -> { id, name, ... }
 
 **可见性判定**：
 1. 频道必须在 `GetChannelList()` 中存在
-2. 频道不在 `mutedDynamicChannels` 中
+2. 频道未被 `streamBlocked[stream.key] == true` 屏蔽
 3. 频道 Pin 状态为 `true`
 
 **活跃频道解析**：

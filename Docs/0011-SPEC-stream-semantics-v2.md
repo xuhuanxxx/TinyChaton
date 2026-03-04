@@ -2,7 +2,7 @@
 id: 0011
 priority: P0
 created: 2026-03-04
-updated: 2026-03-04
+updated: 2026-03-05
 relates: [#0002, #0003, #0006, #0008]
 status: ACTIVE
 ---
@@ -20,7 +20,7 @@ status: ACTIVE
   key = "string",
   kind = "channel" | "notice",
   group = "system" | "dynamic" | "private" | "alert" | "log",
-  chatType = "string",
+  wowChatType = "string",
   events = { "CHAT_MSG_..." },
   priority = number,
   identity = {
@@ -61,7 +61,7 @@ status: ACTIVE
 
 - `byKey`
 - `eventToStreamKey`（非 `CHAT_MSG_CHANNEL`）
-- `eventToChatType`
+- `eventToWowChatType`
 - `streamKeysByGroup`
 - `outboundStreamKeys`
 - `dynamicStreamKeys`
@@ -88,8 +88,8 @@ status: ACTIVE
 
 用于：
 
-- 快照存储：`snapshotChannels + snapshotDefault`
-- 点击复制：`copyChannels + copyDefault`
+- 快照存储：`snapshotStreams + snapshotDefault`
+- 点击复制：`copyStreams + copyDefault`
 - 自动加入：`supportsAutoJoin`
 - 置顶默认：`pinnable`
 
@@ -99,7 +99,7 @@ status: ACTIVE
 2. `BuildStreamIndex / IterateAllStreams / GetStreamPath` 已移除。
 3. 非 `CHAT_MSG_CHANNEL` 未映射事件会直接报错。
 4. `notice` 与 `system` 分组语义分离，`notice` 不并入 channel system。
-5. 旧字段仅作为镜像别名保留，不再是策略主来源。
+5. 不保留旧字段别名与迁移层。
 
 ## 验收要点
 

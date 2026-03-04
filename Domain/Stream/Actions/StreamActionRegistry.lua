@@ -31,9 +31,9 @@ addon.ACTION_DEFINITIONS = {
             local stream = addon:GetStreamByKey(streamKey)
             if not stream then return end
 
-            if stream.chatType then
+            if stream.wowChatType then
                 local dynamic = addon.ResolveDynamicActiveName and addon:ResolveDynamicActiveName(stream, {}) or nil
-                addon:ActionSend(stream.chatType, streamKey, dynamic and dynamic.activeName or nil)
+                addon:ActionSend(stream.wowChatType, streamKey, dynamic and dynamic.activeName or nil)
             end
         end,
         -- 生成标签的函数

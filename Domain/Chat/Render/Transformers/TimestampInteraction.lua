@@ -104,9 +104,9 @@ function addon:EnableInteractionTimestamp()
         local action, payload = link:match("^tinychat:([^:]+):(.+)$")
         if action == "send" and type(payload) == "string" and payload ~= "" then
             local stream = addon.GetStreamByKey and addon:GetStreamByKey(payload) or nil
-            if type(stream) == "table" and type(stream.chatType) == "string" and stream.chatType ~= "" and addon.ActionSend then
+            if type(stream) == "table" and type(stream.wowChatType) == "string" and stream.wowChatType ~= "" and addon.ActionSend then
                 local dynamic = addon.ResolveDynamicActiveName and addon:ResolveDynamicActiveName(stream, {}) or nil
-                addon:ActionSend(stream.chatType, payload, dynamic and dynamic.activeName or nil)
+                addon:ActionSend(stream.wowChatType, payload, dynamic and dynamic.activeName or nil)
             end
             return
         end

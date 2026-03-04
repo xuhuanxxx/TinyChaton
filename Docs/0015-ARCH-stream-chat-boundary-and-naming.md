@@ -30,6 +30,7 @@ status: ACTIVE
 4. `addon.RuleMatcher` -> `addon.StreamRuleMatcher`
 5. `addon.ChannelHighlight` -> `addon.StreamHighlighter`（channel 仅作为插件）
 6. `addon.ChatContracts` / `addon.ChatTypes` -> `addon.StreamContracts` / `addon.StreamTypes`
+7. Stream schema字段：`chatType` -> `wowChatType`
 
 ## 目录映射
 
@@ -39,6 +40,9 @@ status: ACTIVE
 4. `Domain/Chat/Ingress/Filters/*` -> `Domain/Stream/Rules/*`（RuleEngine + kind strategies）
 5. `Domain/Chat/Render/MessageFormatter.lua` -> `Domain/Stream/Render/MessageFormatter.lua`
 6. `Domain/Chat/Render/Transformers/Highlight.lua` -> `Domain/Stream/Render/Transformers/StreamHighlighter.lua`
+7. `Domain/Chat/StreamRegistry.lua` -> `Domain/Stream/Registry/StreamRegistry.lua`
+8. `Domain/Chat/ActionRegistry.lua` -> `Domain/Stream/Actions/StreamActionRegistry.lua`
+9. `Domain/Chat/Storage/Snapshot*.lua` -> `Domain/Stream/Storage/Snapshot*.lua`
 
 ## MessageFormatter 命名决策
 

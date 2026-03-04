@@ -44,8 +44,8 @@ status: ACTIVE
   text = "string",            -- 消息文本
   author = "string",          -- 作者名
   metadata = {                -- 元数据
-    chatType = "string",
-    channelKey = "string",
+    wowChatType = "string",
+    streamKey = "string",
     -- ... 其他字段
   }
 }
@@ -222,7 +222,7 @@ end
 
 ```lua
 function(streamContext)
-  if ShouldSnapshot(streamContext.metadata.channelKey) then
+  if ShouldSnapshot(streamContext.metadata.streamKey) then
     SaveSnapshot(streamContext)
   end
   -- 无返回值

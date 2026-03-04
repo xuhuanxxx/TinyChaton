@@ -17,7 +17,7 @@ function addon:ResolveStreamKey(event, ...)
         return mappedStreamKey
     end
 
-    local chatType = addon:GetChatTypeByEvent(event)
+    local wowChatType = addon:GetWowChatTypeByEvent(event)
 
     if event == "CHAT_MSG_CHANNEL" then
         local channelNumber = select(8, ...)
@@ -31,7 +31,7 @@ function addon:ResolveStreamKey(event, ...)
 
         if resolver and type(resolver.ResolveStreamKey) == "function" then
             local streamKey = resolver.ResolveStreamKey({
-                chatType = "CHANNEL",
+                wowChatType = "CHANNEL",
                 channelId = channelNumber,
                 channelName = parsedName,
             })

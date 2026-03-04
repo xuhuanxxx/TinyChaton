@@ -2,7 +2,7 @@
 id: 0006
 priority: P1
 created: 2026-03-02
-updated: 2026-03-04
+updated: 2026-03-05
 relates: [#0001, #0005, #0011]
 status: ACTIVE
 ---
@@ -18,14 +18,14 @@ status: ACTIVE
 入库前必须先解析 streamKey：
 
 - `streamKey = ResolveStreamKey(event, ...)`
-- `enabled = ResolveStreamToggle(streamKey, snapshotChannels, "snapshotDefault", true)`
+- `enabled = ResolveStreamToggle(streamKey, snapshotStreams, "snapshotDefault", true)`
 - `enabled=false` 则直接跳过，不入库
 
 ## 点击复制决策
 
 渲染时：
 
-- `enabled = ResolveStreamToggle(streamKey, copyChannels, "copyDefault", true)`
+- `enabled = ResolveStreamToggle(streamKey, copyStreams, "copyDefault", true)`
 - 仅 `enabled=true` 时写入点击复制缓存
 
 ## NOTICE 默认策略
@@ -42,6 +42,7 @@ status: ACTIVE
 
 - 按 streamKey 分桶：`TinyChatonCharDB.snapshot[streamKey] = RingBuffer`
 - 环形缓冲区仍为 FIFO，支持批量淘汰最旧记录。
+- 实现位置：`Domain/Stream/Storage/SnapshotStore.lua` 与 `Domain/Stream/Storage/SnapshotReplayer.lua`。
 
 ## BREAKING CHANGES
 

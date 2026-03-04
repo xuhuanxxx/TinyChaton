@@ -8,7 +8,7 @@ local function BuildValidRegistry()
                     key = "say",
                     kind = "channel",
                     group = "system",
-                    chatType = "SAY",
+                    wowChatType = "SAY",
                     events = { "CHAT_MSG_SAY" },
                     priority = 100,
                     identity = {
@@ -33,7 +33,7 @@ local function BuildValidRegistry()
                     key = "general",
                     kind = "channel",
                     group = "dynamic",
-                    chatType = "CHANNEL",
+                    wowChatType = "CHANNEL",
                     events = { "CHAT_MSG_CHANNEL" },
                     priority = 200,
                     identity = {
@@ -62,7 +62,7 @@ local function BuildValidRegistry()
                     key = "system_notice",
                     kind = "notice",
                     group = "system",
-                    chatType = "SYSTEM",
+                    wowChatType = "SYSTEM",
                     events = { "CHAT_MSG_SYSTEM" },
                     priority = 300,
                     identity = {

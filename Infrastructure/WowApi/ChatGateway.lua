@@ -86,7 +86,7 @@ function Gateway.Display:Transform(frame, msg, r, g, b, extraArgs)
     return currentMsg, currentR, currentG, currentB, currentExtra
 end
 
-function Gateway.Outbound:SendChat(text, chatType, language, target)
+function Gateway.Outbound:SendChat(text, wowChatType, language, target)
     if addon.Can and not addon:Can(addon.CAPABILITIES.EMIT_CHAT_ACTION) then
         return false
     end
@@ -95,6 +95,6 @@ function Gateway.Outbound:SendChat(text, chatType, language, target)
         return false
     end
 
-    SendChatMessage(text, chatType, language, target)
+    SendChatMessage(text, wowChatType, language, target)
     return true
 end

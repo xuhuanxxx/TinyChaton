@@ -20,18 +20,20 @@ status: ACTIVE
 - AvailabilityResolver（kind+group 注册）
 
 2. Stream Domain（通用）
+- Registry: `StreamRegistry`
+- Actions: `StreamActionRegistry`
 - Context: `StreamEventContext`
 - Ingress: `StreamEventDispatcher`
 - Rules: `StreamRuleEngine + kind strategies`
 - Visibility: `StreamVisibilityService`
 - Render: `MessageFormatter + kind formatters`
 - Highlight: `StreamHighlighter + kind plugins`
+- Storage: `SnapshotStore/SnapshotReplayer`
 - Contracts/Types: `StreamContracts/StreamTypes`
 
 3. Chat Domain（channel 交互）
-- StreamRegistry / ActionSend
 - Interaction: Sticky/Tab/LinkHover/Emotes
-- Storage: SnapshotStore/Replayer（消费 stream 结构）
+- Automation: AutoJoin/AutoWelcome
 
 4. Application
 - Bootstrap / Lifecycle / Container

@@ -42,6 +42,7 @@ status: ACTIVE
 - `chat.content.snapshotStreams` 生效。
 - `chat.interaction.copyStreams` 生效。
 - 回放结构使用 `line.streamKey`。
+- 传输类型字段使用 `wowChatType`（不再使用裸 `chatType`）。
 
 ## 通过标准
 

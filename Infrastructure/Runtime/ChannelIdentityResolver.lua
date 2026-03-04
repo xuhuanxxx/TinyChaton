@@ -4,6 +4,7 @@ addon.ChannelIdentityResolver = addon.ChannelIdentityResolver or {}
 
 local function ResolveChannelIdentity(stream, context)
     context = context or {}
+    local streamMeta = type(context.streamMeta) == "table" and context.streamMeta or {}
 
     local naming = addon.NamePolicy and addon.NamePolicy.Resolve and addon.NamePolicy.Resolve(stream, "channel", context) or {
         label = stream and stream.key or "",
@@ -16,12 +17,12 @@ local function ResolveChannelIdentity(stream, context)
         and addon.AvailabilityResolver.Resolve(stream and stream.key, "channel", context)
         or { available = true, state = "ready", reason = "fallback" }
 
-    local channelId = tonumber(context.channelId) or tonumber(availability.channelId)
-    if not channelId and stream and stream.chatType == "CHANNEL" and addon.ChannelSemanticResolver and addon.ChannelSemanticResolver.ResolveDynamic then
+    local channelId = tonumber(streamMeta.channelId) or tonumber(availability.channelId)
+    if not channelId and stream and stream.wowChatType == "CHANNEL" and addon.ChannelSemanticResolver and addon.ChannelSemanticResolver.ResolveDynamic then
         local dynamic = addon.ChannelSemanticResolver.ResolveDynamic({
             streamKey = stream.key,
-            channelId = context.channelId,
-            channelName = context.channelName,
+            channelId = streamMeta.channelId,
+            channelName = streamMeta.channelBaseName,
         })
         if dynamic then
             channelId = tonumber(dynamic.channelId)
@@ -29,7 +30,7 @@ local function ResolveChannelIdentity(stream, context)
     end
 
     local candidates = {}
-    if stream and stream.chatType == "CHANNEL" and stream.identity and type(stream.identity.candidatesId) == "string" then
+    if stream and stream.wowChatType == "CHANNEL" and stream.identity and type(stream.identity.candidatesId) == "string" then
         local registry = addon.ChannelCandidatesRegistry
         local locale = (type(GetLocale) == "function" and GetLocale()) or "enUS"
         if registry and type(registry.GetChannelName) == "function" then
@@ -145,7 +146,8 @@ function addon.ChannelIdentityResolver.FormatDisplayText(entity, kind, surface, 
     end
 
     if kind == "channel" and policy.showNumber then
-        local number = tonumber(context.channelId) or identity.number
+        local streamMeta = type(context.streamMeta) == "table" and context.streamMeta or {}
+        local number = tonumber(streamMeta.channelId) or identity.number
         if number and number > 0 then
             return tostring(number) .. "." .. base
         end
@@ -172,10 +174,13 @@ function addon.ChannelIdentityResolver.ResolveStreamIdentity(stream, context)
 end
 
 function addon.ChannelIdentityResolver.FormatChannelLabel(stream, context)
+    local streamMeta = type(context) == "table" and type(context.streamMeta) == "table" and context.streamMeta or {}
     return addon.ChannelIdentityResolver.FormatDisplayText(stream, "channel", "chat", {
-        channelId = context and context.channelId,
-        channelName = context and context.channelName,
-        registryKey = context and context.registryKey,
+        streamMeta = {
+            channelId = streamMeta.channelId,
+            channelBaseName = streamMeta.channelBaseName,
+        },
+        streamKey = context and context.streamKey,
     })
 end
 

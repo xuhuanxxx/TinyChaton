@@ -13,10 +13,10 @@ local function ResolveColorChatType(line)
         return nil
     end
     local streamMeta = type(line.streamMeta) == "table" and line.streamMeta or nil
-    if line.chatType == "CHANNEL" and streamMeta and streamMeta.channelId then
+    if line.wowChatType == "CHANNEL" and streamMeta and streamMeta.channelId then
         return "CHANNEL" .. tostring(streamMeta.channelId)
     end
-    return line.chatType
+    return line.wowChatType
 end
 
 local function IsClickToCopyEnabledForLine(line)
@@ -112,10 +112,12 @@ function Formatter.GetStreamTag(line)
     end
 
     local displayText = addon.Utils.ResolveChannelDisplay({
-        chatType = line.chatType,
-        channelId = streamMeta and streamMeta.channelId or nil,
-        channelName = normalizedName,
-        registryKey = streamKey,
+        wowChatType = line.wowChatType,
+        streamMeta = {
+            channelId = streamMeta and streamMeta.channelId or nil,
+            channelBaseName = normalizedName,
+        },
+        streamKey = streamKey,
     })
 
     local streamTag = displayText
@@ -152,8 +154,11 @@ function Formatter.BuildRealtimeLineFromContext(streamContext)
 
     local args = streamContext.args
     local event = streamContext.event
-    local chatType = addon:GetChatTypeByEvent(event)
-    if type(chatType) ~= "string" then
+    local wowChatType = streamContext.wowChatType
+    if type(wowChatType) ~= "string" or wowChatType == "" then
+        wowChatType = addon:GetWowChatTypeByEvent(event)
+    end
+    if type(wowChatType) ~= "string" then
         return nil, "unmapped_event:" .. tostring(event)
     end
 
@@ -163,7 +168,7 @@ function Formatter.BuildRealtimeLineFromContext(streamContext)
     end
 
     local streamMeta = nil
-    if chatType == "CHANNEL" then
+    if wowChatType == "CHANNEL" then
         local resolver = addon.ChannelSemanticResolver
         local channelBaseName = (resolver and type(resolver.ResolveEventChannelName) == "function")
             and resolver.ResolveEventChannelName(streamContext.channelName, streamContext.channelString, streamContext.channelNumber)
@@ -193,7 +198,7 @@ function Formatter.BuildRealtimeLineFromContext(streamContext)
     return {
         text = streamContext.text,
         author = streamContext.author,
-        chatType = chatType,
+        wowChatType = wowChatType,
         streamKey = streamKey,
         kind = kind,
         group = group,

@@ -200,8 +200,8 @@ CategoryBuilders.buttons = function(rootCat)
         -- Resolve Title
         local item = registryMap[streamKey] or kitRegistryMap[streamKey]
         local title = item and (item.label or item.key) or streamKey
-        local stream = item and item.chatType and item or addon:GetStreamByKey(streamKey)
-        if stream and stream.chatType then
+        local stream = item and item.wowChatType and item or addon:GetStreamByKey(streamKey)
+        if stream and stream.wowChatType then
             title = ResolveChannelDisplay(stream, true) or title
         elseif item then
             title = ResolveKitDisplay(item, true) or title

@@ -34,15 +34,15 @@ function addon:Can(capability)
     return row[capability] == true
 end
 
-function addon:EmitChatMessage(text, chatType, language, target)
+function addon:EmitChatMessage(text, wowChatType, language, target)
     if self.Gateway and self.Gateway.Outbound and self.Gateway.Outbound.SendChat then
-        return self.Gateway.Outbound:SendChat(text, chatType, language, target)
+        return self.Gateway.Outbound:SendChat(text, wowChatType, language, target)
     end
 
     if not self:Can(self.CAPABILITIES.EMIT_CHAT_ACTION) then
         return false
     end
 
-    SendChatMessage(text, chatType, language, target)
+    SendChatMessage(text, wowChatType, language, target)
     return true
 end

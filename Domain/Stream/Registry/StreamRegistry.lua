@@ -68,7 +68,7 @@ addon.STREAM_REGISTRY = {
         SYSTEM = BuildStreamList("channel", "system", CAPS_CHANNEL_SYSTEM, {
             {
                 key = "say",
-                chatType = "SAY",
+                wowChatType = "SAY",
                 identity = {
                     labelKey = "STREAM_SAY_LABEL",
                     shortOneKey = "STREAM_SAY_SHORT_ONE",
@@ -85,7 +85,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "yell",
-                chatType = "YELL",
+                wowChatType = "YELL",
                 identity = {
                     labelKey = "STREAM_YELL_LABEL",
                     shortOneKey = "STREAM_YELL_SHORT_ONE",
@@ -102,7 +102,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "guild",
-                chatType = "GUILD",
+                wowChatType = "GUILD",
                 identity = {
                     labelKey = "STREAM_GUILD_LABEL",
                     shortOneKey = "STREAM_GUILD_SHORT_ONE",
@@ -119,7 +119,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "officer",
-                chatType = "OFFICER",
+                wowChatType = "OFFICER",
                 identity = {
                     labelKey = "STREAM_OFFICER_LABEL",
                     shortOneKey = "STREAM_OFFICER_SHORT_ONE",
@@ -136,7 +136,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "party",
-                chatType = "PARTY",
+                wowChatType = "PARTY",
                 identity = {
                     labelKey = "STREAM_PARTY_LABEL",
                     shortOneKey = "STREAM_PARTY_SHORT_ONE",
@@ -153,7 +153,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "instance",
-                chatType = "INSTANCE_CHAT",
+                wowChatType = "INSTANCE_CHAT",
                 identity = {
                     labelKey = "STREAM_INSTANCE_LABEL",
                     shortOneKey = "STREAM_INSTANCE_SHORT_ONE",
@@ -170,7 +170,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "raid",
-                chatType = "RAID",
+                wowChatType = "RAID",
                 identity = {
                     labelKey = "STREAM_RAID_LABEL",
                     shortOneKey = "STREAM_RAID_SHORT_ONE",
@@ -187,7 +187,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "raid_warning",
-                chatType = "RAID_WARNING",
+                wowChatType = "RAID_WARNING",
                 identity = {
                     labelKey = "STREAM_RAID_WARNING_LABEL",
                     shortOneKey = "STREAM_RAID_WARNING_SHORT_ONE",
@@ -204,7 +204,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "battleground",
-                chatType = "BATTLEGROUND",
+                wowChatType = "BATTLEGROUND",
                 identity = {
                     labelKey = "STREAM_BATTLEGROUND_LABEL",
                     shortOneKey = "STREAM_BATTLEGROUND_SHORT_ONE",
@@ -223,7 +223,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "emote",
-                chatType = "EMOTE",
+                wowChatType = "EMOTE",
                 identity = {
                     labelKey = "STREAM_EMOTE_LABEL",
                     shortOneKey = "STREAM_EMOTE_SHORT_ONE",
@@ -245,7 +245,7 @@ addon.STREAM_REGISTRY = {
         DYNAMIC = BuildStreamList("channel", "dynamic", CAPS_CHANNEL_DYNAMIC, {
             {
                 key = "general",
-                chatType = "CHANNEL",
+                wowChatType = "CHANNEL",
                 identity = {
                     labelKey = "STREAM_GENERAL_LABEL",
                     shortOneKey = "STREAM_GENERAL_SHORT_ONE",
@@ -264,7 +264,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "trade",
-                chatType = "CHANNEL",
+                wowChatType = "CHANNEL",
                 identity = {
                     labelKey = "STREAM_TRADE_LABEL",
                     shortOneKey = "STREAM_TRADE_SHORT_ONE",
@@ -283,7 +283,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "localdefense",
-                chatType = "CHANNEL",
+                wowChatType = "CHANNEL",
                 identity = {
                     labelKey = "STREAM_LOCALDEFENSE_LABEL",
                     shortOneKey = "STREAM_LOCALDEFENSE_SHORT_ONE",
@@ -302,7 +302,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "services",
-                chatType = "CHANNEL",
+                wowChatType = "CHANNEL",
                 identity = {
                     labelKey = "STREAM_SERVICES_LABEL",
                     shortOneKey = "STREAM_SERVICES_SHORT_ONE",
@@ -321,7 +321,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "lfg",
-                chatType = "CHANNEL",
+                wowChatType = "CHANNEL",
                 identity = {
                     labelKey = "STREAM_LFG_LABEL",
                     shortOneKey = "STREAM_LFG_SHORT_ONE",
@@ -340,7 +340,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "world",
-                chatType = "CHANNEL",
+                wowChatType = "CHANNEL",
                 identity = {
                     labelKey = "STREAM_WORLD_LABEL",
                     shortOneKey = "STREAM_WORLD_SHORT_ONE",
@@ -363,7 +363,7 @@ addon.STREAM_REGISTRY = {
         PRIVATE = BuildStreamList("channel", "private", CAPS_CHANNEL_PRIVATE, {
             {
                 key = "whisper",
-                chatType = "WHISPER",
+                wowChatType = "WHISPER",
                 identity = {
                     labelKey = "STREAM_WHISPER_LABEL",
                     shortOneKey = "STREAM_WHISPER_SHORT_ONE",
@@ -380,7 +380,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "bn_whisper",
-                chatType = "BN_WHISPER",
+                wowChatType = "BN_WHISPER",
                 identity = {
                     labelKey = "STREAM_BATTLENET_LABEL",
                     shortOneKey = "STREAM_BATTLENET_SHORT_ONE",
@@ -409,7 +409,7 @@ addon.STREAM_REGISTRY = {
         SYSTEM = BuildStreamList("notice", "system", CAPS_NOTICE_SYSTEM, {
             {
                 key = "system",
-                chatType = "SYSTEM",
+                wowChatType = "SYSTEM",
                 identity = {
                     labelKey = "STREAM_SYSTEM_NOTICE_LABEL",
                     shortOneKey = "STREAM_SYSTEM_NOTICE_SHORT_ONE",
@@ -428,7 +428,7 @@ addon.STREAM_REGISTRY = {
         ALERT = BuildStreamList("notice", "alert", CAPS_NOTICE_ALERT, {
             {
                 key = "monster_say",
-                chatType = "SYSTEM",
+                wowChatType = "SYSTEM",
                 identity = {
                     labelKey = "STREAM_MONSTER_SAY_LABEL",
                     shortOneKey = "STREAM_MONSTER_SAY_SHORT_ONE",
@@ -443,7 +443,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "monster_yell",
-                chatType = "SYSTEM",
+                wowChatType = "SYSTEM",
                 identity = {
                     labelKey = "STREAM_MONSTER_YELL_LABEL",
                     shortOneKey = "STREAM_MONSTER_YELL_SHORT_ONE",
@@ -458,7 +458,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "monster_emote",
-                chatType = "SYSTEM",
+                wowChatType = "SYSTEM",
                 identity = {
                     labelKey = "STREAM_MONSTER_EMOTE_LABEL",
                     shortOneKey = "STREAM_MONSTER_EMOTE_SHORT_ONE",
@@ -473,7 +473,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "monster_whisper",
-                chatType = "SYSTEM",
+                wowChatType = "SYSTEM",
                 identity = {
                     labelKey = "STREAM_MONSTER_WHISPER_LABEL",
                     shortOneKey = "STREAM_MONSTER_WHISPER_SHORT_ONE",
@@ -488,7 +488,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "monster_party",
-                chatType = "SYSTEM",
+                wowChatType = "SYSTEM",
                 identity = {
                     labelKey = "STREAM_MONSTER_PARTY_LABEL",
                     shortOneKey = "STREAM_MONSTER_PARTY_SHORT_ONE",
@@ -503,7 +503,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "raid_boss_emote",
-                chatType = "SYSTEM",
+                wowChatType = "SYSTEM",
                 identity = {
                     labelKey = "STREAM_RAID_BOSS_EMOTE_LABEL",
                     shortOneKey = "STREAM_RAID_BOSS_EMOTE_SHORT_ONE",
@@ -518,7 +518,7 @@ addon.STREAM_REGISTRY = {
             },
             {
                 key = "raid_boss_whisper",
-                chatType = "SYSTEM",
+                wowChatType = "SYSTEM",
                 identity = {
                     labelKey = "STREAM_RAID_BOSS_WHISPER_LABEL",
                     shortOneKey = "STREAM_RAID_BOSS_WHISPER_SHORT_ONE",
@@ -556,10 +556,10 @@ local SLASH_COMMANDS = {
     ["EMOTE"] = "e",
 }
 
-function addon:ActionSend(chatType, streamKey, channelName)
+function addon:ActionSend(wowChatType, streamKey, channelName)
     -- User-triggered channel switch from Shelf remains available in all modes.
     -- This action opens chat input for joined channels.
-    if chatType == "CHANNEL" then
+    if wowChatType == "CHANNEL" then
         local id = nil
         local semantic = addon.ChannelSemanticResolver
         if semantic and type(semantic.ResolveDynamic) == "function" and type(streamKey) == "string" and streamKey ~= "" then
@@ -576,10 +576,10 @@ function addon:ActionSend(chatType, streamKey, channelName)
         end
     else
         local cmd
-        if chatType == "WHISPER" or chatType == "BN_WHISPER" then
+        if wowChatType == "WHISPER" or wowChatType == "BN_WHISPER" then
             cmd = "w"
         else
-            cmd = SLASH_COMMANDS[chatType] or string.lower(chatType)
+            cmd = SLASH_COMMANDS[wowChatType] or string.lower(wowChatType)
         end
         OpenChat("/" .. cmd .. " ")
     end

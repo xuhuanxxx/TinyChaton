@@ -243,7 +243,9 @@ function addon.Shelf:GetVisibleItems()
                     local displayText
                     if isChannel then
                         local displayStream = addon:GetStreamByKey(item.key)
-                        displayText = addon:FormatDisplayText(displayStream or item, "channel", "shelf", { channelId = channelNumber })
+                        displayText = addon:FormatDisplayText(displayStream or item, "channel", "shelf", {
+                            streamMeta = { channelId = channelNumber },
+                        })
                     else
                         local kitSpec = item
                         if item.key then

@@ -82,7 +82,7 @@ function addon.Tests.TestChannelIdentityResolverPriority()
 
     local stream = {
         key = "test_stream",
-        chatType = "CHANNEL",
+        wowChatType = "CHANNEL",
         identity = {
             labelKey = labelKey,
             shortOneKey = shortOneKey,
@@ -115,7 +115,7 @@ function addon.Tests.TestChannelIdentityResolverPriority()
             return 0, nil
         end
 
-        local byId = resolver.ResolveDynamicActiveName(stream, { channelId = 77 })
+        local byId = resolver.ResolveDynamicActiveName(stream, { streamMeta = { channelId = 77 } })
         addon.Tests.AssertEqual(byId.activeName, "Candidate B", "Dynamic active name should prefer channelId resolution")
         addon.Tests.AssertEqual(byId.channelId, 77, "Dynamic active id mismatch")
 
@@ -127,34 +127,34 @@ function addon.Tests.TestChannelIdentityResolverPriority()
             if arg == 77 then return 77, "Candidate B - Realm" end
             return 0, nil
         end
-        local byMessage = resolver.ResolveDynamicActiveName(stream, { channelName = "Incoming Name - Realm" })
+        local byMessage = resolver.ResolveDynamicActiveName(stream, { streamMeta = { channelBaseName = "Incoming Name - Realm" } })
         addon.Tests.AssertEqual(byMessage.activeName, "Incoming Name", "Dynamic active name should fall back to incoming channel name")
 
         local byDefault = resolver.ResolveDynamicActiveName(stream, {})
         addon.Tests.AssertEqual(byDefault.activeName, "Candidate B", "Dynamic active name should fall back to mapped name")
 
         local full = resolver.FormatDisplayText(stream, "channel", "chat", {
-            channelId = 77,
+            streamMeta = { channelId = 77 },
             override = { showNumber = false, nameStyle = "FULL" },
         })
         local shortOne = resolver.FormatDisplayText(stream, "channel", "chat", {
-            channelId = 77,
+            streamMeta = { channelId = 77 },
             override = { showNumber = false, nameStyle = "SHORT_ONE" },
         })
         local shortTwo = resolver.FormatDisplayText(stream, "channel", "chat", {
-            channelId = 77,
+            streamMeta = { channelId = 77 },
             override = { showNumber = false, nameStyle = "SHORT_TWO" },
         })
         local chatNumberShortOne = resolver.FormatDisplayText(stream, "channel", "chat", {
-            channelId = 77,
+            streamMeta = { channelId = 77 },
             override = { showNumber = true, nameStyle = "SHORT_ONE" },
         })
         local chatInvalidStyle = resolver.FormatDisplayText(stream, "channel", "chat", {
-            channelId = 77,
+            streamMeta = { channelId = 77 },
             override = { showNumber = false, nameStyle = "INVALID_STYLE" },
         })
         local shelfOverrideFull = resolver.FormatDisplayText(stream, "channel", "shelf", {
-            channelId = 77,
+            streamMeta = { channelId = 77 },
             override = { showNumber = false, nameStyle = "FULL" },
         })
         local oldShelfStyle = addon.db
@@ -166,7 +166,9 @@ function addon.Tests.TestChannelIdentityResolverPriority()
         if addon.db and addon.db.profile and addon.db.profile.shelf and addon.db.profile.shelf.visual and addon.db.profile.shelf.visual.display then
             addon.db.profile.shelf.visual.display.nameStyle = "FULL"
         end
-        local shelfProfileFull = resolver.FormatDisplayText(stream, "channel", "shelf", { channelId = 77 })
+        local shelfProfileFull = resolver.FormatDisplayText(stream, "channel", "shelf", {
+            streamMeta = { channelId = 77 },
+        })
         if addon.db and addon.db.profile and addon.db.profile.shelf and addon.db.profile.shelf.visual and addon.db.profile.shelf.visual.display then
             addon.db.profile.shelf.visual.display.nameStyle = oldShelfStyle
         end
@@ -823,6 +825,19 @@ function addon.Tests.TestNoticeEventToStreamKeyMapping()
     addon.Tests.AssertEqual(addon:GetStreamKeyByEvent("CHAT_MSG_RAID_BOSS_EMOTE"), "raid_boss_emote", "raid boss emote event mapping mismatch")
 end
 
+function addon.Tests.TestWowChatTypeEventMapping()
+    addon.Tests.Assert(type(addon.GetWowChatTypeByEvent) == "function", "GetWowChatTypeByEvent missing")
+    addon.Tests.AssertEqual(addon:GetWowChatTypeByEvent("CHAT_MSG_SAY"), "SAY", "SAY wowChatType mapping mismatch")
+    addon.Tests.AssertEqual(addon:GetWowChatTypeByEvent("CHAT_MSG_MONSTER_SAY"), "SYSTEM", "SYSTEM wowChatType mapping mismatch")
+end
+
+function addon.Tests.TestSnapshotRecordContractUsesWowChatType()
+    addon.Tests.Assert(type(addon.StreamContracts) == "table", "StreamContracts missing")
+    addon.Tests.Assert(type(addon.StreamContracts.SnapshotRecord) == "table", "SnapshotRecord contract missing")
+    addon.Tests.AssertEqual(addon.StreamContracts.SnapshotRecord.wowChatType, "string",
+        "SnapshotRecord contract should require wowChatType")
+end
+
 function addon.Tests.TestValidateChatEventDerivationRequiresNonChannelStreamMapping()
     addon.Tests.Assert(type(addon.ValidateChatEventDerivation) == "function", "ValidateChatEventDerivation missing")
     local ok = pcall(function()
@@ -907,7 +922,7 @@ function addon.Tests.TestMessageFormatterStreamTagLinkPolicy()
     addon.Tests.Assert(type(addon.MessageFormatter.GetStreamTag) == "function", "MessageFormatter.GetStreamTag missing")
 
     local dynamic = addon.MessageFormatter.GetStreamTag({
-        chatType = "CHANNEL",
+        wowChatType = "CHANNEL",
         streamKey = "world",
         streamMeta = {
             channelId = 6,
@@ -919,7 +934,7 @@ function addon.Tests.TestMessageFormatterStreamTagLinkPolicy()
     addon.Tests.Assert(dynamic:find("|Htinychat:send:world|h", 1, true) ~= nil, "Dynamic outbound stream should link tinychat send action")
 
     local say = addon.MessageFormatter.GetStreamTag({
-        chatType = "SAY",
+        wowChatType = "SAY",
         streamKey = "say",
         kind = "channel",
     })
@@ -927,7 +942,7 @@ function addon.Tests.TestMessageFormatterStreamTagLinkPolicy()
     addon.Tests.Assert(say:find("|Htinychat:send:say|h", 1, true) ~= nil, "SAY should link tinychat send action")
 
     local notice = addon.MessageFormatter.GetStreamTag({
-        chatType = "SYSTEM",
+        wowChatType = "SYSTEM",
         streamKey = "system",
         kind = "notice",
     })
@@ -943,7 +958,7 @@ function addon.Tests.TestMessageFormatterKindFormatterRouting()
     local channelLine, _, _, _ = addon.MessageFormatter.BuildDisplayLine({
         text = channelText,
         author = "Tester",
-        chatType = "SAY",
+        wowChatType = "SAY",
         streamKey = "say",
         kind = "channel",
         streamMeta = {},
@@ -955,12 +970,32 @@ function addon.Tests.TestMessageFormatterKindFormatterRouting()
     local noticeText = "boss warning"
     local noticeLine, _, _, _ = addon.MessageFormatter.BuildDisplayLine({
         text = noticeText,
-        chatType = "SYSTEM",
+        wowChatType = "SYSTEM",
         streamKey = "system",
         kind = "notice",
         time = time(),
     }, { preferTimestampConfig = false })
     addon.Tests.AssertEqual(noticeLine, noticeText, "Notice formatted line should passthrough raw text")
+end
+
+function addon.Tests.TestMessageFormatterRealtimeLineCarriesWowChatType()
+    addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
+    addon.Tests.Assert(type(addon.MessageFormatter.BuildRealtimeLineFromContext) == "function",
+        "BuildRealtimeLineFromContext missing")
+
+    local line, err = addon.MessageFormatter.BuildRealtimeLineFromContext({
+        event = "CHAT_MSG_SAY",
+        text = "hello",
+        author = "tester",
+        args = {},
+        streamKey = "say",
+        channelName = nil,
+        channelString = nil,
+        channelNumber = nil,
+    })
+    addon.Tests.Assert(err == nil, "BuildRealtimeLineFromContext should not return error for CHAT_MSG_SAY")
+    addon.Tests.Assert(type(line) == "table", "BuildRealtimeLineFromContext should return table line")
+    addon.Tests.AssertEqual(line.wowChatType, "SAY", "Realtime line should include wowChatType")
 end
 
 function addon.Tests.TestMessageFormatterKindFormatterExtensionPoint()

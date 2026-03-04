@@ -17,14 +17,14 @@ status: ACTIVE
 
 ### 注册表与索引
 
-- `Domain/Chat/StreamRegistry.lua`
+- `Domain/Stream/Registry/StreamRegistry.lua`
   - 统一注入 `kind/group/capabilities`。
 - `Config.lua`
   - 构建 `EVENT_TO_STREAM_KEY`、`STREAM_KEYS_BY_GROUP`、`OUTBOUND_STREAM_KEYS`、`DYNAMIC_STREAM_KEYS`。
 
 ### 解析入口
 
-- `Domain/Chat/Storage/SnapshotKeys.lua`
+- `Domain/Stream/Storage/SnapshotKeys.lua`
   - 新增 `ResolveStreamKey` 作为统一入口。
   - 移除 `GetChannelKey` 入口，统一调用 `ResolveStreamKey`。
 
@@ -33,9 +33,9 @@ status: ACTIVE
 - `Domain/Stream/Render/MessageFormatter.lua`
   - 点击复制改为 `ResolveStreamToggle(..., "copyDefault")`。
   - 名称保持中性，通过 stream kind 路由 channel/notice。
-- `Domain/Chat/Storage/SnapshotStore.lua`
+- `Domain/Stream/Storage/SnapshotStore.lua`
   - 快照存储改为 `ResolveStreamToggle(..., "snapshotDefault")`。
-- `Domain/Chat/Storage/SnapshotReplayer.lua`
+- `Domain/Stream/Storage/SnapshotReplayer.lua`
   - 过滤分组改为 `kind/group`。
 
 ### 动态频道能力
@@ -50,7 +50,7 @@ status: ACTIVE
 
 ### Action/UI 消费
 
-- `Domain/Chat/ActionRegistry.lua`
+- `Domain/Stream/Actions/StreamActionRegistry.lua`
   - `appliesTo.streamCapabilities` 驱动构建（如 `outbound=true`, `supportsMute=true`）。
 - `Domain/Shelf/ShelfService.lua`
 - `Domain/Settings/Pages/Buttons.lua`

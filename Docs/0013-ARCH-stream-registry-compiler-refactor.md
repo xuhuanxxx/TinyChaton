@@ -61,7 +61,7 @@ addon.StreamRegistryCompiler:Compile(registry) -> compiled
   groupByKey = { [streamKey] = "system"|"dynamic"|"private"|"alert"|"log" },
   capabilitiesByKey = { [streamKey] = { ... } },
 
-  eventToChatType = { [event] = chatType },
+  eventToWowChatType = { [event] = wowChatType },
   eventToStreamKey = { [event] = streamKey }, -- exclude CHAT_MSG_CHANNEL
   chatEvents = { ...sorted... },
 
@@ -74,7 +74,7 @@ addon.StreamRegistryCompiler:Compile(registry) -> compiled
 ## 编译阶段（建议）
 
 1. `SchemaPass`
-- 校验 stream 必填字段：`key/kind/group/chatType/events/priority/identity/capabilities`。
+- 校验 stream 必填字段：`key/kind/group/wowChatType/events/priority/identity/capabilities`。
 - 校验 capability 子字段全布尔。
 - 校验约束：
   - `kind=notice => outbound=false && supportsAutoJoin=false`
@@ -90,7 +90,7 @@ addon.StreamRegistryCompiler:Compile(registry) -> compiled
 - 构建 `streamKeysByGroup/outboundStreamKeys/dynamicStreamKeys`。
 
 4. `EventPass`
-- 构建 `eventToChatType`。
+- 构建 `eventToWowChatType`。
 - 构建 `eventToStreamKey`（排除 `CHAT_MSG_CHANNEL`）。
 - 校验：
   - 非 `CHAT_MSG_CHANNEL` 的 `CHAT_MSG_*` 事件必须有 stream 映射。

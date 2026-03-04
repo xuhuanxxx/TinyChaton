@@ -303,16 +303,16 @@ local function OnSnapshotEvent(self, event, ...)
     end
 
     -- Capture data
-    local chatType = addon:GetChatTypeByEvent(event)
-    if type(chatType) ~= "string" or chatType == "" then
+    local wowChatType = addon:GetWowChatTypeByEvent(event)
+    if type(wowChatType) ~= "string" or wowChatType == "" then
         if addon.WarnOnce then
             addon:WarnOnce(
                 "snapshot_store:chat_type:" .. tostring(event),
-                "SnapshotLogger unmapped event chatType: %s",
+                "SnapshotLogger unmapped event wowChatType: %s",
                 tostring(event)
             )
         elseif addon.Warn then
-            addon:Warn("SnapshotLogger unmapped event chatType: %s", tostring(event))
+            addon:Warn("SnapshotLogger unmapped event wowChatType: %s", tostring(event))
         end
         addon.StreamEventContext:Release(streamContext)
         return
@@ -336,7 +336,7 @@ local function OnSnapshotEvent(self, event, ...)
         text = streamContext.text,
         author = streamContext.author,
         streamKey = streamKey,
-        chatType = chatType,
+        wowChatType = wowChatType,
         streamMeta = streamMeta,
         time = time(),
         classFilename = classFilename,

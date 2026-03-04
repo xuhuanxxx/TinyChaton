@@ -412,7 +412,7 @@ function addon.Shelf:Render()
             if info.isChannel then
                 local stream = addon:GetStreamByKey(item.key)
                 local identity = stream and addon.ResolveDisplayIdentity and addon:ResolveDisplayIdentity(stream, "channel", {
-                    channelId = info.channelNumber,
+                    streamMeta = { channelId = info.channelNumber },
                 }) or nil
                 if identity and identity.fullName then
                     headerText = identity.fullName

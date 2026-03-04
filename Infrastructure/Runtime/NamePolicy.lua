@@ -30,12 +30,13 @@ local function ResolveDynamicFullName(entity, label, context)
         return label
     end
 
+    local streamMeta = (type(context) == "table" and type(context.streamMeta) == "table") and context.streamMeta or {}
     local semantic = addon.ChannelSemanticResolver
     if semantic and type(semantic.ResolveDynamic) == "function" then
         local dynamic = semantic.ResolveDynamic({
             streamKey = streamKey,
-            channelId = context and context.channelId,
-            channelName = context and context.channelName,
+            channelId = streamMeta.channelId,
+            channelName = streamMeta.channelBaseName,
         })
         if dynamic and type(dynamic.activeName) == "string" and dynamic.activeName ~= "" then
             return dynamic.activeName
@@ -76,7 +77,7 @@ function addon.NamePolicy.Resolve(entity, kind, context)
     local shortOne, shortTwo = ResolveShortNames(identity, label)
 
     local fullName = label
-    local isDynamic = entity and entity.chatType == "CHANNEL"
+    local isDynamic = entity and entity.wowChatType == "CHANNEL"
         and type(identity.candidatesId) == "string"
         and identity.candidatesId ~= ""
 

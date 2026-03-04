@@ -35,11 +35,11 @@ App\Bootstrap\Lifecycle.lua
 
 Domain\Stream\Types.lua
 Domain\Stream\Contracts.lua
-Domain\Chat\StreamRegistry.lua
+Domain\Stream\Registry\StreamRegistry.lua
 Infrastructure\Runtime\StreamRegistryCompiler.lua
 Infrastructure\Runtime\ChannelSemanticResolver.lua
 Domain\Chat\ChannelCandidatesRegistry.lua
-Domain\Chat\ActionRegistry.lua
+Domain\Stream\Actions\StreamActionRegistry.lua
 Domain\Shelf\ShelfAnchorRegistry.lua
 Domain\Shelf\ShelfColorRegistry.lua
 Domain\Shelf\ShelfKitRegistry.lua
@@ -66,7 +66,7 @@ Infrastructure\Runtime\PerformanceBudget.lua
 Infrastructure\Runtime\Profiler.lua
 Infrastructure\Runtime\MemoryDiagnostics.lua
 
-Domain\Chat\Storage\SnapshotKeys.lua
+Domain\Stream\Storage\SnapshotKeys.lua
 Domain\Stream\Context\StreamEventContext.lua
 Domain\Stream\Rules\RuleMatcher.lua
 Domain\Stream\Rules\StreamRuleEngine.lua
@@ -80,8 +80,8 @@ Domain\Stream\Render\Transformers\StreamHighlighter.lua
 Domain\Stream\Render\Transformers\ChannelHighlight.lua
 Domain\Stream\Render\Transformers\NoticeHighlight.lua
 Domain\Stream\Ingress\StreamEventDispatcher.lua
-Domain\Chat\Storage\SnapshotStore.lua
-Domain\Chat\Storage\SnapshotReplayer.lua
+Domain\Stream\Storage\SnapshotStore.lua
+Domain\Stream\Storage\SnapshotReplayer.lua
 
 Domain\Chat\Render\Transformers\StripPrefix.lua
 Domain\Chat\Render\ChatFont.lua

@@ -4,7 +4,9 @@ local L = addon.L
 -- Resolve channel display name using current display policy.
 function addon:GetChannelLabel(item, channelNumber)
     if addon.ChannelIdentityResolver and addon.ChannelIdentityResolver.FormatDisplayText then
-        return addon.ChannelIdentityResolver.FormatDisplayText(item, "channel", "chat", { channelId = channelNumber })
+        return addon.ChannelIdentityResolver.FormatDisplayText(item, "channel", "chat", {
+            streamMeta = { channelId = channelNumber },
+        })
     end
     local label = (item and item.identity and item.identity.labelKey and L[item.identity.labelKey]) or item.key or "UNKNOWN"
     return tostring(label)

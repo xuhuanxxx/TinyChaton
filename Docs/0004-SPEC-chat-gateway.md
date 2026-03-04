@@ -15,6 +15,11 @@ status: ACTIVE
 
 ## 功能规格
 
+### Stream/Chat 边界
+
+- Gateway 属于 Stream 通用平面，处理 `channel + notice`。
+- Channel 交互（输入切换/Tab/Sticky）属于 Chat 域，不在 Gateway 内建策略。
+
 ### 架构原则
 
 **入口收口**：所有聊天数据必须经过三个网关之一，不允许旁路：
@@ -132,14 +137,14 @@ nextMsg, nextR, nextG, nextB, nextExtra =
 #### 接口定义
 
 ```lua
-Gateway.Outbound:SendChat(text, chatType, language, target) -> boolean
+Gateway.Outbound:SendChat(text, wowChatType, language, target) -> boolean
 ```
 
 **功能**：发送聊天消息到 WoW。
 
 **输入**：
 - `text`: 消息文本（字符串）
-- `chatType`: 频道类型（字符串，如 `"SAY"`, `"GUILD"`）
+- `wowChatType`: 频道类型（字符串，如 `"SAY"`, `"GUILD"`）
 - `language`: 语言 ID（数字，可选）
 - `target`: 目标玩家名（字符串，可选）
 
@@ -157,7 +162,7 @@ Gateway.Outbound:SendChat(text, chatType, language, target) -> boolean
 
 - `text` 为 `nil` 或空字符串：返回 `false`
 - `text` 不是字符串：返回 `false`
-- `chatType` 无效：WoW API 处理错误（不在网关捕获）
+- `wowChatType` 无效：WoW API 处理错误（不在网关捕获）
 
 #### 异常处理
 
@@ -199,7 +204,7 @@ Gateway.Outbound:SendChat(text, chatType, language, target) -> boolean
 
 **Outbound**：
 - 验证 `text` 非空且为字符串（核心数据）
-- 不验证 `chatType` 合法性（交给 WoW API）
+- 不验证 `wowChatType` 合法性（交给 WoW API）
 
 ## 验证标准
 

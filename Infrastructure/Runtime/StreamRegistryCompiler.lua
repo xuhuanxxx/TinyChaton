@@ -165,7 +165,7 @@ local function SchemaPass(orderedRaw)
             error(source .. ".group is invalid")
         end
 
-        AssertNonEmptyString(stream.chatType, source .. ".chatType")
+        AssertNonEmptyString(stream.wowChatType, source .. ".wowChatType")
         if type(stream.priority) ~= "number" then
             error(source .. ".priority must be number")
         end
@@ -298,23 +298,23 @@ local function IndexPass(normalizedRows)
 end
 
 local function EventPass(compiled)
-    local eventToChatType = {}
+    local eventToWowChatType = {}
     local eventToStreamKey = {}
 
     for _, streamKey in ipairs(compiled.orderedStreamKeys) do
         local stream = compiled.byKey[streamKey]
         for _, eventName in ipairs(stream.events or {}) do
-            local mappedChatType = eventToChatType[eventName]
-            if mappedChatType and mappedChatType ~= stream.chatType then
+            local mappedWowChatType = eventToWowChatType[eventName]
+            if mappedWowChatType and mappedWowChatType ~= stream.wowChatType then
                 error(string.format(
                     "Chat event mapping conflict: %s => %s vs %s (stream=%s)",
                     tostring(eventName),
-                    tostring(mappedChatType),
-                    tostring(stream.chatType),
+                    tostring(mappedWowChatType),
+                    tostring(stream.wowChatType),
                     tostring(streamKey)
                 ))
             end
-            eventToChatType[eventName] = stream.chatType
+            eventToWowChatType[eventName] = stream.wowChatType
 
             if eventName ~= "CHAT_MSG_CHANNEL" then
                 local mappedStream = eventToStreamKey[eventName]
@@ -332,7 +332,7 @@ local function EventPass(compiled)
     end
 
     local chatEvents = {}
-    for eventName in pairs(eventToChatType) do
+    for eventName in pairs(eventToWowChatType) do
         chatEvents[#chatEvents + 1] = eventName
         if eventName ~= "CHAT_MSG_CHANNEL" and string.match(eventName, "^CHAT_MSG_") then
             local streamKey = eventToStreamKey[eventName]
@@ -344,11 +344,11 @@ local function EventPass(compiled)
 
     table.sort(chatEvents)
 
-    if eventToChatType["CHAT_MSG_CHANNEL"] ~= "CHANNEL" then
-        error("CHAT_MSG_CHANNEL must map to chatType CHANNEL")
+    if eventToWowChatType["CHAT_MSG_CHANNEL"] ~= "CHANNEL" then
+        error("CHAT_MSG_CHANNEL must map to wowChatType CHANNEL")
     end
 
-    compiled.eventToChatType = eventToChatType
+    compiled.eventToWowChatType = eventToWowChatType
     compiled.eventToStreamKey = eventToStreamKey
     compiled.chatEvents = chatEvents
 end

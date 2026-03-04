@@ -8,6 +8,7 @@ addon.StreamContracts.EventContext = {
     text = "string|nil",
     author = "string|nil",
     streamKey = "string|nil",
+    wowChatType = "string|nil",
     metadata = "table",
 }
 
@@ -20,6 +21,7 @@ addon.StreamContracts.SnapshotRecord = {
     text = "string",
     author = "string|nil",
     streamKey = "string",
+    wowChatType = "string",
     streamMeta = "table|nil",
     time = "number",
 }

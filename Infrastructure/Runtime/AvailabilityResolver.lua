@@ -15,6 +15,7 @@ local function RegisterResolver(kind, group, fn)
 end
 
 local function ResolveChannelDynamicAvailability(streamKey, context)
+    local streamMeta = (type(context) == "table" and type(context.streamMeta) == "table") and context.streamMeta or {}
     local semantic = addon.ChannelSemanticResolver
     if not semantic or type(semantic.ResolveDynamic) ~= "function" then
         return {
@@ -26,8 +27,8 @@ local function ResolveChannelDynamicAvailability(streamKey, context)
 
     local dynamic = semantic.ResolveDynamic({
         streamKey = streamKey,
-        channelId = context and context.channelId,
-        channelName = context and context.channelName,
+        channelId = streamMeta.channelId,
+        channelName = streamMeta.channelBaseName,
     })
     local id = dynamic and tonumber(dynamic.channelId) or nil
     if not id or id <= 0 then

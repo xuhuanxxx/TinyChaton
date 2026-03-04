@@ -291,7 +291,7 @@ function addon.Utils.FindChannelByKey(key)
     local resolver = addon.ChannelSemanticResolver
     if resolver and type(resolver.ResolveStreamKey) == "function" then
         local streamKey = resolver.ResolveStreamKey({
-            chatType = "CHANNEL",
+            wowChatType = "CHANNEL",
             channelName = key,
         })
         if streamKey and streamKey ~= "unknown_dynamic" and addon.GetStreamByKey then
@@ -329,7 +329,7 @@ function addon.Utils.FindDynamicStreamByChannelId(channelId)
         return nil
     end
     local streamKey = resolver.ResolveStreamKey({
-        chatType = "CHANNEL",
+        wowChatType = "CHANNEL",
         channelId = channelId,
     })
     if type(streamKey) ~= "string" or streamKey == "" or streamKey == "unknown_dynamic" then
@@ -341,24 +341,25 @@ end
 -- Find registry item by various inputs
 local function FindRegistryItem(input)
     if not input then return nil end
-    -- input can be: { chatType, channelId, channelName, registryKey }
-    local registryKey = input.registryKey
+    -- input can be: { wowChatType, streamMeta, streamKey }
+    local streamKey = input.streamKey
+    local streamMeta = type(input.streamMeta) == "table" and input.streamMeta or {}
 
-    -- 1. Try by registryKey (most reliable)
-    if registryKey then
-        local stream = addon:GetStreamByKey(registryKey)
+    -- 1. Try by streamKey (most reliable)
+    if streamKey then
+        local stream = addon:GetStreamByKey(streamKey)
         if stream then return stream end
     end
 
-    local chatType = input.chatType
-    local channelId = input.channelId
-    local channelName = input.channelName
+    local wowChatType = input.wowChatType
+    local channelId = streamMeta.channelId
+    local channelName = streamMeta.channelBaseName
 
-    if chatType == "CHANNEL" then
+    if wowChatType == "CHANNEL" then
         local resolver = addon.ChannelSemanticResolver
         if resolver and type(resolver.ResolveStreamKey) == "function" then
             local streamKey = resolver.ResolveStreamKey({
-                chatType = "CHANNEL",
+                wowChatType = "CHANNEL",
                 channelId = channelId,
                 channelName = channelName,
             })
@@ -370,7 +371,7 @@ local function FindRegistryItem(input)
     end
 
     for _, stream in addon:IterateCompiledStreams() do
-        if chatType and chatType ~= "CHANNEL" and stream.chatType == chatType then
+        if wowChatType and wowChatType ~= "CHANNEL" and stream.wowChatType == wowChatType then
             return stream
         end
     end
@@ -379,28 +380,28 @@ local function FindRegistryItem(input)
 end
 
 -- Unified channel display resolver
--- input: { chatType, channelId, channelName, registryKey }
+-- input: { wowChatType, streamMeta, streamKey }
 -- Returns: displayText, registryItem
 function addon.Utils.ResolveChannelDisplay(input)
     if not input then return "", nil end
 
+    local streamMeta = type(input.streamMeta) == "table" and input.streamMeta or {}
     local reg = FindRegistryItem(input)
 
     if reg then
         local label = addon:FormatDisplayText(reg, "channel", "chat", {
-            channelId = input.channelId,
-            channelName = input.channelName,
-            registryKey = input.registryKey,
+            streamMeta = streamMeta,
+            streamKey = input.streamKey,
         })
         return "[" .. label .. "] ", reg
     end
 
     -- Fallback for unrecognized channels
-    if input.channelName and input.channelName ~= "" then
-        local normalized = addon.Utils.NormalizeChannelBaseName(input.channelName)
+    if streamMeta.channelBaseName and streamMeta.channelBaseName ~= "" then
+        local normalized = addon.Utils.NormalizeChannelBaseName(streamMeta.channelBaseName)
         local text = normalized:match("[%z\1-\127\194-\244][\128-\191]*") or normalized:sub(1, 1)
-        if input.channelId then
-            return "[" .. tostring(input.channelId) .. "." .. text .. "] ", nil
+        if streamMeta.channelId then
+            return "[" .. tostring(streamMeta.channelId) .. "." .. text .. "] ", nil
         end
         return "[" .. text .. "] ", nil
     end
@@ -449,8 +450,10 @@ function addon.Utils.ShortenChannelString(str)
 
     if item then
         return addon:FormatDisplayText(item, "channel", "chat", {
-            channelId = num and tonumber(num) or nil,
-            channelName = name,
+            streamMeta = {
+                channelId = num and tonumber(num) or nil,
+                channelBaseName = name,
+            },
         })
     end
 

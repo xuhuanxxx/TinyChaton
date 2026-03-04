@@ -24,6 +24,7 @@ local addonName, addon = ...
 ---@field channelNumber number|nil
 ---@field channelName string|nil
 ---@field streamKey string|nil
+---@field wowChatType string|nil
 
 addon.StreamEventContext = {}
 
@@ -79,6 +80,7 @@ function addon.StreamEventContext:New(frame, event, ...)
     streamContext.channelNumber = channelNumber
     streamContext.channelName = channelName
     streamContext.streamKey = nil
+    streamContext.wowChatType = nil
     streamContext.streamKind = nil
     streamContext.streamGroup = nil
 
@@ -91,6 +93,9 @@ function addon.StreamEventContext:New(frame, event, ...)
                 streamContext.streamGroup = addon:GetStreamGroup(streamKey)
             end
         end
+    end
+    if addon.GetWowChatTypeByEvent then
+        streamContext.wowChatType = addon:GetWowChatTypeByEvent(event)
     end
 
     if addon.ValidateContract then

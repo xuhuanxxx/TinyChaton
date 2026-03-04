@@ -217,12 +217,12 @@ function addon:ResolveStreamToggle(streamKey, configMap, capabilityField, fallba
     return fallbackValue == true
 end
 
-function addon:GetChatTypeByEvent(eventName)
+function addon:GetWowChatTypeByEvent(eventName)
     if type(eventName) ~= "string" or eventName == "" then
         return nil
     end
     local compiled = GetCompiledRegistry()
-    local map = compiled.eventToChatType
+    local map = compiled.eventToWowChatType
     return type(map) == "table" and map[eventName] or nil
 end
 
@@ -242,11 +242,11 @@ end
 
 function addon:ValidateChatEventDerivation()
     local compiled = GetCompiledRegistry()
-    local map = compiled.eventToChatType
+    local map = compiled.eventToWowChatType
     local streamMap = compiled.eventToStreamKey
     local chatEvents = compiled.chatEvents
     if type(map) ~= "table" then
-        error("Compiled eventToChatType is not initialized")
+        error("Compiled eventToWowChatType is not initialized")
     end
     if type(streamMap) ~= "table" then
         error("Compiled eventToStreamKey is not initialized")
@@ -256,9 +256,9 @@ function addon:ValidateChatEventDerivation()
     end
 
     for _, eventName in ipairs(chatEvents) do
-        local chatType = map[eventName]
-        if type(chatType) ~= "string" or chatType == "" then
-            error("Missing chatType mapping for event: " .. tostring(eventName))
+        local wowChatType = map[eventName]
+        if type(wowChatType) ~= "string" or wowChatType == "" then
+            error("Missing wowChatType mapping for event: " .. tostring(eventName))
         end
         local streamKey = streamMap[eventName]
         if eventName ~= "CHAT_MSG_CHANNEL" and (type(streamKey) ~= "string" or streamKey == "") then

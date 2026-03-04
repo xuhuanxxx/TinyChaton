@@ -22,7 +22,7 @@ status: ACTIVE
   key = "string",
   kind = "channel"|"notice",
   group = "system"|"dynamic"|"private"|"alert"|"log",
-  chatType = "string",
+  wowChatType = "string",
   events = { "CHAT_MSG_..." },
   priority = number,
   identity = { labelKey, shortOneKey, shortTwoKey, candidatesId? },
@@ -51,7 +51,7 @@ status: ACTIVE
 
 ## 事件映射
 
-- `EVENT_TO_CHAT_TYPE`：event -> chatType
+- `EVENT_TO_WOW_CHAT_TYPE`：event -> wowChatType
 - `EVENT_TO_STREAM_KEY`：event -> streamKey（排除 `CHAT_MSG_CHANNEL`）
 - `ResolveStreamKey(event, ...)`：统一入口
   - `CHAT_MSG_CHANNEL` 走动态解析

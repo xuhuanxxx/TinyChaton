@@ -99,20 +99,33 @@ function addon:EnableInteractionTimestamp()
 
     -- SetItemRef is not unhookable; keep a one-time hook and gate behavior by capability+feature.
     hooksecurefunc("SetItemRef", function(link, text, button, chatFrame)
+        if not link or type(link) ~= "string" then return end
+
+        local action, payload = link:match("^tinychat:([^:]+):(.+)$")
+        if action == "send" and type(payload) == "string" and payload ~= "" then
+            local stream = addon.GetStreamByKey and addon:GetStreamByKey(payload) or nil
+            if type(stream) == "table" and type(stream.chatType) == "string" and stream.chatType ~= "" and addon.ActionSend then
+                local dynamic = addon.ResolveDynamicActiveName and addon:ResolveDynamicActiveName(stream, {}) or nil
+                addon:ActionSend(stream.chatType, payload, dynamic and dynamic.activeName or nil)
+            end
+            return
+        end
+
         if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then
             return
         end
         if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("InteractionTimestamp") then
             return
         end
-        if not link or type(link) ~= "string" then return end
 
-        local id = link:match("^tinychat:copy:(.+)$")
-        if not id and link:sub(1, 10) == "tinychat:" then
+        local id = nil
+        if action == "copy" and type(payload) == "string" and payload ~= "" then
+            id = payload
+        elseif link:sub(1, 10) == "tinychat:" then
             id = link:sub(11)
         end
 
-        if id then
+        if type(id) == "string" and id ~= "" then
             local entry = addon.messageCache[id]
             if entry and entry.msg then
                 local editBox = ChatEdit_ChooseBoxForSend()

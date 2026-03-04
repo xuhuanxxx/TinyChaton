@@ -222,6 +222,7 @@ function Dispatcher:OnChatEvent(frame, event, ...)
     self:RunMiddlewares("PERSIST", chatData)
 
     local emitted = false
+    local bypassRealtimeTransform = false
     if not shouldHide and addon.MessageFormatter and addon.MessageFormatter.BuildRealtimeLineFromChatData and addon.EmitRenderedChatLine then
         local line, lineErr = addon.MessageFormatter.BuildRealtimeLineFromChatData(chatData)
         if type(line) ~= "table" then
@@ -236,11 +237,16 @@ function Dispatcher:OnChatEvent(frame, event, ...)
                 addon:Warn("Realtime line build failed for %s: %s", tostring(event), tostring(lineErr))
             end
         else
-            emitted = addon:EmitRenderedChatLine(line, frame, { preferTimestampConfig = false }) == true
+            if addon.IsNoticeStream and type(line.registryKey) == "string" and addon:IsNoticeStream(line.registryKey) then
+                -- Notice streams should keep Blizzard native rendering path.
+                bypassRealtimeTransform = true
+            else
+                emitted = addon:EmitRenderedChatLine(line, frame, { preferTimestampConfig = false }) == true
+            end
         end
     end
 
-    if not shouldHide and not emitted
+    if not shouldHide and not emitted and not bypassRealtimeTransform
         and packedArgs
         and type(packedArgs[1]) == "string"
         and addon.Gateway

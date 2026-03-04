@@ -902,7 +902,7 @@ function addon.Tests.TestShelfDefaultOrderUsesCompiledStreams()
     addon.db.profile.buttons.buttonOrder = oldOrder
 end
 
-function addon.Tests.TestMessageFormatterChannelLinkArgShape()
+function addon.Tests.TestMessageFormatterChannelTagLinkPolicy()
     addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
     addon.Tests.Assert(type(addon.MessageFormatter.GetChannelTag) == "function", "MessageFormatter.GetChannelTag missing")
 
@@ -913,21 +913,21 @@ function addon.Tests.TestMessageFormatterChannelLinkArgShape()
         channelBaseName = "World",
     })
     addon.Tests.Assert(type(dynamic) == "string", "Dynamic channel tag should be string")
-    addon.Tests.Assert(dynamic:find("|Hchannel:CHANNEL:6|h", 1, true) ~= nil, "Dynamic channel link should use CHANNEL:<id>")
+    addon.Tests.Assert(dynamic:find("|Htinychat:send:world|h", 1, true) ~= nil, "Dynamic outbound channel should link to tinychat send action")
 
     local say = addon.MessageFormatter.GetChannelTag({
         chatType = "SAY",
         registryKey = "say",
     })
     addon.Tests.Assert(type(say) == "string", "SAY channel tag should be string")
-    addon.Tests.Assert(say:find("|Hchannel:SAY|h", 1, true) ~= nil, "SAY link should use chatType")
+    addon.Tests.Assert(say:find("|Htinychat:send:say|h", 1, true) ~= nil, "SAY should link to tinychat send action")
 
     local instance = addon.MessageFormatter.GetChannelTag({
         chatType = "INSTANCE_CHAT",
         registryKey = "instance",
     })
     addon.Tests.Assert(type(instance) == "string", "INSTANCE channel tag should be string")
-    addon.Tests.Assert(instance:find("|Hchannel:INSTANCE|h", 1, true) ~= nil, "INSTANCE_CHAT link should normalize to INSTANCE")
+    addon.Tests.Assert(instance:find("|Htinychat:send:instance|h", 1, true) ~= nil, "INSTANCE channel should link to tinychat send action")
 
     local dynamicWithoutId = addon.MessageFormatter.GetChannelTag({
         chatType = "CHANNEL",
@@ -936,9 +936,15 @@ function addon.Tests.TestMessageFormatterChannelLinkArgShape()
         channelBaseName = "World",
     })
     addon.Tests.Assert(type(dynamicWithoutId) == "string", "Dynamic-without-id tag should be string")
-    addon.Tests.Assert(dynamicWithoutId:find("|Hchannel:CHANNEL|h", 1, true) ~= nil, "CHANNEL without id should fall back to CHANNEL")
-    addon.Tests.Assert(dynamicWithoutId:find("|Hchannel:nil|h", 1, true) == nil, "CHANNEL link should never contain nil")
-    addon.Tests.Assert(dynamicWithoutId:find("|Hchannel:%d+|h") == nil, "CHANNEL link should not use naked numeric chatType")
+    addon.Tests.Assert(dynamicWithoutId:find("|Htinychat:send:world|h", 1, true) ~= nil, "Dynamic channel send link should not depend on runtime channel id")
+
+    local notice = addon.MessageFormatter.GetChannelTag({
+        chatType = "SYSTEM",
+        registryKey = "system",
+    })
+    addon.Tests.Assert(type(notice) == "string", "Notice channel tag should be string")
+    addon.Tests.Assert(notice:find("|Htinychat:send:", 1, true) == nil, "Notice stream must not expose send link")
+    addon.Tests.Assert(notice:find("|Hchannel:", 1, true) == nil, "Notice stream must not expose channel hyperlink")
 end
 
 function addon.Tests.TestChatPipelineStageOrder()

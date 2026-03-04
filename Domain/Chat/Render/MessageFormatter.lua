@@ -101,29 +101,26 @@ local function ResolveColorChatType(line)
     return line.chatType
 end
 
-local function ResolveChannelLinkArg(line)
+local function ResolveSendLinkStreamKey(line)
     if type(line) ~= "table" then
-        return "SYSTEM"
+        return nil
     end
 
-    local chatType = line.chatType
-    if type(chatType) ~= "string" or chatType == "" then
-        return "SYSTEM"
+    local streamKey = line.registryKey or line.channelKey
+    if type(streamKey) ~= "string" or streamKey == "" then
+        return nil
     end
 
-    if chatType == "CHANNEL" then
-        local channelId = tonumber(line.channelId)
-        if channelId and channelId > 0 then
-            return "CHANNEL:" .. tostring(channelId)
-        end
-        return "CHANNEL"
+    if not addon.GetStreamKind or addon:GetStreamKind(streamKey) ~= "channel" then
+        return nil
     end
 
-    if chatType == "INSTANCE_CHAT" then
-        return "INSTANCE"
+    local caps = addon.GetStreamCapabilities and addon:GetStreamCapabilities(streamKey) or nil
+    if type(caps) ~= "table" or caps.outbound ~= true then
+        return nil
     end
 
-    return chatType
+    return streamKey
 end
 
 --- Resolve display color for a line.
@@ -145,6 +142,11 @@ end
 --- @return string
 function addon.MessageFormatter.GetChannelTag(line)
     if not line then return "" end
+    local streamKey = line.registryKey or line.channelKey
+    if type(streamKey) == "string" and streamKey ~= ""
+        and addon.GetStreamKind and addon:GetStreamKind(streamKey) == "notice" then
+        return ""
+    end
 
     local normalizedName = line.channelBaseNameNormalized
     if (not normalizedName or normalizedName == "") and line.channelBaseName and addon.Utils and addon.Utils.NormalizeChannelBaseName then
@@ -167,8 +169,12 @@ function addon.MessageFormatter.GetChannelTag(line)
         channelTag = string.format("|cff%02x%02x%02x%s|r", r * 255, g * 255, b * 255, channelNameDisplay)
     end
 
-    local linkArg = ResolveChannelLinkArg(line)
-    return string.format("|Hchannel:%s|h%s|h", linkArg, channelTag)
+    local sendStreamKey = ResolveSendLinkStreamKey(line)
+    if sendStreamKey then
+        return string.format("|Htinychat:send:%s|h%s|h", sendStreamKey, channelTag)
+    end
+
+    return channelTag
 end
 
 -- Author Tag Formatting

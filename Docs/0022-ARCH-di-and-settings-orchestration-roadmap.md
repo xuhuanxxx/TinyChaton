@@ -67,8 +67,8 @@ status: ACTIVE
    - `key`、`phase`、`priority`、`apply(ctx)` 必填
 4. 事件仅作为观测与扩展点，不承担顺序控制：
    - `SETTINGS_COMMITTING(ctx)`
-   - `SETTINGS_PHASE_APPLYING(phase, ctx)`
-   - `SETTINGS_PHASE_APPLIED(phase, ctx)`
+   - `SETTINGS_PHASE_COMMITTING(phase, ctx)`
+   - `SETTINGS_PHASE_COMMITTED(phase, ctx)`
    - `SETTINGS_COMMITTED(ctx)`
 
 ## 执行计划（破坏式 Cutover，无双写）

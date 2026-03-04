@@ -285,7 +285,7 @@ function Dispatcher:OnStreamEvent(frame, event, ...)
     if shouldHide or emitted then
         return true
     end
-    return shouldHide, addon.Utils.UnpackArgs(packedArgs)
+    return false, addon.Utils.UnpackArgs(packedArgs)
 end
 
 --- Register event filters for all chat events

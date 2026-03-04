@@ -2,7 +2,7 @@
 id: 0021
 priority: P1
 created: 2026-03-05
-updated: 2026-03-05
+updated: 2026-03-06
 assignee:
 relates: [#0008, #0009, #0013, #0015, #0022]
 status: ACTIVE
@@ -416,22 +416,14 @@ end
 
 ### 未完成（本轮未动代码）
 
-1. **#1.4 DI 双轨收敛**
-   - 目前仍是 `ServiceContainer` 与 `addon.XXX` 并存状态，未做单轨化决策与迁移。
-   - 已转入独立后续文档：`#0022`。
-
-2. **#4.2 Profiler 样板收敛**
+1. **#4.2 Profiler 样板收敛**
    - 仍未抽 `WithProfiler`。
 
-3. **#4.3 onChange 回调去重**
+2. **#4.3 onChange 回调去重**
    - SettingsSchema 中重复闭包仍在。
 
-4. **#6.1 taint 访问集中化**
+3. **#6.1 taint 访问集中化**
    - `_G["..."]` 拼接访问仍分散在多个模块。
-
-5. **#4.4 ApplyAllSettings 事件化重构**
-   - 当前仅完成“核心硬依赖化”，尚未切换到事件订阅编排模式。
-   - 已转入独立后续文档：`#0022`。
 
 ### 不需要改（当前结论）
 
@@ -447,17 +439,19 @@ end
 4. **#2.2 GetDefaultWelcomeTemplates fallback 冗余**
    - 已顺手清理为 `return templates`，无需后续动作。
 
+### 核查遗留（2026-03-06 人工复核）
+
+1. **StreamEventDispatcher.lua L288（已修复）**
+   - 已将 `return shouldHide, addon.Utils.UnpackArgs(packedArgs)` 改为 `return false, addon.Utils.UnpackArgs(packedArgs)`，消除恒为 false 的语义误导。
+
 ### TODO（下一批建议）
 
 1. **P1/P2 功能与生命周期**
    - 增加回归：BLOCK 后消息不显示但可从 snapshot replay 找回（对应 #1.2 By Design）。
 
-2. **P2 架构收敛**
-   - #1.4（DI 单轨）与 #4.4（ApplyAllSettings 事件化）已拆分到独立文档 `#0022`，后续按里程碑执行。
-
-3. **P2 可维护性**
+2. **P2 可维护性**
    - 抽 `WithProfiler(label, fn)`，替换高噪音 Start/Stop 样板（#4.2）。
    - 抽取 Snapshot limits 共用 `onChange` 闭包（#4.3）。
 
-4. **P3 文档与约束**
+3. **P3 文档与约束**
    - 统一 taint 安全访问入口（#6.1）。

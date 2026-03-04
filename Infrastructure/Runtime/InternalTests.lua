@@ -1515,6 +1515,67 @@ function addon.Tests.TestStreamEventDispatcherStageOrder()
     pipeline.middlewares = original
 end
 
+function addon.Tests.TestStreamEventDispatcherReturnSemantics()
+    addon.Tests.Assert(type(addon.StreamEventDispatcher) == "table", "StreamEventDispatcher missing")
+    addon.Tests.Assert(type(addon.StreamEventDispatcher.OnStreamEvent) == "function", "OnStreamEvent missing")
+
+    local pipeline = addon.StreamEventDispatcher
+    local oldGateway = addon.Gateway
+    local oldVisibility = addon.StreamVisibilityService
+    local oldFormatter = addon.MessageFormatter
+    local oldEmit = addon.EmitRenderedChatLine
+
+    addon.Gateway = {
+        Inbound = {
+            Allow = function()
+                return true
+            end,
+        },
+        Display = {
+            Transform = function(_, _, msg)
+                return "[T]" .. tostring(msg)
+            end,
+        },
+    }
+
+    -- Case 1: shouldHide=false and emitted=false.
+    addon.StreamVisibilityService = nil
+    addon.MessageFormatter = nil
+    addon.EmitRenderedChatLine = nil
+
+    local blocked, msg, author = pipeline:OnStreamEvent(nil, "CHAT_MSG_SAY", "hello", "tester")
+    addon.Tests.AssertEqual(blocked, false, "OnStreamEvent should return false when not hidden and not emitted")
+    addon.Tests.AssertEqual(msg, "[T]hello", "OnStreamEvent should return transformed message")
+    addon.Tests.AssertEqual(author, "tester", "OnStreamEvent should preserve trailing arguments")
+
+    -- Case 2: shouldHide=true should still short-circuit to true.
+    addon.StreamVisibilityService = {
+        IsVisibleRealtime = function()
+            return false
+        end,
+    }
+    local hidden = pipeline:OnStreamEvent(nil, "CHAT_MSG_SAY", "hidden", "tester")
+    addon.Tests.AssertEqual(hidden, true, "OnStreamEvent should return true when stream is hidden")
+
+    -- Case 3: emitted=true should still short-circuit to true.
+    addon.StreamVisibilityService = nil
+    addon.MessageFormatter = {
+        BuildRealtimeLineFromContext = function()
+            return { text = "line", wowChatType = "SAY" }
+        end,
+    }
+    addon.EmitRenderedChatLine = function()
+        return true
+    end
+    local emitted = pipeline:OnStreamEvent(nil, "CHAT_MSG_SAY", "rendered", "tester")
+    addon.Tests.AssertEqual(emitted, true, "OnStreamEvent should return true when line is emitted")
+
+    addon.Gateway = oldGateway
+    addon.StreamVisibilityService = oldVisibility
+    addon.MessageFormatter = oldFormatter
+    addon.EmitRenderedChatLine = oldEmit
+end
+
 function addon.Tests.TestStreamEventFiltersFeatureRegistered()
     addon.Tests.Assert(type(addon.FeatureRegistry) == "table", "FeatureRegistry missing")
     addon.Tests.Assert(type(addon.FeatureRegistry.entries) == "table", "FeatureRegistry.entries missing")

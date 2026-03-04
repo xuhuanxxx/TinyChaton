@@ -4,7 +4,7 @@ priority: P1
 created: 2026-03-05
 updated: 2026-03-05
 assignee:
-relates: [#0008, #0009, #0013, #0015]
+relates: [#0008, #0009, #0013, #0015, #0022]
 status: ACTIVE
 ---
 
@@ -402,25 +402,36 @@ end
 9. **测试同步（破坏式语义）**
    - 已在 `Infrastructure/Runtime/InternalTests.lua` 将“返回副本”测试改为“共享引用”语义，并补清理步骤。
 
+10. **#2.5 Events 反注册能力补齐**
+    - 已在 `App/Events.lua` 增加 `UnregisterEvent(event, fn)`。
+    - 已在 `Infrastructure/Runtime/InternalTests.lua` 增加反注册回归断言。
+
+11. **#2.4 ObjectPool 高频检查优化**
+    - 已在 `Infrastructure/Runtime/ObjectPool.lua` 将 frame-like 检查下沉到首次 factory 创建时。
+    - `Acquire/Release` 不再每次执行 `IsFrameObject`。
+
+12. **#6.2 + #3.3 文档约束补齐**
+    - 已在 `Domain/Settings/SettingsSchema.lua` 补充 default 推断期约束注释。
+    - 已在 `Infrastructure/Runtime/Utils.lua` 明确 `FormatColorHex` 参数与返回格式注释。
+
 ### 未完成（本轮未动代码）
 
-1. **#2.4 Pool.Acquire 高频检查**
-   - `ObjectPool.lua` 仍在 Acquire/Release 路径做 `IsFrameObject` 检查。
-
-2. **#2.5 Events 缺少 UnregisterEvent**
-   - `App/Events.lua` 仍无显式反注册接口。
-
-3. **#1.4 DI 双轨收敛**
+1. **#1.4 DI 双轨收敛**
    - 目前仍是 `ServiceContainer` 与 `addon.XXX` 并存状态，未做单轨化决策与迁移。
+   - 已转入独立后续文档：`#0022`。
 
-4. **#4.2 Profiler 样板收敛**
+2. **#4.2 Profiler 样板收敛**
    - 仍未抽 `WithProfiler`。
 
-5. **#4.3 onChange 回调去重**
+3. **#4.3 onChange 回调去重**
    - SettingsSchema 中重复闭包仍在。
 
-6. **#6.1 taint 访问集中化**
+4. **#6.1 taint 访问集中化**
    - `_G["..."]` 拼接访问仍分散在多个模块。
+
+5. **#4.4 ApplyAllSettings 事件化重构**
+   - 当前仅完成“核心硬依赖化”，尚未切换到事件订阅编排模式。
+   - 已转入独立后续文档：`#0022`。
 
 ### 不需要改（当前结论）
 
@@ -439,21 +450,14 @@ end
 ### TODO（下一批建议）
 
 1. **P1/P2 功能与生命周期**
-   - 实现 `App/Events.lua` 的 `UnregisterEvent(event, fn)`（对应 #2.5）。
-   - 优化 `ObjectPool.lua`：把 frame 对象检查前置到 `Create` 或首次 factory 样本（对应 #2.4）。
+   - 增加回归：BLOCK 后消息不显示但可从 snapshot replay 找回（对应 #1.2 By Design）。
 
 2. **P2 架构收敛**
-   - 对 #1.4 做明确决策并出 ADR：  
-   - 方案 A：全面迁移到 DI。  
-   - 方案 B：冻结/移除 DI，仅保留 `addon.XXX`。
+   - #1.4（DI 单轨）与 #4.4（ApplyAllSettings 事件化）已拆分到独立文档 `#0022`，后续按里程碑执行。
 
 3. **P2 可维护性**
    - 抽 `WithProfiler(label, fn)`，替换高噪音 Start/Stop 样板（#4.2）。
    - 抽取 Snapshot limits 共用 `onChange` 闭包（#4.3）。
 
 4. **P3 文档与约束**
-   - 在 `SettingsSchema.lua` 自动推断区补注释：`default` 函数不得依赖 `addon.db`（#6.2）。
-   - 为 `FormatColorHex` 增加参数/返回约定注释（#3.3）。
-
-5. **验证 TODO**
-   - 增加回归：BLOCK 后消息不显示但可从 snapshot replay 找回（对应 #1.2 By Design）。
+   - 统一 taint 安全访问入口（#6.1）。

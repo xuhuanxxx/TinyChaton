@@ -663,6 +663,8 @@ for key, reg in pairs(addon.SETTING_REGISTRY) do
 
     if not reg.valueType then
         local def = reg.default
+        -- IMPORTANT: registration-time default inference runs before addon.db is guaranteed.
+        -- default() functions here MUST NOT depend on addon.db.
         if type(def) == "function" then def = def() end
         local t = type(def)
         if t == "boolean" then

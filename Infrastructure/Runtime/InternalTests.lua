@@ -484,6 +484,7 @@ end
 function addon.Tests.TestRegisterEventIdempotency()
     addon.Tests.Assert(type(addon.InitEvents) == "function", "InitEvents missing")
     addon.Tests.Assert(type(addon.RegisterEvent) == "function", "RegisterEvent missing")
+    addon.Tests.Assert(type(addon.UnregisterEvent) == "function", "UnregisterEvent missing")
 
     addon:InitEvents()
     addon.Tests.Assert(type(addon.eventFrame) == "table", "eventFrame missing after InitEvents")
@@ -524,6 +525,22 @@ function addon.Tests.TestRegisterEventIdempotency()
     addon:RegisterEvent(eventName, nil)
     local afterInvalid = #(addon.eventHandlers[eventName] or {})
     addon.Tests.AssertEqual(afterInvalid, beforeInvalid, "Invalid inputs should not mutate handlers")
+
+    local removedOther = addon:UnregisterEvent(eventName, otherFn)
+    addon.Tests.Assert(removedOther == true, "UnregisterEvent should remove existing handler")
+    local handlersAfterOther = addon.eventHandlers[eventName] or {}
+    addon.Tests.AssertEqual(#handlersAfterOther, 1, "UnregisterEvent should keep remaining handlers")
+
+    onEvent(addon.eventFrame, eventName)
+    addon.Tests.AssertEqual(hitCount, 3, "Remaining handler should still run after unregister")
+    addon.Tests.AssertEqual(secondHitCount, 1, "Removed handler should not run")
+
+    local removedSame = addon:UnregisterEvent(eventName, sameFn)
+    addon.Tests.Assert(removedSame == true, "UnregisterEvent should remove last handler")
+    addon.Tests.Assert(addon.eventHandlers[eventName] == nil, "Handler list should be removed when empty")
+
+    local removedMissing = addon:UnregisterEvent(eventName, sameFn)
+    addon.Tests.Assert(removedMissing == false, "UnregisterEvent should return false for missing handler")
 end
 
 function addon.Tests.TestDIResolveSemantics()

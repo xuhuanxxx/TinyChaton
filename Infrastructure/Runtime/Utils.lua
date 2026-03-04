@@ -83,7 +83,7 @@ function addon.Utils.ParseColorHex(hex)
     return 1, 1, 1, 1
 end
 
---- Format Color to Hex
+--- Format color channels (r,g,b,a) into AARRGGBB hex text.
 --- @param r number
 --- @param g number
 --- @param b number

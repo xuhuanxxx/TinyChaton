@@ -23,6 +23,32 @@ function addon:RegisterEvent(event, fn)
     table.insert(handlers, fn)
 end
 
+function addon:UnregisterEvent(event, fn)
+    if not self.eventFrame then return false end
+    if type(event) ~= "string" or event == "" then return false end
+    if type(fn) ~= "function" then return false end
+
+    local handlers = self.eventHandlers[event]
+    if type(handlers) ~= "table" then
+        return false
+    end
+
+    local removed = false
+    for i = #handlers, 1, -1 do
+        if handlers[i] == fn then
+            table.remove(handlers, i)
+            removed = true
+        end
+    end
+
+    if #handlers == 0 then
+        self.eventHandlers[event] = nil
+        self.eventFrame:UnregisterEvent(event)
+    end
+
+    return removed
+end
+
 function addon:InitEvents()
     self.eventFrame = CreateFrame("Frame")
     self.eventHandlers = {}

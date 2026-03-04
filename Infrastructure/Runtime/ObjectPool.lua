@@ -15,6 +15,8 @@ function addon.Pool:Create(name, factory, reset)
         totalCreated = 0,
         factory = factory,
         reset = reset,
+        frameCheckDone = false,
+        isFrameFactory = false,
     }
 end
 
@@ -26,10 +28,13 @@ function addon.Pool:Acquire(name)
     if not obj then
         obj = pool.factory()
         pool.totalCreated = pool.totalCreated + 1
-    end
-
-    if IsFrameObject(obj) and addon.Warn then
-        addon:Warn("addon.Pool '%s' is for Lua objects only; use TinyReactor.PoolManager for frames", tostring(name))
+        if not pool.frameCheckDone then
+            pool.frameCheckDone = true
+            pool.isFrameFactory = IsFrameObject(obj)
+            if pool.isFrameFactory and addon.Warn then
+                addon:Warn("addon.Pool '%s' is for Lua objects only; use TinyReactor.PoolManager for frames", tostring(name))
+            end
+        end
     end
 
     return obj
@@ -38,10 +43,6 @@ end
 function addon.Pool:Release(name, obj)
     local pool = pools[name]
     if not pool then return end
-
-    if IsFrameObject(obj) and addon.Warn then
-        addon:Warn("addon.Pool '%s' release received a frame object; this pool is for Lua objects only", tostring(name))
-    end
 
     if pool.reset then
         pool.reset(obj)

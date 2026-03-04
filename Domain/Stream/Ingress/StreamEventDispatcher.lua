@@ -10,13 +10,19 @@ local RemoveMessageFilter = _G["Chat" .. "Frame_RemoveMessageEventFilter"]
 addon.StreamEventDispatcher = addon.StreamEventDispatcher or {}
 local Dispatcher = addon.StreamEventDispatcher
 
--- Middleware registry by stage
-Dispatcher.middlewares = {
-    VALIDATE = {},  -- Pre-processing (cannot block)
-    BLOCK = {},       -- Filtering/blocking stage (can return true to block)
-    TRANSFORM = {},       -- Enhancement stage (modify text)
-    PERSIST = {}           -- Logging stage (cannot block)
-}
+local STAGES = { "VALIDATE", "BLOCK", "TRANSFORM", "PERSIST" }
+
+local function EnsurePipeline(self)
+    if self.pipeline then
+        return self.pipeline
+    end
+    if not addon.TinyCoreStreamPipeline or type(addon.TinyCoreStreamPipeline.New) ~= "function" then
+        error("Stream pipeline core is not initialized")
+    end
+    self.pipeline = addon.TinyCoreStreamPipeline:New(STAGES)
+    self.middlewares = self.pipeline.middlewares
+    return self.pipeline
+end
 
 -- Registered event filters
 Dispatcher.registeredFilters = {}
@@ -48,6 +54,7 @@ end
 
 --- Initialize event dispatcher
 function Dispatcher:Initialize()
+    EnsurePipeline(self)
     self.registeredFilters = self.registeredFilters or {}
     self.filterCallbacks = self.filterCallbacks or {}
     self.isFiltersRegistered = self.isFiltersRegistered or false
@@ -61,30 +68,7 @@ end
 --- @param name string Middleware name for debugging
 --- @param fn function Middleware function(streamContext) -> boolean|nil
 function Dispatcher:RegisterMiddleware(stage, priority, name, fn)
-    if addon.Utils and addon.Utils.EnsureString then
-        stage = addon.Utils.EnsureString(stage, "")
-    end
-    if not self.middlewares[stage] then
-        error("Invalid middleware stage: " .. tostring(stage))
-    end
-
-    if type(fn) ~= "function" then
-        error("Middleware function must be a function")
-    end
-
-    table.insert(self.middlewares[stage], {
-        name = name or "unnamed",
-        priority = priority or 100,
-        fn = fn
-    })
-
-    -- Sort by priority after insertion
-    table.sort(self.middlewares[stage], function(a, b)
-        if a.priority ~= b.priority then
-            return a.priority < b.priority
-        end
-        return tostring(a.name) < tostring(b.name)
-    end)
+    EnsurePipeline(self):Register(stage, priority, name, fn)
 end
 
 --- Unregister a middleware by name
@@ -92,24 +76,11 @@ end
 --- @param name string Middleware name
 --- @return boolean Success
 function Dispatcher:UnregisterMiddleware(stage, name)
-    if not self.middlewares[stage] then
-        return false
+    local removed = EnsurePipeline(self):Unregister(stage, name)
+    if removed and addon.Debug then
+        addon:Debug(string.format("Unregistered middleware: %s from %s", name, stage))
     end
-
-    local stageMiddlewares = self.middlewares[stage]
-    for i, middleware in ipairs(stageMiddlewares) do
-        if middleware.name == name then
-            table.remove(stageMiddlewares, i)
-
-            if addon.Debug then
-                addon:Debug(string.format("Unregistered middleware: %s from %s", name, stage))
-            end
-
-            return true
-        end
-    end
-
-    return false
+    return removed
 end
 
 --- Check if a middleware is registered
@@ -117,17 +88,7 @@ end
 --- @param name string Middleware name
 --- @return boolean
 function Dispatcher:IsMiddlewareRegistered(stage, name)
-    if not self.middlewares[stage] then
-        return false
-    end
-
-    for _, middleware in ipairs(self.middlewares[stage]) do
-        if middleware.name == name then
-            return true
-        end
-    end
-
-    return false
+    return EnsurePipeline(self):IsRegistered(stage, name)
 end
 
 --- Execute middlewares for a specific stage
@@ -164,27 +125,27 @@ function Dispatcher:RunMiddlewares(stage, streamContext)
         end
     end
 
-    local middlewares = self.middlewares[stage]
-    if not middlewares then
+    local pipeline = EnsurePipeline(self)
+    if not pipeline:HasStage(stage) then
         if hasProfiler and profileLabel then
             addon.Profiler:Stop(profileLabel)
         end
         return false
     end
 
-    for _, middleware in ipairs(middlewares) do
-        local ok, result = pcall(middleware.fn, streamContext)
-
-        if not ok then
-            -- Log error but don't break the pipeline
+    pipeline:Run(stage, streamContext, {
+        onError = function(middleware, err)
             if addon.Debug then
                 addon:Debug(string.format("Middleware error [%s:%s]: %s",
-                    stage, middleware.name, tostring(result)))
+                    stage, middleware.name, tostring(err)))
             end
-        elseif result == true and stage == "BLOCK" then
-            streamContext.isBlocked = true
-        end
-    end
+        end,
+        onResult = function(_, result, context)
+            if result == true and stage == "BLOCK" then
+                context.isBlocked = true
+            end
+        end,
+    })
 
     if hasProfiler and profileLabel then
         addon.Profiler:Stop(profileLabel)

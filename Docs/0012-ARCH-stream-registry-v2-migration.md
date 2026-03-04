@@ -2,7 +2,7 @@
 id: 0012
 priority: P0
 created: 2026-03-04
-updated: 2026-03-04
+updated: 2026-03-05
 relates: [#0011, #0002, #0003, #0006, #0008]
 status: ACTIVE
 ---
@@ -30,8 +30,9 @@ status: ACTIVE
 
 ### 策略消费端
 
-- `Domain/Chat/Render/MessageFormatter.lua`
+- `Domain/Stream/Render/MessageFormatter.lua`
   - 点击复制改为 `ResolveStreamToggle(..., "copyDefault")`。
+  - 名称保持中性，通过 stream kind 路由 channel/notice。
 - `Domain/Chat/Storage/SnapshotStore.lua`
   - 快照存储改为 `ResolveStreamToggle(..., "snapshotDefault")`。
 - `Domain/Chat/Storage/SnapshotReplayer.lua`
@@ -41,7 +42,7 @@ status: ACTIVE
 
 - `Infrastructure/Runtime/ChannelSemanticResolver.lua`
 - `Infrastructure/Runtime/AvailabilityResolver.lua`
-- `Domain/Chat/Policy/VisibilityPolicy.lua`
+- `Domain/Stream/Visibility/StreamVisibilityService.lua`
 - `Domain/Chat/Automation/AutoJoinHelper.lua`
 - `Domain/Chat/ChannelCandidatesRegistry.lua`
 
@@ -79,3 +80,4 @@ status: ACTIVE
 2. 未映射非 CHANNEL 事件直接报错。
 3. `notice` 独立分组，不归并 `system`。
 4. 不提供旧配置字段迁移脚本。
+5. Stream 域命名重排（`StreamEventContext/StreamEventDispatcher/StreamVisibilityService`）不保留旧别名。

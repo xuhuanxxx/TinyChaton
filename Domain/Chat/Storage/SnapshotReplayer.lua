@@ -47,9 +47,9 @@ local function CountTotalStoredLines()
     local storage = addon.GetSnapshotStorage and addon:GetSnapshotStorage()
     if type(storage) ~= "table" then return 0 end
     local total = 0
-    for _, channelBuffer in pairs(storage) do
-        if IsRingBuffer(channelBuffer) then
-            total = total + channelBuffer.size
+    for _, streamBuffer in pairs(storage) do
+        if IsRingBuffer(streamBuffer) then
+            total = total + streamBuffer.size
         end
     end
     return total
@@ -94,15 +94,15 @@ local function PerformEvictionBatch()
 
     local removedCount = 0
 
-    for channelKey, channelBuffer in pairs(content) do
+    for streamKey, streamBuffer in pairs(content) do
         if removedCount >= CLEANUP_BATCH_SIZE then break end
-        if IsRingBuffer(channelBuffer) and channelBuffer.size > 0 then
-            local canRemove = math.min(channelBuffer.size, CLEANUP_BATCH_SIZE - removedCount)
-            local removed = PopOldest(channelBuffer, canRemove)
+        if IsRingBuffer(streamBuffer) and streamBuffer.size > 0 then
+            local canRemove = math.min(streamBuffer.size, CLEANUP_BATCH_SIZE - removedCount)
+            local removed = PopOldest(streamBuffer, canRemove)
             removedCount = removedCount + removed
-        elseif type(channelBuffer) == "table" then
+        elseif type(streamBuffer) == "table" then
             -- Corrupted entry: drop it to keep eviction loop healthy.
-            content[channelKey] = nil
+            content[streamKey] = nil
         end
     end
 
@@ -187,16 +187,16 @@ function addon:SyncTrimSnapshotToLimit(limit)
         return root
     end
 
-    for channelKey, channelBuffer in pairs(storage) do
-        if IsRingBuffer(channelBuffer) and channelBuffer.size > 0 then
-            local first = channelBuffer.items[channelBuffer.head]
+    for streamKey, streamBuffer in pairs(storage) do
+        if IsRingBuffer(streamBuffer) and streamBuffer.size > 0 then
+            local first = streamBuffer.items[streamBuffer.head]
             HeapPush({
-                channelKey = channelKey,
-                buffer = channelBuffer,
+                streamKey = streamKey,
+                buffer = streamBuffer,
                 time = first and first.time or 0,
             })
-        elseif type(channelBuffer) == "table" then
-            storage[channelKey] = nil
+        elseif type(streamBuffer) == "table" then
+            storage[streamKey] = nil
         end
     end
 
@@ -244,7 +244,7 @@ function addon:InitSnapshotManager()
     local restored
     local restoring
 
-    local function RestoreChannelContent()
+    local function RestoreStreamContent()
         if restored or restoring then return end
         if not addon.db or not addon.db.enabled then return end
         if addon.Can and not addon:Can(addon.CAPABILITIES.PERSIST_CHAT_DATA) then
@@ -254,19 +254,19 @@ function addon:InitSnapshotManager()
         local snapshotEnabled = addon:GetConfig("profile.chat.content.snapshotEnabled", true)
         if not snapshotEnabled then return end
 
-        local perChannel = addon.GetSnapshotStorage and addon:GetSnapshotStorage()
-        if type(perChannel) ~= "table" then return end
+        local perStream = addon.GetSnapshotStorage and addon:GetSnapshotStorage()
+        if type(perStream) ~= "table" then return end
         local startTime = debugprofilestop and debugprofilestop() or nil
         local replayLimit = addon.GetEffectiveSnapshotReplayLimit and addon:GetEffectiveSnapshotReplayLimit() or GetLineCount()
         local states = {}
         local totalLines = 0
-        for _, channelBuffer in pairs(perChannel) do
-            if IsRingBuffer(channelBuffer) and channelBuffer.size > 0 then
-                totalLines = totalLines + channelBuffer.size
+        for _, streamBuffer in pairs(perStream) do
+            if IsRingBuffer(streamBuffer) and streamBuffer.size > 0 then
+                totalLines = totalLines + streamBuffer.size
                 states[#states + 1] = {
-                    items = channelBuffer.items,
-                    index = channelBuffer.head,
-                    tail = channelBuffer.tail,
+                    items = streamBuffer.items,
+                    index = streamBuffer.head,
+                    tail = streamBuffer.tail,
                 }
             end
         end
@@ -335,8 +335,8 @@ function addon:InitSnapshotManager()
             end
 
             local visible = true
-            if addon.VisibilityPolicy and addon.VisibilityPolicy.IsVisibleSnapshotLine then
-                local ok, result = pcall(addon.VisibilityPolicy.IsVisibleSnapshotLine, addon.VisibilityPolicy, line, frame)
+            if addon.StreamVisibilityService and addon.StreamVisibilityService.IsVisibleSnapshotLine then
+                local ok, result = pcall(addon.StreamVisibilityService.IsVisibleSnapshotLine, addon.StreamVisibilityService, line, frame)
                 if ok and result == false then
                     visible = false
                 end
@@ -406,7 +406,7 @@ function addon:InitSnapshotManager()
             C_Timer.After(0.1, function()
                 addon:NormalizeSnapshotLimits()
                 addon:SyncTrimSnapshotToLimit(addon:GetEffectiveSnapshotStorageLimit())
-                RestoreChannelContent()
+                RestoreStreamContent()
             end)
         end)
     end
@@ -437,7 +437,7 @@ local function IsStreamInFilter(stream, filter)
     return (filter == nil)
 end
 
-local function BuildChannelItems(filter, includePredicate)
+local function BuildStreamItems(filter, includePredicate)
     local items = {}
     for _, stream in addon:IterateCompiledStreams() do
         if includePredicate(stream) and IsStreamInFilter(stream, filter) then
@@ -454,20 +454,20 @@ local function BuildChannelItems(filter, includePredicate)
     return items
 end
 
-function addon:GetSnapshotChannelsItems(filter)
+function addon:GetSnapshotStreamsItems(filter)
     -- filter: "private" | "system" | "dynamic" | "notice" | nil(全部)
-    return BuildChannelItems(filter, function(stream)
+    return BuildStreamItems(filter, function(stream)
         return not stream.isNotStorable
     end)
 end
 
-function addon:GetSnapshotChannelSelection(filter)
+function addon:GetSnapshotStreamSelection(filter)
     local sc = self.db
         and self.db.profile
         and self.db.profile.chat
         and self.db.profile.chat.content
-        and self.db.profile.chat.content.snapshotChannels
-    local items = self:GetSnapshotChannelsItems(filter)
+        and self.db.profile.chat.content.snapshotStreams
+    local items = self:GetSnapshotStreamsItems(filter)
     local selection = {}
     for _, item in ipairs(items) do
         selection[item.key] = addon:ResolveStreamToggle(item.key, sc, "snapshotDefault", true)
@@ -475,15 +475,15 @@ function addon:GetSnapshotChannelSelection(filter)
     return selection
 end
 
-function addon:SetSnapshotChannelSelection(filter, selection, opts)
+function addon:SetSnapshotStreamSelection(filter, selection, opts)
     if not self.db or not self.db.profile.chat or not self.db.profile.chat.content then
         return
     end
-    if not self.db.profile.chat.content.snapshotChannels then
-        self.db.profile.chat.content.snapshotChannels = {}
+    if not self.db.profile.chat.content.snapshotStreams then
+        self.db.profile.chat.content.snapshotStreams = {}
     end
-    local sc = self.db.profile.chat.content.snapshotChannels
-    local items = self:GetSnapshotChannelsItems(filter)
+    local sc = self.db.profile.chat.content.snapshotStreams
+    local items = self:GetSnapshotStreamsItems(filter)
 
     for _, item in ipairs(items) do
         sc[item.key] = selection[item.key] and true or false
@@ -497,12 +497,12 @@ function addon:SetSnapshotChannelSelection(filter, selection, opts)
     addon:TriggerEviction()
 end
 
-function addon:GetSnapshotChannelsSummary()
-    if not self.db or not self.db.profile.chat or not self.db.profile.chat.content.snapshotChannels then
+function addon:GetSnapshotStreamsSummary()
+    if not self.db or not self.db.profile.chat or not self.db.profile.chat.content.snapshotStreams then
         return L["LABEL_SNAPSHOT_CHANNELS_ALL"]
     end
-    local sc = self.db.profile.chat.content.snapshotChannels
-    local items = self:GetSnapshotChannelsItems()
+    local sc = self.db.profile.chat.content.snapshotStreams
+    local items = self:GetSnapshotStreamsItems()
     local selected = {}
     for _, item in ipairs(items) do
         if sc[item.key] ~= false then table.insert(selected, item.label) end
@@ -512,17 +512,17 @@ function addon:GetSnapshotChannelsSummary()
     return table.concat(selected, "、")
 end
 
-function addon:GetCopyChannelsItems(filter)
+function addon:GetCopyStreamsItems(filter)
     -- filter: "private" | "system" | "dynamic" | "notice" | nil(全部)
-    return BuildChannelItems(filter, function(stream)
+    return BuildStreamItems(filter, function(stream)
         return addon:GetStreamCapabilities(stream.key) ~= nil
     end)
 end
 
-function addon:GetCopyChannelSelection(filter)
+function addon:GetCopyStreamSelection(filter)
     local interaction = self.db and self.db.profile and self.db.profile.chat and self.db.profile.chat.interaction
-    local configured = interaction and interaction.copyChannels or nil
-    local items = self:GetCopyChannelsItems(filter)
+    local configured = interaction and interaction.copyStreams or nil
+    local items = self:GetCopyStreamsItems(filter)
     local selection = {}
     for _, item in ipairs(items) do
         selection[item.key] = addon:ResolveStreamToggle(item.key, configured, "copyDefault", true)
@@ -530,20 +530,20 @@ function addon:GetCopyChannelSelection(filter)
     return selection
 end
 
-function addon:SetCopyChannelSelection(filter, selection, opts)
+function addon:SetCopyStreamSelection(filter, selection, opts)
     if not self.db or not self.db.profile or not self.db.profile.chat or not self.db.profile.chat.interaction then
         return
     end
 
     local interaction = self.db.profile.chat.interaction
-    if type(interaction.copyChannels) ~= "table" then
-        interaction.copyChannels = {}
+    if type(interaction.copyStreams) ~= "table" then
+        interaction.copyStreams = {}
     end
 
-    local copyChannels = interaction.copyChannels
-    local items = self:GetCopyChannelsItems(filter)
+    local copyStreams = interaction.copyStreams
+    local items = self:GetCopyStreamsItems(filter)
     for _, item in ipairs(items) do
-        copyChannels[item.key] = selection[item.key] and true or false
+        copyStreams[item.key] = selection[item.key] and true or false
     end
 
     if not (opts and opts.skipApply) and addon.ApplyAllSettings then
@@ -551,14 +551,14 @@ function addon:SetCopyChannelSelection(filter, selection, opts)
     end
 end
 
-function addon:GetCopyChannelsSummary()
+function addon:GetCopyStreamsSummary()
     local interaction = self.db and self.db.profile and self.db.profile.chat and self.db.profile.chat.interaction
     if not interaction then
         return L["LABEL_SNAPSHOT_CHANNELS_ALL"]
     end
 
-    local configured = interaction.copyChannels
-    local items = self:GetCopyChannelsItems()
+    local configured = interaction.copyStreams
+    local items = self:GetCopyStreamsItems()
     local selected = {}
     for _, item in ipairs(items) do
         local enabled = addon:ResolveStreamToggle(item.key, configured, "copyDefault", true)

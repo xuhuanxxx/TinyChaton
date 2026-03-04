@@ -556,15 +556,15 @@ local SLASH_COMMANDS = {
     ["EMOTE"] = "e",
 }
 
-function addon:ActionSend(chatType, channelKey, channelName)
+function addon:ActionSend(chatType, streamKey, channelName)
     -- User-triggered channel switch from Shelf remains available in all modes.
     -- This action opens chat input for joined channels.
     if chatType == "CHANNEL" then
         local id = nil
         local semantic = addon.ChannelSemanticResolver
-        if semantic and type(semantic.ResolveDynamic) == "function" and type(channelKey) == "string" and channelKey ~= "" then
+        if semantic and type(semantic.ResolveDynamic) == "function" and type(streamKey) == "string" and streamKey ~= "" then
             local resolved = semantic.ResolveDynamic({
-                streamKey = channelKey,
+                streamKey = streamKey,
                 channelName = channelName,
             })
             id = resolved and tonumber(resolved.channelId) or nil

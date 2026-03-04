@@ -3,65 +3,48 @@ id: 0008
 priority: P0
 created: 2026-03-02
 updated: 2026-03-05
-relates: [#0001, #0002, #0003, #0004, #0005, #0006, #0007, #0011, #0012, #0014]
+relates: [#0001, #0002, #0003, #0004, #0005, #0006, #0007, #0011, #0014, #0015, #0017, #0018]
 status: ACTIVE
 ---
 
 # TinyChaton 架构总览规格
 
-## 问题/目标
+## 目标
 
-提供当前核心架构视图，明确 Stream V2 在消息处理链中的位置。
+给出当前稳定架构分层：`stream` 为通用处理平面，`chat` 为 channel 交互平面。
 
-## 核心层次
+## 分层
 
 1. Infrastructure
-- CapabilityPolicyEngine
-- RuntimeMode / FeatureRegistry
-- Gateway / Resolver / Validation
+- RuntimeMode / CapabilityPolicy / FeatureRegistry / Gateway
+- AvailabilityResolver（kind+group 注册）
 
-2. Domain Registries
-- Stream Registry V2（`kind + group + capabilities`）
-- Stream Registry Compiler（唯一编译入口，消费端只读编译产物）
-- Action Registry（capability 过滤绑定）
-- Kit / Theme / Color registries
+2. Stream Domain（通用）
+- Context: `StreamEventContext`
+- Ingress: `StreamEventDispatcher`
+- Rules: `StreamRuleEngine + kind strategies`
+- Visibility: `StreamVisibilityService`
+- Render: `MessageFormatter + kind formatters`
+- Highlight: `StreamHighlighter + kind plugins`
+- Contracts/Types: `StreamContracts/StreamTypes`
 
-3. Domain Services
-- Chat Ingress（EventRouter + Filters）
-- Chat Render（MessageFormatter + Transformers）
-- Chat Storage（SnapshotStore + Replayer）
-- Automation（AutoJoin 等）
-- Shelf / Settings
+3. Chat Domain（channel 交互）
+- StreamRegistry / ActionSend
+- Interaction: Sticky/Tab/LinkHover/Emotes
+- Storage: SnapshotStore/Replayer（消费 stream 结构）
 
 4. Application
 - Bootstrap / Lifecycle / Container
 
-## Stream V2 关键流
+## 关键原则
 
-```mermaid
-flowchart TD
-  A["WoW Chat Event"] --> B["ResolveStreamKey(event, args)"]
-  B --> C["streamKey"]
-  C --> D["ResolveStreamToggle(snapshot)"]
-  C --> E["ResolveStreamToggle(copy)"]
-  D --> F["SnapshotStore 入库/跳过"]
-  E --> G["MessageFormatter 可复制/不可复制"]
-  C --> H["Action/AutoJoin/Visibility by capabilities"]
-```
-
-## 关键约束
-
-- 行为判定禁止依赖路径字符串。
-- 所有策略统一基于 `streamKey + capabilities`。
-- NOTICE 与 CHANNEL 同模型，不同 `kind/group`。
-- 非 `CHAT_MSG_CHANNEL` 事件必须唯一映射到 stream。
-- 统一屏蔽配置使用 `profile.filter.streamBlocked`。
-- `blacklist/whitelist/highlight` 仅作用于 `kind=channel`。
+1. `stream` 覆盖 `channel + notice`。
+2. channel-only 规则是策略，不是架构限制。
+3. 任何新增 kind 能力应通过注册点接入，而不是修改主流程分支。
+4. 命名中性优先（如 `MessageFormatter`），行为范围由策略路由控制。
 
 ## 关键验收
 
-- `notice` 分组在 UI 独立展示，不并入 `system`。
-- 发送动作只在 outbound stream 出现。
-- 动态能力（mute/autoJoin）只在支持能力的 stream 生效。
-- notice 默认不被规则过滤（black/white/highlight），仅可被显式 stream 屏蔽。
-- 重放上限运行时硬钳制 200。
+1. notice 默认不过滤/不高亮，但可通过 `streamBlocked` 屏蔽。
+2. black/white/duplicate/highlight 仅作用 channel（默认策略）。
+3. 可新增 notice strategy/formatter/highlighter 且无需修改 dispatcher/visibility 主流程。

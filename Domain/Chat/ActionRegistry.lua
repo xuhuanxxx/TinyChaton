@@ -23,7 +23,8 @@ addon.ACTION_DEFINITIONS = {
         category = "channel",
         actionPlane = "USER_ACTION",
         appliesTo = {
-            streamCapabilities = { outbound = true }
+            streamCapabilities = { outbound = true },
+            streamKind = "channel",
         },
         -- 执行函数接收 streamKey 参数
         execute = function(streamKey)
@@ -54,13 +55,14 @@ addon.ACTION_DEFINITIONS = {
         category = "channel",
         actionPlane = "CHAT_DATA",
         appliesTo = {
-            streamCapabilities = { supportsMute = true }
+            streamCapabilities = { supportsMute = true },
+            streamKind = "channel",
         },
         execute = function(streamKey)
-            if addon.VisibilityPolicy and addon.VisibilityPolicy.ToggleStreamBlocked then
-                addon.VisibilityPolicy:ToggleStreamBlocked(streamKey)
-            elseif addon.VisibilityPolicy and addon.VisibilityPolicy.ToggleDynamicChannelMute then
-                addon.VisibilityPolicy:ToggleDynamicChannelMute(streamKey)
+            if addon.StreamVisibilityService and addon.StreamVisibilityService.ToggleStreamBlocked then
+                addon.StreamVisibilityService:ToggleStreamBlocked(streamKey)
+            elseif addon.StreamVisibilityService and addon.StreamVisibilityService.ToggleDynamicChannelMute then
+                addon.StreamVisibilityService:ToggleDynamicChannelMute(streamKey)
             end
             if addon.RefreshShelf then
                 addon:RefreshShelf()
@@ -214,8 +216,25 @@ function addon:BuildActionRegistryFromDefinitions()
         return true
     end
 
+    local function StreamMatchesScope(stream, appliesTo)
+        if type(stream) ~= "table" or type(appliesTo) ~= "table" then
+            return false
+        end
+
+        if type(appliesTo.streamKind) == "string" and stream.kind ~= appliesTo.streamKind then
+            return false
+        end
+        if type(appliesTo.streamGroup) == "string" and stream.group ~= appliesTo.streamGroup then
+            return false
+        end
+        return true
+    end
+
     local function RegisterActionForStream(actionDef, stream)
         local fullKey = actionDef.key .. "_" .. stream.key
+        if registry[fullKey] then
+            return
+        end
         local label = actionDef.getLabel and actionDef.getLabel(stream.key) or actionDef.label
 
         if actionDef.category == "channel" and actionDef.key:match("send") then
@@ -235,21 +254,28 @@ function addon:BuildActionRegistryFromDefinitions()
         }
     end
 
-    -- 遍历所有 ACTION 定义
-    for _, actionDef in ipairs(self.ACTION_DEFINITIONS or {}) do
-        if actionDef.appliesTo and actionDef.appliesTo.streamCapabilities then
-            for _, stream in self:IterateCompiledStreams() do
-                if self:IsChannelStream(stream.key) and StreamMatchesCapabilities(stream.key, actionDef.appliesTo.streamCapabilities) then
-                    RegisterActionForStream(actionDef, stream)
-                end
+    local function BuildStreamKeySet(streamKeys)
+        if type(streamKeys) ~= "table" then
+            return nil
+        end
+        local set = {}
+        for _, key in ipairs(streamKeys) do
+            if type(key) == "string" and key ~= "" then
+                set[key] = true
             end
         end
+        return set
+    end
 
-        -- 如果 ACTION 声明了特定的 streamKeys
-        if actionDef.appliesTo and actionDef.appliesTo.streamKeys then
-            for _, streamKey in ipairs(actionDef.appliesTo.streamKeys) do
-                local stream = self:GetStreamByKey(streamKey)
-                if stream then
+    -- 遍历所有 ACTION 定义
+    for _, actionDef in ipairs(self.ACTION_DEFINITIONS or {}) do
+        if actionDef.appliesTo and not actionDef.appliesTo.kits then
+            local keySet = BuildStreamKeySet(actionDef.appliesTo.streamKeys)
+            for _, stream in self:IterateCompiledStreams() do
+                if (not keySet or keySet[stream.key] == true)
+                    and StreamMatchesScope(stream, actionDef.appliesTo)
+                    and (not actionDef.appliesTo.streamCapabilities
+                        or StreamMatchesCapabilities(stream.key, actionDef.appliesTo.streamCapabilities)) then
                     RegisterActionForStream(actionDef, stream)
                 end
             end

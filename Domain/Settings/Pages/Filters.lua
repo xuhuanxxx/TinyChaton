@@ -162,8 +162,8 @@ CategoryBuilders.filters = function(rootCat)
         postRefresh = function()
             local db = GetFilterDB()
             currentMode = (db and db.mode == "whitelist") and "whitelist" or "blacklist"
-            if addon.RuleMatcher and addon.RuleMatcher.ClearAllCaches then
-                addon.RuleMatcher.ClearAllCaches("filters_reset")
+            if addon.StreamRuleEngine and addon.StreamRuleEngine.ClearAllCaches then
+                addon.StreamRuleEngine:ClearAllCaches("filters_reset")
             end
             print(L["MSG_FILTERS_RESET"])
         end,

@@ -33,8 +33,8 @@ App\Bootstrap\ContainerSetup.lua
 App\Bootstrap\Modules.lua
 App\Bootstrap\Lifecycle.lua
 
-Domain\Chat\Types.lua
-Domain\Chat\Contracts.lua
+Domain\Stream\Types.lua
+Domain\Stream\Contracts.lua
 Domain\Chat\StreamRegistry.lua
 Infrastructure\Runtime\StreamRegistryCompiler.lua
 Infrastructure\Runtime\ChannelSemanticResolver.lua
@@ -67,14 +67,19 @@ Infrastructure\Runtime\Profiler.lua
 Infrastructure\Runtime\MemoryDiagnostics.lua
 
 Domain\Chat\Storage\SnapshotKeys.lua
-Domain\Chat\Policy\VisibilityPolicy.lua
-Domain\Chat\Ingress\EventContextFactory.lua
-Domain\Chat\Render\MessageFormatter.lua
-Domain\Chat\Ingress\ChatPipeline.lua
-Domain\Chat\Ingress\Filters\RuleMatcher.lua
-Domain\Chat\Ingress\Filters\Blacklist.lua
-Domain\Chat\Ingress\Filters\Whitelist.lua
-Domain\Chat\Ingress\Filters\Duplicate.lua
+Domain\Stream\Context\StreamEventContext.lua
+Domain\Stream\Rules\RuleMatcher.lua
+Domain\Stream\Rules\StreamRuleEngine.lua
+Domain\Stream\Rules\Strategies\ChannelRulesStrategy.lua
+Domain\Stream\Rules\Strategies\NoticeRulesStrategy.lua
+Domain\Stream\Visibility\StreamVisibilityService.lua
+Domain\Stream\Render\MessageFormatter.lua
+Domain\Stream\Render\Formatters\ChannelFormatter.lua
+Domain\Stream\Render\Formatters\NoticeFormatter.lua
+Domain\Stream\Render\Transformers\StreamHighlighter.lua
+Domain\Stream\Render\Transformers\ChannelHighlight.lua
+Domain\Stream\Render\Transformers\NoticeHighlight.lua
+Domain\Stream\Ingress\StreamEventDispatcher.lua
 Domain\Chat\Storage\SnapshotStore.lua
 Domain\Chat\Storage\SnapshotReplayer.lua
 
@@ -89,7 +94,6 @@ Domain\Chat\Automation\AutoWelcome.lua
 Domain\Chat\Automation\AutoJoinHelper.lua
 Domain\Chat\Interaction\LinkHover.lua
 Domain\Chat\Interaction\TabCycle.lua
-Domain\Chat\Render\Transformers\Highlight.lua
 
 Domain\Shelf\DynamicChannelResolver.lua
 Domain\Shelf\ThemeProvider.lua

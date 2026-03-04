@@ -1,11 +1,10 @@
 local addonName, addon = ...
 
--- =========================================================================
--- ChatData Object
+-- StreamEventContext Object
 -- Unified context object passed through the middleware pipeline
 -- =========================================================================
 
----@class ChatData
+---@class StreamEventContext
 ---@field frame table|nil ChatFrame object
 ---@field event string Event name
 ---@field rawText string Original message text
@@ -26,14 +25,14 @@ local addonName, addon = ...
 ---@field channelName string|nil
 ---@field streamKey string|nil
 
-addon.ChatData = {}
+addon.StreamEventContext = {}
 
---- Create a new ChatData object from chat event arguments
+--- Create a new stream event context object from chat event arguments
 --- @param frame table|nil ChatFrame object (can be nil)
 --- @param event string Event name (e.g., "CHAT_MSG_SAY")
 --- @param ... any Event arguments
---- @return ChatData|nil ChatData object or nil if invalid
-function addon.ChatData:New(frame, event, ...)
+--- @return StreamEventContext|nil Stream event context object or nil if invalid
+function addon.StreamEventContext:New(frame, event, ...)
     local text, author, languageID, channelString, target, flags, unknown, channelNumber, channelName, unknown2, counter = ...
 
     -- Protect against secret values (Blizzard marks certain messages as inaccessible)
@@ -58,52 +57,58 @@ function addon.ChatData:New(frame, event, ...)
     args.n = n
 
     -- Try to acquire from pool
-    local chatData = addon.Pool:Acquire("ChatData")
-    
-    chatData.frame = frame
-    chatData.event = event
-    chatData.rawText = text
-    chatData.rawAuthor = author
-    chatData.text = text
-    chatData.author = author
-    chatData.name = pureName
-    chatData.textLower = text and string.lower(text) or ""
-    chatData.authorLower = pureName and string.lower(pureName) or ""
-    chatData.isBlocked = false
+    local streamContext = addon.Pool:Acquire("StreamEventContext")
+
+    streamContext.frame = frame
+    streamContext.event = event
+    streamContext.rawText = text
+    streamContext.rawAuthor = author
+    streamContext.text = text
+    streamContext.author = author
+    streamContext.name = pureName
+    streamContext.textLower = text and string.lower(text) or ""
+    streamContext.authorLower = pureName and string.lower(pureName) or ""
+    streamContext.isBlocked = false
     -- metadata should be empty from reset, but explicit init is safer if reset logic changes
-    -- chatData.metadata = {} 
-    chatData.args = args
-    chatData.languageID = languageID
-    chatData.channelString = channelString
-    chatData.target = target
-    chatData.flags = flags
-    chatData.channelNumber = channelNumber
-    chatData.channelName = channelName
-    chatData.streamKey = nil
+    -- streamContext.metadata = {}
+    streamContext.args = args
+    streamContext.languageID = languageID
+    streamContext.channelString = channelString
+    streamContext.target = target
+    streamContext.flags = flags
+    streamContext.channelNumber = channelNumber
+    streamContext.channelName = channelName
+    streamContext.streamKey = nil
+    streamContext.streamKind = nil
+    streamContext.streamGroup = nil
 
     if addon.ResolveStreamKey and addon.Utils and addon.Utils.UnpackArgs then
         local ok, streamKey = pcall(addon.ResolveStreamKey, addon, event, addon.Utils.UnpackArgs(args))
         if ok and type(streamKey) == "string" and streamKey ~= "" then
-            chatData.streamKey = streamKey
+            streamContext.streamKey = streamKey
+            if addon.GetStreamKind then
+                streamContext.streamKind = addon:GetStreamKind(streamKey)
+                streamContext.streamGroup = addon:GetStreamGroup(streamKey)
+            end
         end
     end
 
     if addon.ValidateContract then
-        addon:ValidateContract("EventContext", chatData)
+        addon:ValidateContract("EventContext", streamContext)
     end
-    return chatData
+    return streamContext
 end
 
---- Release ChatData object back to pool
-function addon.ChatData:Release(chatData)
-    if chatData then
-        addon.Pool:Release("ChatData", chatData)
+--- Release stream event context object back to pool
+function addon.StreamEventContext:Release(streamContext)
+    if streamContext then
+        addon.Pool:Release("StreamEventContext", streamContext)
     end
 end
 
 -- Initialize the pool
 if addon.Pool then
-    addon.Pool:Create("ChatData", 
+    addon.Pool:Create("StreamEventContext",
         -- Factory
         function() 
             return { metadata = {} } 

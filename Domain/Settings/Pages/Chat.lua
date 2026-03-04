@@ -98,29 +98,29 @@ CategoryBuilders.chat = function(rootCat)
 
     addon.AddProxyMultiDropdown(subCat, P .. "snapshotPersonal",
         L["LABEL_SNAPSHOT_PERSONAL"],
-        function() return addon:GetSnapshotChannelsItems("private") end,
-        function() return addon:GetSnapshotChannelSelection("private") end,
-        function(sel) addon:SetSnapshotChannelSelection("private", sel) end,
+        function() return addon:GetSnapshotStreamsItems("private") end,
+        function() return addon:GetSnapshotStreamSelection("private") end,
+        function(sel) addon:SetSnapshotStreamSelection("private", sel) end,
         L["TOOLTIP_SNAPSHOT_PERSONAL"])
 
     addon.AddProxyMultiDropdown(subCat, P .. "snapshotSystem",
         L["LABEL_SNAPSHOT_SYSTEM"],
-        function() return addon:GetSnapshotChannelsItems("system") end,
-        function() return addon:GetSnapshotChannelSelection("system") end,
-        function(sel) addon:SetSnapshotChannelSelection("system", sel) end,
+        function() return addon:GetSnapshotStreamsItems("system") end,
+        function() return addon:GetSnapshotStreamSelection("system") end,
+        function(sel) addon:SetSnapshotStreamSelection("system", sel) end,
         L["TOOLTIP_SNAPSHOT_SYSTEM"])
 
     addon.AddProxyMultiDropdown(subCat, P .. "snapshotDynamic",
         L["LABEL_SNAPSHOT_DYNAMIC"],
-        function() return addon:GetSnapshotChannelsItems("dynamic") end,
-        function() return addon:GetSnapshotChannelSelection("dynamic") end,
-        function(sel) addon:SetSnapshotChannelSelection("dynamic", sel) end,
+        function() return addon:GetSnapshotStreamsItems("dynamic") end,
+        function() return addon:GetSnapshotStreamSelection("dynamic") end,
+        function(sel) addon:SetSnapshotStreamSelection("dynamic", sel) end,
         L["TOOLTIP_SNAPSHOT_DYNAMIC"])
     addon.AddProxyMultiDropdown(subCat, P .. "snapshotNotice",
         L["LABEL_SNAPSHOT_NOTICE"],
-        function() return addon:GetSnapshotChannelsItems("notice") end,
-        function() return addon:GetSnapshotChannelSelection("notice") end,
-        function(sel) addon:SetSnapshotChannelSelection("notice", sel) end,
+        function() return addon:GetSnapshotStreamsItems("notice") end,
+        function() return addon:GetSnapshotStreamSelection("notice") end,
+        function(sel) addon:SetSnapshotStreamSelection("notice", sel) end,
         L["TOOLTIP_SNAPSHOT_NOTICE"])
 
 
@@ -132,27 +132,27 @@ CategoryBuilders.chat = function(rootCat)
     CreateSettingFromRegistry(subCat, "clickToCopy")
     addon.AddProxyMultiDropdown(subCat, P .. "copyPersonal",
         L["LABEL_COPY_PERSONAL"],
-        function() return addon:GetCopyChannelsItems("private") end,
-        function() return addon:GetCopyChannelSelection("private") end,
-        function(sel) addon:SetCopyChannelSelection("private", sel) end,
+        function() return addon:GetCopyStreamsItems("private") end,
+        function() return addon:GetCopyStreamSelection("private") end,
+        function(sel) addon:SetCopyStreamSelection("private", sel) end,
         L["TOOLTIP_COPY_PERSONAL"])
     addon.AddProxyMultiDropdown(subCat, P .. "copySystem",
         L["LABEL_COPY_SYSTEM"],
-        function() return addon:GetCopyChannelsItems("system") end,
-        function() return addon:GetCopyChannelSelection("system") end,
-        function(sel) addon:SetCopyChannelSelection("system", sel) end,
+        function() return addon:GetCopyStreamsItems("system") end,
+        function() return addon:GetCopyStreamSelection("system") end,
+        function(sel) addon:SetCopyStreamSelection("system", sel) end,
         L["TOOLTIP_COPY_SYSTEM"])
     addon.AddProxyMultiDropdown(subCat, P .. "copyDynamic",
         L["LABEL_COPY_DYNAMIC"],
-        function() return addon:GetCopyChannelsItems("dynamic") end,
-        function() return addon:GetCopyChannelSelection("dynamic") end,
-        function(sel) addon:SetCopyChannelSelection("dynamic", sel) end,
+        function() return addon:GetCopyStreamsItems("dynamic") end,
+        function() return addon:GetCopyStreamSelection("dynamic") end,
+        function(sel) addon:SetCopyStreamSelection("dynamic", sel) end,
         L["TOOLTIP_COPY_DYNAMIC"])
     addon.AddProxyMultiDropdown(subCat, P .. "copyNotice",
         L["LABEL_COPY_NOTICE"],
-        function() return addon:GetCopyChannelsItems("notice") end,
-        function() return addon:GetCopyChannelSelection("notice") end,
-        function(sel) addon:SetCopyChannelSelection("notice", sel) end,
+        function() return addon:GetCopyStreamsItems("notice") end,
+        function() return addon:GetCopyStreamSelection("notice") end,
+        function(sel) addon:SetCopyStreamSelection("notice", sel) end,
         L["TOOLTIP_COPY_NOTICE"])
     CreateSettingFromRegistry(subCat, "linkHover")
     CreateSettingFromRegistry(subCat, "sticky")
@@ -161,18 +161,18 @@ CategoryBuilders.chat = function(rootCat)
     addon.SettingsReset:RegisterPageSpec("chat", {
         category = subCat,
         writeDefaults = {
-            "chat.content.snapshotChannels",
-            "chat.interaction.copyChannels",
+            "chat.content.snapshotStreams",
+            "chat.interaction.copyStreams",
         },
         refreshControls = {
-            { type = "multidropdown", variable = P .. "snapshotPersonal", selectionFromPath = "chat.content.snapshotChannels" },
-            { type = "multidropdown", variable = P .. "snapshotSystem", selectionFromPath = "chat.content.snapshotChannels" },
-            { type = "multidropdown", variable = P .. "snapshotDynamic", selectionFromPath = "chat.content.snapshotChannels" },
-            { type = "multidropdown", variable = P .. "snapshotNotice", selectionFromPath = "chat.content.snapshotChannels" },
-            { type = "multidropdown", variable = P .. "copyPersonal", selectionFromPath = "chat.interaction.copyChannels" },
-            { type = "multidropdown", variable = P .. "copySystem", selectionFromPath = "chat.interaction.copyChannels" },
-            { type = "multidropdown", variable = P .. "copyDynamic", selectionFromPath = "chat.interaction.copyChannels" },
-            { type = "multidropdown", variable = P .. "copyNotice", selectionFromPath = "chat.interaction.copyChannels" },
+            { type = "multidropdown", variable = P .. "snapshotPersonal", selectionFromPath = "chat.content.snapshotStreams" },
+            { type = "multidropdown", variable = P .. "snapshotSystem", selectionFromPath = "chat.content.snapshotStreams" },
+            { type = "multidropdown", variable = P .. "snapshotDynamic", selectionFromPath = "chat.content.snapshotStreams" },
+            { type = "multidropdown", variable = P .. "snapshotNotice", selectionFromPath = "chat.content.snapshotStreams" },
+            { type = "multidropdown", variable = P .. "copyPersonal", selectionFromPath = "chat.interaction.copyStreams" },
+            { type = "multidropdown", variable = P .. "copySystem", selectionFromPath = "chat.interaction.copyStreams" },
+            { type = "multidropdown", variable = P .. "copyDynamic", selectionFromPath = "chat.interaction.copyStreams" },
+            { type = "multidropdown", variable = P .. "copyNotice", selectionFromPath = "chat.interaction.copyStreams" },
         },
     })
 

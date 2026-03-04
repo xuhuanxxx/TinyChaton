@@ -25,6 +25,16 @@ function addon:IsChatBypassed()
     return self:GetChatRuntimeMode() == addon.CHAT_RUNTIME_MODE.BYPASS
 end
 
+function addon:IsEventBypassed(event, streamKind, streamGroup)
+    if not self:IsChatBypassed() then
+        return false
+    end
+    if streamKind == "channel" then
+        return true
+    end
+    return type(event) == "string" and event:find("^CHAT_MSG_CHANNEL", 1, false) == 1
+end
+
 function addon:IsPlaneAllowed(plane, enabledWhenBypass)
     if not self:IsChatBypassed() then
         return true

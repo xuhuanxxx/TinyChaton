@@ -293,7 +293,7 @@ local function BuildKitPins()
     return pins
 end
 
-local function BuildSnapshotChannels()
+local function BuildSnapshotStreams()
     local channels = {}
     for _, stream in addon:IterateCompiledStreams() do
         channels[stream.key] = addon:ResolveStreamToggle(stream.key, nil, "snapshotDefault", false)
@@ -302,7 +302,7 @@ local function BuildSnapshotChannels()
     return channels
 end
 
-local function BuildCopyChannels()
+local function BuildCopyStreams()
     local channels = {}
     for _, stream in addon:IterateCompiledStreams() do
         channels[stream.key] = addon:ResolveStreamToggle(stream.key, nil, "copyDefault", false)
@@ -364,12 +364,12 @@ addon.DEFAULTS = {
                 emoteRender = true,
                 repeatFilter = false,
                 snapshotEnabled = true,
-                snapshotChannels = BuildSnapshotChannels(),
-                maxPerChannel = 500,
+                snapshotStreams = BuildSnapshotStreams(),
+                maxPerStream = 500,
             },
             interaction = {
                 clickToCopy = true,
-                copyChannels = BuildCopyChannels(),
+                copyStreams = BuildCopyStreams(),
                 linkHover = true,
                 timestampColor = "FF888888",
                 sticky = true,

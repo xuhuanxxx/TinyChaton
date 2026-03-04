@@ -2,7 +2,7 @@
 id: 0009
 priority: P1
 created: 2026-03-03
-updated: 2026-03-03
+updated: 2026-03-05
 relates: [#0008]
 status: ACTIVE
 ---
@@ -158,21 +158,14 @@ SHELF_THEMES = {
 
 ---
 
-### 5. EventDispatcher → ChatPipeline 重命名
+### 5. StreamEventDispatcher 命名收口
 
 **问题**：Dispatcher 暗示"分发"，实际是顺序执行 4 阶段的管道。
 
 **方案**：重命名模块。
 
 ```lua
--- 当前
-addon.EventDispatcher:RegisterMiddleware("BLOCK", ...)
-
--- 改为
-addon.ChatPipeline:RegisterMiddleware("BLOCK", ...)
-
--- 保留别名
-addon.EventDispatcher = addon.ChatPipeline
+addon.StreamEventDispatcher:RegisterMiddleware("BLOCK", ...)
 ```
 
 **收益**：名称反映职责。
@@ -211,8 +204,8 @@ end
 addon.PERFORMANCE_BUDGET = {
   ["ChatGateway.Inbound.Allow"] = 0.1,
   ["ChatGateway.Display.Transform"] = 1.0,
-  ["ChatPipeline.Middleware.BLOCK"] = 0.5,
-  ["ChatPipeline.Middleware.PERSIST"] = 2.0,
+  ["StreamEventDispatcher.Middleware.BLOCK"] = 0.5,
+  ["StreamEventDispatcher.Middleware.PERSIST"] = 2.0,
   ["ShelfService.RefreshShelf"] = 10,
 }
 
@@ -241,7 +234,7 @@ end
 ### P1（工作量 17-24 小时）
 1. 拆分 ShelfService
 2. 合并 Color/Theme Registry
-3. EventDispatcher → ChatPipeline 重命名
+3. EventDispatcher → StreamEventDispatcher 重命名
 
 ---
 

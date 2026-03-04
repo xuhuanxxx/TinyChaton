@@ -190,8 +190,8 @@ function addon:SetProfile(profileName)
     TinyChatonDB.profileKeys[charKey] = profileName
 
     UpdateProfileCache()
-    if addon.RuleMatcher and addon.RuleMatcher.ClearAllCaches then
-        addon.RuleMatcher.ClearAllCaches("profile_switch")
+    if addon.StreamRuleEngine and addon.StreamRuleEngine.ClearAllCaches then
+        addon.StreamRuleEngine:ClearAllCaches("profile_switch")
     end
     addon:FireEvent("PROFILE_CHANGED", profileName)
     self:ApplyAllSettings()
@@ -205,8 +205,8 @@ function addon:LoadProfile(profileName)
     if not profile then return end
 
     currentProfileCache = profile
-    if addon.RuleMatcher and addon.RuleMatcher.ClearAllCaches then
-        addon.RuleMatcher.ClearAllCaches("profile_load")
+    if addon.StreamRuleEngine and addon.StreamRuleEngine.ClearAllCaches then
+        addon.StreamRuleEngine:ClearAllCaches("profile_load")
     end
     self:SynchronizeConfig(false)
     addon:FireEvent("PROFILE_LOADED", profileName)
@@ -395,8 +395,8 @@ function addon:RefreshAllSettings()
 end
 
 function addon:Shutdown()
-    if addon.ChatPipeline and addon.ChatPipeline.UnregisterFilters then
-        addon.ChatPipeline:UnregisterFilters()
+    if addon.StreamEventDispatcher and addon.StreamEventDispatcher.UnregisterFilters then
+        addon.StreamEventDispatcher:UnregisterFilters()
     end
     if addon.StopBubbleTicker then addon:StopBubbleTicker() end
     if addon.CancelPendingWelcomeTimers then addon:CancelPendingWelcomeTimers() end

@@ -214,8 +214,8 @@ function SettingsReset:ResetAllProfile()
         end
     end
 
-    if addon.RuleMatcher and addon.RuleMatcher.ClearAllCaches then
-        addon.RuleMatcher.ClearAllCaches("settings_reset_all")
+    if addon.StreamRuleEngine and addon.StreamRuleEngine.ClearAllCaches then
+        addon.StreamRuleEngine:ClearAllCaches("settings_reset_all")
     end
 
     if addon.ApplyAllSettings then

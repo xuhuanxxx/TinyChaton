@@ -2,7 +2,7 @@
 id: 0004
 priority: P0
 created: 2026-03-02
-updated: 2026-03-02
+updated: 2026-03-05
 relates: [#0001]
 status: ACTIVE
 ---
@@ -217,6 +217,12 @@ Gateway.Outbound:SendChat(text, chatType, language, target) -> boolean
 - [ ] 变换器返回无效类型：保留当前值
 - [ ] 变换器抛出错误：捕获并继续执行后续变换器
 - [ ] 能力不允许：返回原始输入
+
+## 边界补充（2026-03-05）
+
+- `stream` 为总域（`channel + notice`），但 `chat` 语义仅等价 `channel` 交互。
+- 网关层保持中性，不按命名限制 notice；具体行为由上层策略决定。
+- `MessageFormatter` 保持中性命名，允许后续增加 notice 专属格式化策略。
 
 ### Outbound Gateway
 

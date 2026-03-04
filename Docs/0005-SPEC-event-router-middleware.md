@@ -2,26 +2,26 @@
 id: 0005
 priority: P1
 created: 2026-03-02
-updated: 2026-03-02
+updated: 2026-03-05
 relates: [#0001, #0004]
 status: ACTIVE
 ---
 
-# 事件路由与中间件规格
+# Stream 事件分发与中间件规格
 
 ## 问题/目标
 
-定义事件路由器（Event Router）与中间件管道的执行行为，确保消息处理的可扩展性与阶段隔离。
+定义Stream 事件分发器（StreamEventDispatcher）与中间件管道的执行行为，确保消息处理的可扩展性与阶段隔离。
 
 ## 功能规格
 
 ### 架构原则
 
 **中间件管道**：消息处理分为 4 个阶段，每阶段支持注册多个中间件：
-1. **PRE_PROCESS**：预处理（不可阻塞）
-2. **FILTER**：过滤/阻塞（可返回 `true` 阻塞消息）
-3. **ENRICH**：增强处理（修改消息文本）
-4. **LOG**：日志记录（不可阻塞）
+1. **VALIDATE**：预处理（不可阻塞）
+2. **BLOCK**：过滤/阻塞（可返回 `true` 阻塞消息）
+3. **TRANSFORM**：增强处理（修改消息文本）
+4. **PERSIST**：日志记录（不可阻塞）
 
 ### 中间件定义契约
 
@@ -29,13 +29,13 @@ status: ACTIVE
 {
   name = "string",        -- 唯一标识符
   priority = number,      -- 执行优先级（小值先执行）
-  fn = function(chatData) -- 中间件函数
-    -> boolean|nil        -- FILTER 阶段：true=阻塞，nil=放行
+  fn = function(streamContext) -- 中间件函数
+    -> boolean|nil        -- BLOCK 阶段：true=阻塞，nil=放行
                           -- 其他阶段：返回值忽略
 }
 ```
 
-#### chatData 结构
+#### streamContext 结构
 
 ```lua
 {
@@ -60,7 +60,7 @@ Dispatcher:RegisterMiddleware(stage, priority, name, fn)
 ```
 
 **输入**：
-- `stage`: 阶段名（`"PRE_PROCESS"`, `"FILTER"`, `"ENRICH"`, `"LOG"`）
+- `stage`: 阶段名（`"VALIDATE"`, `"BLOCK"`, `"TRANSFORM"`, `"PERSIST"`）
 - `priority`: 优先级数字（建议 10, 20, 30...）
 - `name`: 中间件名称（字符串）
 - `fn`: 中间件函数
@@ -110,24 +110,24 @@ Dispatcher:IsMiddlewareRegistered(stage, name) -> boolean
 
 #### 管道执行
 
-**PRE_PROCESS 阶段**：
+**VALIDATE 阶段**：
 - 执行所有注册的中间件
 - 忽略返回值
 - 错误捕获：`pcall` 包裹，失败记录警告
 
-**FILTER 阶段**：
+**BLOCK 阶段**：
 - 按顺序执行中间件
 - 任意中间件返回 `true`：立即停止，整体返回 `true`（阻塞消息）
 - 所有中间件返回 `nil` 或 `false`：返回 `false`（放行消息）
 - 错误捕获：`pcall` 包裹，失败视为 `false`（放行）
 
-**ENRICH 阶段**：
+**TRANSFORM 阶段**：
 - 执行所有注册的中间件
-- 中间件可修改 `chatData` 字段（如 `text`, `metadata`）
+- 中间件可修改 `streamContext` 字段（如 `text`, `metadata`）
 - 忽略返回值
 - 错误捕获：`pcall` 包裹，失败记录警告
 
-**LOG 阶段**：
+**PERSIST 阶段**：
 - 执行所有注册的中间件
 - 忽略返回值
 - 错误捕获：`pcall` 包裹，失败记录警告
@@ -143,15 +143,15 @@ Dispatcher:IsMiddlewareRegistered(stage, name) -> boolean
 - 多个中间件优先级相同：按 `name` 字母序执行
 - 名称也相同：执行顺序未定义（应避免）
 
-#### chatData 缺失字段
+#### streamContext 缺失字段
 
 - 中间件访问不存在字段：Lua 返回 `nil`（不抛出错误）
 - 中间件负责验证必需字段存在性
 
-#### 中间件修改 chatData
+#### 中间件修改 streamContext
 
-- FILTER 阶段修改 `chatData`：修改生效，后续阶段可见
-- 修改非法字段（如 `chatData = nil`）：下一个中间件接收非法值
+- BLOCK 阶段修改 `streamContext`：修改生效，后续阶段可见
+- 修改非法字段（如 `streamContext = nil`）：下一个中间件接收非法值
 
 ### 异常处理
 
@@ -164,7 +164,7 @@ Dispatcher:IsMiddlewareRegistered(stage, name) -> boolean
 #### 执行时错误
 
 - 中间件函数抛出错误：`pcall` 捕获，记录警告，继续执行
-- FILTER 阶段错误：视为返回 `false`（放行消息）
+- BLOCK 阶段错误：视为返回 `false`（放行消息）
 - 其他阶段错误：跳过该中间件，继续执行后续中间件
 
 #### 排序异常
@@ -182,48 +182,48 @@ Dispatcher:IsMiddlewareRegistered(stage, name) -> boolean
 #### 策略层约束
 
 - 中间件注册必须在启动阶段完成，运行期不得注销核心中间件
-- FILTER 阶段中间件不得执行耗时操作（目标 < 0.5ms）
-- 中间件不得修改全局状态（除 `chatData` 外）
+- BLOCK 阶段中间件不得执行耗时操作（目标 < 0.5ms）
+- 中间件不得修改全局状态（除 `streamContext` 外）
 
 #### 性能要求
 
 - 单阶段中间件数量：< 10 个
 - 单中间件执行时间：
-  - FILTER: < 0.5ms（高频）
-  - ENRICH: < 1ms（高频）
-  - PRE_PROCESS, LOG: < 2ms（可容忍）
+  - BLOCK: < 0.5ms（高频）
+  - TRANSFORM: < 1ms（高频）
+  - VALIDATE, PERSIST: < 2ms（可容忍）
 - 完整管道执行时间：< 5ms（所有阶段总和）
 
 ### 典型中间件示例
 
-#### Blacklist Filter (FILTER 阶段)
+#### Blacklist Filter (BLOCK 阶段)
 
 ```lua
-function(chatData)
-  if IsBlacklisted(chatData.author) then
+function(streamContext)
+  if IsBlacklisted(streamContext.author) then
     return true  -- 阻塞消息
   end
   return false   -- 放行
 end
 ```
 
-#### Duplicate Filter (FILTER 阶段)
+#### Duplicate Filter (BLOCK 阶段)
 
 ```lua
-function(chatData)
-  if IsDuplicate(chatData.text) then
+function(streamContext)
+  if IsDuplicate(streamContext.text) then
     return true  -- 阻塞消息
   end
   return false   -- 放行
 end
 ```
 
-#### Snapshot Logger (LOG 阶段)
+#### Snapshot Logger (PERSIST 阶段)
 
 ```lua
-function(chatData)
-  if ShouldSnapshot(chatData.metadata.channelKey) then
-    SaveSnapshot(chatData)
+function(streamContext)
+  if ShouldSnapshot(streamContext.metadata.channelKey) then
+    SaveSnapshot(streamContext)
   end
   -- 无返回值
 end
@@ -244,15 +244,15 @@ end
 - [ ] 相同优先级按 `name` 字母序执行
 - [ ] 注册顺序不影响执行顺序（完全由 `priority` 和 `name` 决定）
 
-### FILTER 阶段
+### BLOCK 阶段
 
 - [ ] 任意中间件返回 `true` 立即阻塞消息
 - [ ] 所有中间件返回 `false/nil` 放行消息
 - [ ] 中间件抛出错误视为放行
 
-### ENRICH 阶段
+### TRANSFORM 阶段
 
-- [ ] 中间件可修改 `chatData.text`
+- [ ] 中间件可修改 `streamContext.text`
 - [ ] 修改对后续中间件可见
 - [ ] 中间件抛出错误不影响后续中间件
 
@@ -265,7 +265,7 @@ end
 ### 性能测试
 
 - [ ] 100 次完整管道执行（每阶段 3 个中间件）< 500ms
-- [ ] 单个 FILTER 中间件执行 1000 次 < 500ms
+- [ ] 单个 BLOCK 中间件执行 1000 次 < 500ms
 
 ## 结论/下一步
 
@@ -274,4 +274,4 @@ end
 待验证事项：
 - 中间件执行顺序在复杂优先级场景下的稳定性
 - 运行期动态注册/注销中间件的安全性（当前不推荐）
-- ENRICH 阶段中间件修改 `chatData` 的并发安全性（Lua 单线程，理论安全）
+- TRANSFORM 阶段中间件修改 `streamContext` 的并发安全性（Lua 单线程，理论安全）

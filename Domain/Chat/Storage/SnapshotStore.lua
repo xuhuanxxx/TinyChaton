@@ -11,7 +11,7 @@ local CF = _G["Create" .. "Frame"]
 -- Runs FIRST in PERSIST stage to capture text *before* Display timestamps are added
 
 -- Standalone Frame for safe logging (Observer Pattern)
--- Decoupled from ChatPipeline to prevent Taint in combat
+-- Decoupled from stream dispatcher to prevent Taint in combat
 local loggerFrame = CF("Frame")
 local loggerEnabled = false
 
@@ -255,50 +255,50 @@ local function OnSnapshotEvent(self, event, ...)
     local contentSettings = addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.content
     if not contentSettings or contentSettings.snapshotEnabled == false then return end
 
-    -- We can safely reuse ChatData parser since it only reads args
+    -- We can safely reuse stream context parser since it only reads args
     -- But we must be careful not to modify anything
-    local chatData = addon.ChatData and addon.ChatData:New(nil, event, ...)
-    if not chatData then return end
+    local streamContext = addon.StreamEventContext and addon.StreamEventContext:New(nil, event, ...)
+    if not streamContext then return end
 
-    local perChannel = addon:GetSnapshotStorage()
+    local perStream = addon:GetSnapshotStorage()
 
-    local args = chatData.args
-    local okChannelKey, channelKey = pcall(addon.ResolveStreamKey, addon, event, addon.Utils.UnpackArgs(args))
-    if not okChannelKey then
+    local args = streamContext.args
+    local okStreamKey, streamKey = pcall(addon.ResolveStreamKey, addon, event, addon.Utils.UnpackArgs(args))
+    if not okStreamKey then
         if addon.WarnOnce then
             addon:WarnOnce(
-                "snapshot_store:channel_key:" .. tostring(event),
-                "SnapshotLogger failed to resolve channel key for %s: %s",
+                "snapshot_store:stream_key:" .. tostring(event),
+                "SnapshotLogger failed to resolve stream key for %s: %s",
                 tostring(event),
-                tostring(channelKey)
+                tostring(streamKey)
             )
         elseif addon.Warn then
             addon:Warn(
-                "SnapshotLogger failed to resolve channel key for %s: %s",
+                "SnapshotLogger failed to resolve stream key for %s: %s",
                 tostring(event),
-                tostring(channelKey)
+                tostring(streamKey)
             )
         end
-        addon.ChatData:Release(chatData)
+        addon.StreamEventContext:Release(streamContext)
         return
     end
 
-    -- Check specific channel enabled (config override > stream default)
-    local sc = contentSettings.snapshotChannels
+    -- Check specific stream enabled (config override > stream default)
+    local sc = contentSettings.snapshotStreams
     local enabledForSnapshot = addon.ResolveStreamToggle
-        and addon:ResolveStreamToggle(channelKey, sc, "snapshotDefault", true)
+        and addon:ResolveStreamToggle(streamKey, sc, "snapshotDefault", true)
         or true
     if not enabledForSnapshot then
-        addon.ChatData:Release(chatData)
+        addon.StreamEventContext:Release(streamContext)
         return
     end
 
-    if not perChannel[channelKey] then
-        perChannel[channelKey] = CreateRingBuffer()
+    if not perStream[streamKey] then
+        perStream[streamKey] = CreateRingBuffer()
     end
-    local channelBuffer = perChannel[channelKey]
-    if not IsRingBuffer(channelBuffer) then
-        addon.ChatData:Release(chatData)
+    local streamBuffer = perStream[streamKey]
+    if not IsRingBuffer(streamBuffer) then
+        addon.StreamEventContext:Release(streamContext)
         return
     end
 
@@ -314,29 +314,30 @@ local function OnSnapshotEvent(self, event, ...)
         elseif addon.Warn then
             addon:Warn("SnapshotLogger unmapped event chatType: %s", tostring(event))
         end
-        addon.ChatData:Release(chatData)
+        addon.StreamEventContext:Release(streamContext)
         return
     end
-    local channelId, channelBaseName
+    local streamMeta
     if event == "CHAT_MSG_CHANNEL" then
-        channelId = chatData.channelNumber
-        channelBaseName = chatData.channelName
+        streamMeta = {
+            channelId = streamContext.channelNumber,
+            channelBaseName = streamContext.channelName,
+        }
     end
 
     -- Extract Class Color info from GUID (arg 12)
-    local guid = chatData.args[12]
+    local guid = streamContext.args[12]
     local classFilename
     if guid then
         _, classFilename = GetPlayerInfoByGUID(guid)
     end
 
     local record = {
-        text = chatData.text,
-        author = chatData.author,
-        channelKey = channelKey,
+        text = streamContext.text,
+        author = streamContext.author,
+        streamKey = streamKey,
         chatType = chatType,
-        channelId = channelId,
-        channelBaseName = channelBaseName,
+        streamMeta = streamMeta,
         time = time(),
         classFilename = classFilename,
         -- frameName is less relevant in background logging, nil is fine
@@ -345,19 +346,19 @@ local function OnSnapshotEvent(self, event, ...)
     if addon.ValidateContract then
         addon:ValidateContract("SnapshotRecord", record)
     end
-    PushRingBuffer(channelBuffer, record)
+    PushRingBuffer(streamBuffer, record)
 
     addon:AdjustSnapshotLineCount(1)
 
     -- Maintenance (Trimming)
     -- Optimized: Normally remove 1, but if limit changed drastically, remove a small batch per event
     -- This avoids freezing when limit is lowered significantly
-    local maxPerChannel = contentSettings.maxPerChannel or 500
-    local excess = channelBuffer.size - maxPerChannel
+    local maxPerStream = contentSettings.maxPerStream or 500
+    local excess = streamBuffer.size - maxPerStream
 
     if excess > 0 then
         local batch = (excess > 5) and 5 or excess
-        local removed = PopOldest(channelBuffer, batch)
+        local removed = PopOldest(streamBuffer, batch)
 
         addon:AdjustSnapshotLineCount(-removed)
     end
@@ -367,7 +368,7 @@ local function OnSnapshotEvent(self, event, ...)
         addon:TriggerEviction()
     end
     
-    addon.ChatData:Release(chatData)
+    addon.StreamEventContext:Release(streamContext)
 end
 
 loggerFrame:SetScript("OnEvent", OnSnapshotEvent)

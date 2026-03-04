@@ -34,8 +34,8 @@ function addon:InitServiceContainer()
         return self.Gateway
     end)
 
-    c:RegisterSingleton("VisibilityPolicy", function()
-        return self.VisibilityPolicy
+    c:RegisterSingleton("StreamVisibilityService", function()
+        return self.StreamVisibilityService
     end)
 
     self.ServiceContainer = c

@@ -1,8 +1,8 @@
 local addonName, addon = ...
 
-addon.ChatContracts = addon.ChatContracts or {}
+addon.StreamContracts = addon.StreamContracts or {}
 
-addon.ChatContracts.EventContext = {
+addon.StreamContracts.EventContext = {
     frame = "table|nil",
     event = "string",
     text = "string|nil",
@@ -11,15 +11,16 @@ addon.ChatContracts.EventContext = {
     metadata = "table",
 }
 
-addon.ChatContracts.VisibilityDecision = {
+addon.StreamContracts.VisibilityDecision = {
     visible = "boolean",
     reason = "string|nil",
 }
 
-addon.ChatContracts.SnapshotRecord = {
+addon.StreamContracts.SnapshotRecord = {
     text = "string",
     author = "string|nil",
-    channelKey = "string",
+    streamKey = "string",
+    streamMeta = "table|nil",
     time = "number",
 }
 
@@ -44,7 +45,7 @@ local function IsTypeAllowed(spec, value)
 end
 
 function addon:ValidateContract(name, value)
-    local spec = addon.ChatContracts and addon.ChatContracts[name]
+    local spec = addon.StreamContracts and addon.StreamContracts[name]
     if not spec then
         return true
     end

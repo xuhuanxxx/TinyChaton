@@ -449,13 +449,13 @@ function addon.Tests.TestPool()
     addon.Tests.AssertEqual(total, 2, "Pool total created count")
 end
 
-function addon.Tests.TestRuleMatcherCacheLifecycle()
-    local RM = addon.RuleMatcher
-    addon.Tests.Assert(type(RM) == "table", "RuleMatcher missing")
-    addon.Tests.Assert(type(RM.GetRuleCache) == "function", "RuleMatcher.GetRuleCache missing")
-    addon.Tests.Assert(type(RM.ClearCache) == "function", "RuleMatcher.ClearCache missing")
-    addon.Tests.Assert(type(RM.ClearAllCaches) == "function", "RuleMatcher.ClearAllCaches missing")
-    addon.Tests.Assert(type(RM.GetCacheStats) == "function", "RuleMatcher.GetCacheStats missing")
+function addon.Tests.TestStreamRuleMatcherCacheLifecycle()
+    local RM = addon.StreamRuleMatcher
+    addon.Tests.Assert(type(RM) == "table", "StreamRuleMatcher missing")
+    addon.Tests.Assert(type(RM.GetRuleCache) == "function", "StreamRuleMatcher.GetRuleCache missing")
+    addon.Tests.Assert(type(RM.ClearCache) == "function", "StreamRuleMatcher.ClearCache missing")
+    addon.Tests.Assert(type(RM.ClearAllCaches) == "function", "StreamRuleMatcher.ClearAllCaches missing")
+    addon.Tests.Assert(type(RM.GetCacheStats) == "function", "StreamRuleMatcher.GetCacheStats missing")
 
     local version = (addon.FilterVersion or 0) + 123
     local config = {
@@ -808,8 +808,8 @@ function addon.Tests.TestDefaultSnapshotChannelsFromRegistry()
     addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS should exist")
     local content = addon.DEFAULTS.profile and addon.DEFAULTS.profile.chat and addon.DEFAULTS.profile.chat.content
     addon.Tests.Assert(type(content) == "table", "DEFAULTS.profile.chat.content should exist")
-    local channels = content.snapshotChannels
-    addon.Tests.Assert(type(channels) == "table", "snapshotChannels should be table")
+    local channels = content.snapshotStreams
+    addon.Tests.Assert(type(channels) == "table", "snapshotStreams should be table")
 
     addon.Tests.AssertEqual(channels.say, true, "System channel 'say' should be snapshotted by default")
     addon.Tests.AssertEqual(channels.whisper, true, "Private channel 'whisper' should be snapshotted by default")
@@ -839,8 +839,8 @@ function addon.Tests.TestResolveStreamToggleDefaults()
 end
 
 function addon.Tests.TestStreamGroupPartition()
-    local systemItems = addon:GetSnapshotChannelsItems("system")
-    local noticeItems = addon:GetSnapshotChannelsItems("notice")
+    local systemItems = addon:GetSnapshotStreamsItems("system")
+    local noticeItems = addon:GetSnapshotStreamsItems("notice")
 
     local systemSet = {}
     for _, item in ipairs(systemItems or {}) do
@@ -902,49 +902,83 @@ function addon.Tests.TestShelfDefaultOrderUsesCompiledStreams()
     addon.db.profile.buttons.buttonOrder = oldOrder
 end
 
-function addon.Tests.TestMessageFormatterChannelTagLinkPolicy()
+function addon.Tests.TestMessageFormatterStreamTagLinkPolicy()
     addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
-    addon.Tests.Assert(type(addon.MessageFormatter.GetChannelTag) == "function", "MessageFormatter.GetChannelTag missing")
+    addon.Tests.Assert(type(addon.MessageFormatter.GetStreamTag) == "function", "MessageFormatter.GetStreamTag missing")
 
-    local dynamic = addon.MessageFormatter.GetChannelTag({
+    local dynamic = addon.MessageFormatter.GetStreamTag({
         chatType = "CHANNEL",
-        channelId = 6,
-        registryKey = "world",
-        channelBaseName = "World",
+        streamKey = "world",
+        streamMeta = {
+            channelId = 6,
+            channelBaseName = "World",
+            channelBaseNameNormalized = "world",
+        },
     })
-    addon.Tests.Assert(type(dynamic) == "string", "Dynamic channel tag should be string")
-    addon.Tests.Assert(dynamic:find("|Htinychat:send:world|h", 1, true) ~= nil, "Dynamic outbound channel should link to tinychat send action")
+    addon.Tests.Assert(type(dynamic) == "string", "Dynamic stream tag should be string")
+    addon.Tests.Assert(dynamic:find("|Htinychat:send:world|h", 1, true) ~= nil, "Dynamic outbound stream should link tinychat send action")
 
-    local say = addon.MessageFormatter.GetChannelTag({
+    local say = addon.MessageFormatter.GetStreamTag({
         chatType = "SAY",
-        registryKey = "say",
+        streamKey = "say",
+        kind = "channel",
     })
-    addon.Tests.Assert(type(say) == "string", "SAY channel tag should be string")
-    addon.Tests.Assert(say:find("|Htinychat:send:say|h", 1, true) ~= nil, "SAY should link to tinychat send action")
+    addon.Tests.Assert(type(say) == "string", "SAY stream tag should be string")
+    addon.Tests.Assert(say:find("|Htinychat:send:say|h", 1, true) ~= nil, "SAY should link tinychat send action")
 
-    local instance = addon.MessageFormatter.GetChannelTag({
-        chatType = "INSTANCE_CHAT",
-        registryKey = "instance",
-    })
-    addon.Tests.Assert(type(instance) == "string", "INSTANCE channel tag should be string")
-    addon.Tests.Assert(instance:find("|Htinychat:send:instance|h", 1, true) ~= nil, "INSTANCE channel should link to tinychat send action")
-
-    local dynamicWithoutId = addon.MessageFormatter.GetChannelTag({
-        chatType = "CHANNEL",
-        channelId = nil,
-        registryKey = "world",
-        channelBaseName = "World",
-    })
-    addon.Tests.Assert(type(dynamicWithoutId) == "string", "Dynamic-without-id tag should be string")
-    addon.Tests.Assert(dynamicWithoutId:find("|Htinychat:send:world|h", 1, true) ~= nil, "Dynamic channel send link should not depend on runtime channel id")
-
-    local notice = addon.MessageFormatter.GetChannelTag({
+    local notice = addon.MessageFormatter.GetStreamTag({
         chatType = "SYSTEM",
-        registryKey = "system",
+        streamKey = "system",
+        kind = "notice",
     })
-    addon.Tests.Assert(type(notice) == "string", "Notice channel tag should be string")
-    addon.Tests.Assert(notice:find("|Htinychat:send:", 1, true) == nil, "Notice stream must not expose send link")
-    addon.Tests.Assert(notice:find("|Hchannel:", 1, true) == nil, "Notice stream must not expose channel hyperlink")
+    addon.Tests.AssertEqual(notice, "", "Notice stream tag should be empty")
+end
+
+function addon.Tests.TestMessageFormatterKindFormatterRouting()
+    addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
+    addon.Tests.Assert(type(addon.MessageFormatter.RegisterKindFormatter) == "function", "RegisterKindFormatter missing")
+    addon.Tests.Assert(type(addon.MessageFormatter.BuildDisplayLine) == "function", "BuildDisplayLine missing")
+
+    local channelText = "hello channel"
+    local channelLine, _, _, _ = addon.MessageFormatter.BuildDisplayLine({
+        text = channelText,
+        author = "Tester",
+        chatType = "SAY",
+        streamKey = "say",
+        kind = "channel",
+        streamMeta = {},
+        time = time(),
+    }, { preferTimestampConfig = false })
+    addon.Tests.Assert(type(channelLine) == "string", "Channel formatted line should be string")
+    addon.Tests.Assert(channelLine:find(channelText, 1, true) ~= nil, "Channel formatted line should include message text")
+
+    local noticeText = "boss warning"
+    local noticeLine, _, _, _ = addon.MessageFormatter.BuildDisplayLine({
+        text = noticeText,
+        chatType = "SYSTEM",
+        streamKey = "system",
+        kind = "notice",
+        time = time(),
+    }, { preferTimestampConfig = false })
+    addon.Tests.AssertEqual(noticeLine, noticeText, "Notice formatted line should passthrough raw text")
+end
+
+function addon.Tests.TestMessageFormatterKindFormatterExtensionPoint()
+    addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
+    addon.Tests.Assert(type(addon.MessageFormatter.RegisterKindFormatter) == "function", "RegisterKindFormatter missing")
+    addon.Tests.Assert(type(addon.MessageFormatter.BuildDisplayLine) == "function", "BuildDisplayLine missing")
+
+    local marker = "__TEST_FMT_KIND__"
+    local ok = addon.MessageFormatter.RegisterKindFormatter(marker, function(line)
+        return "[test]" .. tostring(line.text), 1, 1, 1
+    end)
+    addon.Tests.AssertEqual(ok, true, "RegisterKindFormatter should return true for valid formatter")
+
+    local display = addon.MessageFormatter.BuildDisplayLine({
+        text = "hello",
+        kind = marker,
+    })
+    addon.Tests.AssertEqual(display, "[test]hello", "Custom kind formatter should be used by BuildDisplayLine")
 end
 
 function addon.Tests.TestActionRegistryMuteToggleIncludesSystemStreams()
@@ -955,20 +989,44 @@ function addon.Tests.TestActionRegistryMuteToggleIncludesSystemStreams()
     addon.Tests.Assert(registry.mute_toggle_say ~= nil, "mute_toggle_say should exist for system stream")
 end
 
-function addon.Tests.TestChatDataNewSetsStreamKey()
-    addon.Tests.Assert(type(addon.ChatData) == "table", "ChatData missing")
-    addon.Tests.Assert(type(addon.ChatData.New) == "function", "ChatData.New missing")
+function addon.Tests.TestActionRegistrySupportsScopeOnlyRegistration()
+    addon.Tests.Assert(type(addon.BuildActionRegistryFromDefinitions) == "function", "BuildActionRegistryFromDefinitions missing")
 
-    local chatData = addon.ChatData:New(nil, "CHAT_MSG_SAY", "hello", "Tester")
-    addon.Tests.Assert(type(chatData) == "table", "ChatData.New should return table")
-    addon.Tests.AssertEqual(chatData.streamKey, "say", "ChatData.streamKey should resolve from event mapping")
-    addon.ChatData:Release(chatData)
+    local oldDefs = addon.ACTION_DEFINITIONS
+    addon.ACTION_DEFINITIONS = {
+        {
+            key = "scope_only_test",
+            label = "scope_only_test",
+            category = "channel",
+            appliesTo = {
+                streamKind = "notice",
+                streamGroup = "system",
+            },
+            execute = function() end,
+        },
+    }
+
+    local registry = addon:BuildActionRegistryFromDefinitions()
+    addon.Tests.Assert(type(registry) == "table", "scope-only ACTION registry build failed")
+    addon.Tests.Assert(registry.scope_only_test_system ~= nil,
+        "scope-only action should register without streamCapabilities/streamKeys")
+
+    addon.ACTION_DEFINITIONS = oldDefs
 end
 
-function addon.Tests.TestFilterRulesApplyToChannelOnly()
-    addon.Tests.Assert(type(addon.Filters) == "table", "Filters missing")
-    addon.Tests.Assert(type(addon.Filters.BlacklistProcess) == "function", "BlacklistProcess missing")
-    addon.Tests.Assert(type(addon.Filters.WhitelistProcess) == "function", "WhitelistProcess missing")
+function addon.Tests.TestStreamEventContextNewSetsStreamKey()
+    addon.Tests.Assert(type(addon.StreamEventContext) == "table", "StreamEventContext missing")
+    addon.Tests.Assert(type(addon.StreamEventContext.New) == "function", "StreamEventContext.New missing")
+
+    local streamContext = addon.StreamEventContext:New(nil, "CHAT_MSG_SAY", "hello", "Tester")
+    addon.Tests.Assert(type(streamContext) == "table", "StreamEventContext.New should return table")
+    addon.Tests.AssertEqual(streamContext.streamKey, "say", "StreamEventContext.streamKey should resolve from event mapping")
+    addon.StreamEventContext:Release(streamContext)
+end
+
+function addon.Tests.TestStreamRuleEngineBlacklistWhitelistApplyToChannelOnly()
+    addon.Tests.Assert(type(addon.StreamRuleEngine) == "table", "StreamRuleEngine missing")
+    addon.Tests.Assert(type(addon.StreamRuleEngine.EvaluateRealtime) == "function", "StreamRuleEngine.EvaluateRealtime missing")
 
     local db = addon.db
     addon.Tests.Assert(type(db) == "table" and type(db.profile) == "table", "DB profile missing")
@@ -980,52 +1038,60 @@ function addon.Tests.TestFilterRulesApplyToChannelOnly()
     db.profile.filter.whitelist = { names = {}, keywords = { "allow" } }
 
     db.profile.filter.mode = "blacklist"
-    local blackNotice = addon.Filters.BlacklistProcess({
+    local blackNotice = addon.StreamRuleEngine:EvaluateRealtime({
         text = "danger",
         textLower = "danger",
         author = "npc",
         authorLower = "npc",
         name = "npc",
         streamKey = "system",
+        streamKind = "notice",
+        metadata = {},
     })
-    local blackChannel = addon.Filters.BlacklistProcess({
+    local blackChannel = addon.StreamRuleEngine:EvaluateRealtime({
         text = "danger",
         textLower = "danger",
         author = "player",
         authorLower = "player",
         name = "player",
         streamKey = "say",
+        streamKind = "channel",
+        metadata = {},
     })
-    addon.Tests.AssertEqual(blackNotice, false, "Blacklist should ignore notice stream")
-    addon.Tests.AssertEqual(blackChannel, true, "Blacklist should still apply to channel stream")
+    addon.Tests.AssertEqual(blackNotice.blocked, false, "Blacklist should ignore notice stream")
+    addon.Tests.AssertEqual(blackChannel.blocked, true, "Blacklist should still apply to channel stream")
 
     db.profile.filter.mode = "whitelist"
-    local whiteNotice = addon.Filters.WhitelistProcess({
+    local whiteNotice = addon.StreamRuleEngine:EvaluateRealtime({
         text = "blocked text",
         textLower = "blocked text",
         author = "npc",
         authorLower = "npc",
         name = "npc",
         streamKey = "system",
+        streamKind = "notice",
+        metadata = {},
     })
-    local whiteChannel = addon.Filters.WhitelistProcess({
+    local whiteChannel = addon.StreamRuleEngine:EvaluateRealtime({
         text = "blocked text",
         textLower = "blocked text",
         author = "player",
         authorLower = "player",
         name = "player",
         streamKey = "say",
+        streamKind = "channel",
+        metadata = {},
     })
-    addon.Tests.AssertEqual(whiteNotice, false, "Whitelist should ignore notice stream")
-    addon.Tests.AssertEqual(whiteChannel, true, "Whitelist should still apply to channel stream")
+    addon.Tests.AssertEqual(whiteNotice.blocked, false, "Whitelist should ignore notice stream")
+    addon.Tests.AssertEqual(whiteChannel.blocked, true, "Whitelist should still apply to channel stream")
 
     db.enabled = oldEnabled
     db.profile.filter = oldFilter
 end
 
-function addon.Tests.TestDuplicateRuleAppliesToChannelOnly()
-    addon.Tests.Assert(type(addon.Filters) == "table", "Filters missing")
-    addon.Tests.Assert(type(addon.Filters.DuplicateProcess) == "function", "DuplicateProcess missing")
+function addon.Tests.TestStreamRuleEngineDuplicateAppliesToChannelOnly()
+    addon.Tests.Assert(type(addon.StreamRuleEngine) == "table", "StreamRuleEngine missing")
+    addon.Tests.Assert(type(addon.StreamRuleEngine.EvaluateRealtime) == "function", "StreamRuleEngine.EvaluateRealtime missing")
     addon.Tests.Assert(type(addon.db) == "table" and type(addon.db.profile) == "table", "DB profile missing")
 
     local oldEnabled = addon.db.enabled
@@ -1036,39 +1102,79 @@ function addon.Tests.TestDuplicateRuleAppliesToChannelOnly()
     addon.db.profile.chat.content = addon.db.profile.chat.content or {}
     addon.db.profile.chat.content.repeatFilter = true
 
-    local noticeFirst = addon.Filters.DuplicateProcess({
+    local noticeFirst = addon.StreamRuleEngine:EvaluateRealtime({
         author = "__dup_notice_author",
         text = "__dup_notice_text",
+        textLower = "__dup_notice_text",
         streamKey = "system",
+        streamKind = "notice",
+        metadata = {},
     })
-    local noticeSecond = addon.Filters.DuplicateProcess({
+    local noticeSecond = addon.StreamRuleEngine:EvaluateRealtime({
         author = "__dup_notice_author",
         text = "__dup_notice_text",
+        textLower = "__dup_notice_text",
         streamKey = "system",
+        streamKind = "notice",
+        metadata = {},
     })
-    addon.Tests.AssertEqual(noticeFirst, false, "Duplicate should ignore first notice message")
-    addon.Tests.AssertEqual(noticeSecond, false, "Duplicate should ignore notice stream")
+    addon.Tests.AssertEqual(noticeFirst.blocked, false, "Duplicate should ignore first notice message")
+    addon.Tests.AssertEqual(noticeSecond.blocked, false, "Duplicate should ignore notice stream")
 
-    local channelFirst = addon.Filters.DuplicateProcess({
+    local channelFirst = addon.StreamRuleEngine:EvaluateRealtime({
         author = "__dup_channel_author",
         text = "__dup_channel_text",
+        textLower = "__dup_channel_text",
         streamKey = "say",
+        streamKind = "channel",
+        metadata = {},
     })
-    local channelSecond = addon.Filters.DuplicateProcess({
+    local channelSecond = addon.StreamRuleEngine:EvaluateRealtime({
         author = "__dup_channel_author",
         text = "__dup_channel_text",
+        textLower = "__dup_channel_text",
         streamKey = "say",
+        streamKind = "channel",
+        metadata = {},
     })
-    addon.Tests.AssertEqual(channelFirst, false, "First channel message should pass duplicate filter")
-    addon.Tests.AssertEqual(channelSecond, true, "Second identical channel message should be blocked by duplicate filter")
+    addon.Tests.AssertEqual(channelFirst.blocked, false, "First channel message should pass duplicate filter")
+    addon.Tests.AssertEqual(channelSecond.blocked, true, "Second identical channel message should be blocked by duplicate filter")
 
     addon.db.enabled = oldEnabled
     addon.db.profile.chat.content = oldContent
 end
 
+function addon.Tests.TestStreamRuleEngineKindStrategyExtensionPoint()
+    addon.Tests.Assert(type(addon.StreamRuleEngine) == "table", "StreamRuleEngine missing")
+    addon.Tests.Assert(type(addon.StreamRuleEngine.RegisterKindStrategy) == "function", "RegisterKindStrategy missing")
+    addon.Tests.Assert(type(addon.StreamRuleEngine.EvaluateRealtime) == "function", "EvaluateRealtime missing")
+
+    local marker = "__test_notice_strategy__"
+    local strategy = {
+        EvaluateRealtime = function()
+            return {
+                blocked = true,
+                reasons = { "test.block" },
+                metadataPatch = { fromTest = true },
+            }
+        end,
+    }
+
+    local registered = addon.StreamRuleEngine:RegisterKindStrategy(marker, strategy)
+    addon.Tests.AssertEqual(registered, true, "RegisterKindStrategy should return true for valid strategy")
+
+    local decision = addon.StreamRuleEngine:EvaluateRealtime({
+        streamKind = marker,
+        metadata = {},
+    })
+    addon.Tests.AssertEqual(decision.blocked, true, "Custom kind strategy should affect evaluation")
+    addon.Tests.Assert(type(decision.reasons) == "table" and decision.reasons[1] == "test.block",
+        "Custom kind strategy reasons should propagate")
+end
+
 function addon.Tests.TestHighlightAppliesToChannelOnly()
-    addon.Tests.Assert(type(addon.ChatHighlight) == "table", "ChatHighlight missing")
-    addon.Tests.Assert(type(addon.ChatHighlight.Process) == "function", "ChatHighlight.Process missing")
+    addon.Tests.Assert(type(addon.StreamHighlighter) == "table", "StreamHighlighter missing")
+    addon.Tests.Assert(type(addon.StreamHighlighter.Apply) == "function", "StreamHighlighter.Apply missing")
     addon.Tests.Assert(type(addon.db) == "table" and type(addon.db.profile) == "table", "DB profile missing")
 
     addon.db.enabled = true
@@ -1081,35 +1187,54 @@ function addon.Tests.TestHighlightAppliesToChannelOnly()
         color = "FF00FF00",
     }
 
-    local noticeChatData = {
-        text = "danger notice",
+    local noticeContext = {
+        text = "|Hplayer:npc|h[npc]|h: danger notice",
         name = "npc",
         authorLower = "npc",
         streamKey = "system",
+        streamKind = "notice",
     }
-    local noticeResult = addon.ChatHighlight.Process(noticeChatData)
-    addon.Tests.AssertEqual(noticeResult, false, "Highlight should not apply to notice stream")
-    addon.Tests.AssertEqual(noticeChatData.text, "danger notice", "Notice text should remain unchanged")
+    local noticeResult = addon.StreamHighlighter:Apply(noticeContext)
+    addon.Tests.AssertEqual(noticeResult.text, "|Hplayer:npc|h[npc]|h: danger notice", "Highlight should not apply to notice stream")
 
-    local channelChatData = {
-        text = "danger channel",
+    local channelContext = {
+        text = "|Hplayer:player|h[player]|h: danger channel",
         name = "player",
         authorLower = "player",
         streamKey = "say",
+        streamKind = "channel",
     }
-    local channelResult = addon.ChatHighlight.Process(channelChatData)
-    addon.Tests.AssertEqual(channelResult, true, "Highlight should apply to channel stream")
-    addon.Tests.Assert(channelChatData.text:find("|cFF00FF00", 1, true) ~= nil, "Channel text should include highlight color tag")
+    local channelResult = addon.StreamHighlighter:Apply(channelContext)
+    addon.Tests.Assert(channelResult.text:find("|cFF00FF00", 1, true) ~= nil, "Channel text should include highlight color tag")
 
     addon.db.profile.filter = oldFilter
 end
 
-function addon.Tests.TestVisibilityPolicyUsesStreamBlocked()
-    addon.Tests.Assert(type(addon.VisibilityPolicy) == "table", "VisibilityPolicy missing")
-    addon.Tests.Assert(type(addon.VisibilityPolicy.SetStreamBlocked) == "function", "SetStreamBlocked missing")
-    addon.Tests.Assert(type(addon.VisibilityPolicy.IsVisibleRealtime) == "function", "IsVisibleRealtime missing")
+function addon.Tests.TestStreamHighlighterKindPluginExtensionPoint()
+    addon.Tests.Assert(type(addon.StreamHighlighter) == "table", "StreamHighlighter missing")
+    addon.Tests.Assert(type(addon.StreamHighlighter.RegisterKindHighlighter) == "function", "RegisterKindHighlighter missing")
+    addon.Tests.Assert(type(addon.StreamHighlighter.Apply) == "function", "Apply missing")
 
-    local policy = addon.VisibilityPolicy
+    local marker = "__test_notice_highlighter__"
+    local registered = addon.StreamHighlighter:RegisterKindHighlighter(marker, function(context)
+        context.text = "[hi]" .. tostring(context.text)
+        return context
+    end)
+    addon.Tests.AssertEqual(registered, true, "RegisterKindHighlighter should return true for valid plugin")
+
+    local out = addon.StreamHighlighter:Apply({
+        text = "abc",
+        streamKind = marker,
+    })
+    addon.Tests.AssertEqual(out.text, "[hi]abc", "Custom kind highlighter should be routed by kind")
+end
+
+function addon.Tests.TestStreamVisibilityServiceUsesStreamBlocked()
+    addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.SetStreamBlocked) == "function", "SetStreamBlocked missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.IsVisibleRealtime) == "function", "IsVisibleRealtime missing")
+
+    local policy = addon.StreamVisibilityService
     local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
     addon.db.profile.filter = addon.db.profile.filter or {}
     addon.db.profile.filter.streamBlocked = {}
@@ -1137,15 +1262,40 @@ function addon.Tests.TestVisibilityPolicyUsesStreamBlocked()
     })
     addon.Tests.AssertEqual(visibleAfter, false, "Blocked notice stream should be hidden")
 
+    local channelVisibleBefore = policy:IsVisibleRealtime({
+        event = "CHAT_MSG_SAY",
+        text = "hello",
+        textLower = "hello",
+        author = "tester",
+        authorLower = "tester",
+        name = "tester",
+        streamKey = "say",
+        metadata = {},
+    })
+    addon.Tests.AssertEqual(channelVisibleBefore, true, "Channel should be visible by default")
+
+    policy:SetStreamBlocked("say", true)
+    local channelVisibleAfter = policy:IsVisibleRealtime({
+        event = "CHAT_MSG_SAY",
+        text = "hello",
+        textLower = "hello",
+        author = "tester",
+        authorLower = "tester",
+        name = "tester",
+        streamKey = "say",
+        metadata = {},
+    })
+    addon.Tests.AssertEqual(channelVisibleAfter, false, "Blocked channel stream should be hidden")
+
     addon.db.profile.filter = oldFilter
 end
 
 function addon.Tests.TestDynamicMuteWrapperUsesUnifiedStreamBlocked()
-    addon.Tests.Assert(type(addon.VisibilityPolicy) == "table", "VisibilityPolicy missing")
-    addon.Tests.Assert(type(addon.VisibilityPolicy.ToggleDynamicChannelMute) == "function", "ToggleDynamicChannelMute missing")
-    addon.Tests.Assert(type(addon.VisibilityPolicy.IsDynamicChannelMuted) == "function", "IsDynamicChannelMuted missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.ToggleDynamicChannelMute) == "function", "ToggleDynamicChannelMute missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.IsDynamicChannelMuted) == "function", "IsDynamicChannelMuted missing")
 
-    local policy = addon.VisibilityPolicy
+    local policy = addon.StreamVisibilityService
     local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
     addon.db.profile.filter = addon.db.profile.filter or {}
     addon.db.profile.filter.streamBlocked = {}
@@ -1163,10 +1313,10 @@ function addon.Tests.TestDynamicMuteWrapperUsesUnifiedStreamBlocked()
     addon.db.profile.filter = oldFilter
 end
 
-function addon.Tests.TestChatPipelineStageOrder()
-    addon.Tests.Assert(type(addon.ChatPipeline) == "table", "ChatPipeline missing")
+function addon.Tests.TestStreamEventDispatcherStageOrder()
+    addon.Tests.Assert(type(addon.StreamEventDispatcher) == "table", "StreamEventDispatcher missing")
 
-    local pipeline = addon.ChatPipeline
+    local pipeline = addon.StreamEventDispatcher
     local original = pipeline.middlewares
     local oldCan = addon.Can
 
@@ -1179,16 +1329,23 @@ function addon.Tests.TestChatPipelineStageOrder()
     }
     addon.Can = nil
 
-    local chatData = { metadata = {} }
-    pipeline:RunMiddlewares("VALIDATE", chatData)
-    pipeline:RunMiddlewares("BLOCK", chatData)
-    pipeline:RunMiddlewares("TRANSFORM", chatData)
-    pipeline:RunMiddlewares("PERSIST", chatData)
+    local streamContext = { metadata = {} }
+    pipeline:RunMiddlewares("VALIDATE", streamContext)
+    pipeline:RunMiddlewares("BLOCK", streamContext)
+    pipeline:RunMiddlewares("TRANSFORM", streamContext)
+    pipeline:RunMiddlewares("PERSIST", streamContext)
 
-    addon.Tests.AssertEqual(table.concat(order, ","), "VALIDATE,BLOCK,TRANSFORM,PERSIST", "ChatPipeline stage order mismatch")
+    addon.Tests.AssertEqual(table.concat(order, ","), "VALIDATE,BLOCK,TRANSFORM,PERSIST", "StreamEventDispatcher stage order mismatch")
 
     addon.Can = oldCan
     pipeline.middlewares = original
+end
+
+function addon.Tests.TestStreamEventFiltersFeatureRegistered()
+    addon.Tests.Assert(type(addon.FeatureRegistry) == "table", "FeatureRegistry missing")
+    addon.Tests.Assert(type(addon.FeatureRegistry.entries) == "table", "FeatureRegistry.entries missing")
+    local entry = addon.FeatureRegistry.entries["StreamEventFilters"]
+    addon.Tests.Assert(type(entry) == "table", "StreamEventFilters feature should be registered")
 end
 
 function addon.Tests.TestThemeColorOrthogonalResolution()
@@ -1242,6 +1399,20 @@ function addon.Tests.TestPerformanceBudgetWarningThrottle()
     else
         addon.PERFORMANCE_BUDGET[label] = oldBudget
     end
+end
+
+function addon.Tests.TestPerformanceBudgetUsesStreamDispatcherKeys()
+    addon.Tests.Assert(type(addon.PERFORMANCE_BUDGET) == "table", "PERFORMANCE_BUDGET missing")
+    addon.Tests.Assert(type(addon.PERFORMANCE_BUDGET["StreamEventDispatcher.Middleware.BLOCK"]) == "number",
+        "StreamEventDispatcher block budget missing")
+    addon.Tests.Assert(type(addon.PERFORMANCE_BUDGET["StreamEventDispatcher.Middleware.PERSIST"]) == "number",
+        "StreamEventDispatcher persist budget missing")
+    local legacyBlockKey = "Chat" .. "Pipeline.Middleware.BLOCK"
+    local legacyPersistKey = "Chat" .. "Pipeline.Middleware.PERSIST"
+    addon.Tests.Assert(addon.PERFORMANCE_BUDGET[legacyBlockKey] == nil,
+        "Legacy stream-dispatcher block budget key should be removed")
+    addon.Tests.Assert(addon.PERFORMANCE_BUDGET[legacyPersistKey] == nil,
+        "Legacy stream-dispatcher persist budget key should be removed")
 end
 
 function addon.Tests.TestGlobalResetAppliesAutoJoinDefaultsFromRegistry()
@@ -1317,18 +1488,18 @@ function addon.Tests.TestResetPageVsResetAll_ChatSnapshotConsistency()
     addon.SettingsReset.pageKeyByCategoryId = {}
     addon.SettingsReset.pageKeyByVariable = {}
     addon.SettingsReset:RegisterPageSpec("__test_chat", {
-        writeDefaults = { "chat.content.snapshotChannels" },
+        writeDefaults = { "chat.content.snapshotStreams" },
     })
 
-    addon.db.profile.chat.content.snapshotChannels = { say = false, whisper = false, general = false }
+    addon.db.profile.chat.content.snapshotStreams = { say = false, whisper = false, general = false }
     addon.SettingsReset:ResetPage("__test_chat")
-    local byPage = addon.Utils.DeepCopy(addon.db.profile.chat.content.snapshotChannels)
+    local byPage = addon.Utils.DeepCopy(addon.db.profile.chat.content.snapshotStreams)
 
-    addon.db.profile.chat.content.snapshotChannels = { say = false }
+    addon.db.profile.chat.content.snapshotStreams = { say = false }
     addon.SettingsReset:ResetAllProfile()
-    local byAll = addon.db.profile.chat.content.snapshotChannels
+    local byAll = addon.db.profile.chat.content.snapshotStreams
 
-    local expected = addon.DEFAULTS.profile.chat.content.snapshotChannels
+    local expected = addon.DEFAULTS.profile.chat.content.snapshotStreams
     for key, enabled in pairs(expected) do
         addon.Tests.AssertEqual(byPage[key], enabled, "Page reset snapshot default mismatch: " .. tostring(key))
         addon.Tests.AssertEqual(byAll[key], enabled, "Global reset snapshot default mismatch: " .. tostring(key))

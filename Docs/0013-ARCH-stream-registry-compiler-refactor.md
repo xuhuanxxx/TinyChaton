@@ -2,7 +2,7 @@
 id: 0013
 priority: P0
 created: 2026-03-04
-updated: 2026-03-04
+updated: 2026-03-05
 relates: [#0002, #0003, #0006, #0008, #0011, #0012]
 status: ACTIVE
 ---
@@ -118,12 +118,13 @@ addon.StreamRegistryCompiler:Compile(registry) -> compiled
 重点模块：
 - `ActionRegistry`
 - `SnapshotStore/SnapshotReplayer/MessageFormatter`
-- `AvailabilityResolver/VisibilityPolicy/AutoJoinHelper`
+- `AvailabilityResolver/StreamVisibilityService/AutoJoinHelper`
 - `Buttons/ShelfService/ChannelCandidatesRegistry`
 
 动作：
 - 禁止业务逻辑直接遍历 `STREAM_REGISTRY.CHANNEL.*`。
 - 统一改为 `IterateCompiledStreams()` 或 `byKey + group index`。
+- `MessageFormatter` 保持中性命名，不将 notice 扩展能力绑定在 channel 命名上。
 
 ### 阶段 3：收口旧辅助路径
 

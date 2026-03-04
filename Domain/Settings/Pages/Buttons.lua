@@ -166,14 +166,14 @@ CategoryBuilders.buttons = function(rootCat)
 
 
     local bindingDialog = nil
-    local function OpenBindingDialog(channelKey, buttonType)
+    local function OpenBindingDialog(streamKey, buttonType)
         local db = GetButtonsDB()
         if not db then return end
         local bindings = db.bindings
         if not bindings then db.bindings = {}; bindings = db.bindings end
-        if not bindings[channelKey] then bindings[channelKey] = {} end
+        if not bindings[streamKey] then bindings[streamKey] = {} end
 
-        local currentAction = bindings[channelKey][buttonType]
+        local currentAction = bindings[streamKey][buttonType]
 
         -- Build items list for dialog
         local items = {}
@@ -198,9 +198,9 @@ CategoryBuilders.buttons = function(rootCat)
         end
 
         -- Resolve Title
-        local item = registryMap[channelKey] or kitRegistryMap[channelKey]
-        local title = item and (item.label or item.key) or channelKey
-        local stream = item and item.chatType and item or addon:GetStreamByKey(channelKey)
+        local item = registryMap[streamKey] or kitRegistryMap[streamKey]
+        local title = item and (item.label or item.key) or streamKey
+        local stream = item and item.chatType and item or addon:GetStreamByKey(streamKey)
         if stream and stream.chatType then
             title = ResolveChannelDisplay(stream, true) or title
         elseif item then
@@ -208,7 +208,7 @@ CategoryBuilders.buttons = function(rootCat)
         end
 
         bindingDialog:Open(items, currentAction, title, function(selectedKey)
-            bindings[channelKey][buttonType] = selectedKey
+            bindings[streamKey][buttonType] = selectedKey
 
             addon:ApplyAllSettings()
             if addon.RefreshShelf then addon:RefreshShelf() end

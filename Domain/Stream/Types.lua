@@ -1,11 +1,11 @@
 local addonName, addon = ...
 
-addon.ChatTypes = addon.ChatTypes or {
+addon.StreamTypes = addon.StreamTypes or {
     EVENT_CONTEXT = "EventContext",
     VISIBILITY_DECISION = "VisibilityDecision",
     SNAPSHOT_RECORD = "SnapshotRecord",
 }
 
-function addon:GetChatTypeName(key)
-    return self.ChatTypes and self.ChatTypes[key] or nil
+function addon:GetStreamTypeName(key)
+    return self.StreamTypes and self.StreamTypes[key] or nil
 end

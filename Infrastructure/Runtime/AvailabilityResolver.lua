@@ -1,35 +1,20 @@
 local addonName, addon = ...
 
 addon.AvailabilityResolver = addon.AvailabilityResolver or {}
+local Resolver = addon.AvailabilityResolver
 
-local function ResolveChannelAvailability(streamKey, context)
-    local stream = addon:GetStreamByKey(streamKey)
-    if type(stream) ~= "table" then
-        return {
-            available = false,
-            state = "blocked",
-            reason = "missing_stream",
-        }
+Resolver.registry = Resolver.registry or {}
+
+local function RegisterResolver(kind, group, fn)
+    if type(kind) ~= "string" or kind == "" or type(group) ~= "string" or group == "" or type(fn) ~= "function" then
+        return false
     end
+    Resolver.registry[kind] = Resolver.registry[kind] or {}
+    Resolver.registry[kind][group] = fn
+    return true
+end
 
-    local kind = addon:GetStreamKind(streamKey)
-    local group = addon:GetStreamGroup(streamKey)
-    if kind ~= "channel" then
-        return {
-            available = true,
-            state = "ready",
-            reason = "non_channel_stream",
-        }
-    end
-
-    if group ~= "dynamic" then
-        return {
-            available = true,
-            state = "ready",
-            reason = "non_dynamic_channel",
-        }
-    end
-
+local function ResolveChannelDynamicAvailability(streamKey, context)
     local semantic = addon.ChannelSemanticResolver
     if not semantic or type(semantic.ResolveDynamic) ~= "function" then
         return {
@@ -54,8 +39,8 @@ local function ResolveChannelAvailability(streamKey, context)
         }
     end
 
-    local muted = addon.VisibilityPolicy and addon.VisibilityPolicy.IsDynamicChannelMuted
-        and addon.VisibilityPolicy:IsDynamicChannelMuted(streamKey) or false
+    local muted = addon.StreamVisibilityService and addon.StreamVisibilityService.IsDynamicChannelMuted
+        and addon.StreamVisibilityService:IsDynamicChannelMuted(streamKey) or false
 
     return {
         available = true,
@@ -65,7 +50,15 @@ local function ResolveChannelAvailability(streamKey, context)
     }
 end
 
-local function ResolveKitAvailability(kitKey, context)
+local function ResolveDefaultReady()
+    return {
+        available = true,
+        state = "ready",
+        reason = "ready",
+    }
+end
+
+local function ResolveKitAvailability(_, context)
     if context and context.forAction and context.actionKey and addon.CanExecuteAction then
         local allowed, reason = addon:CanExecuteAction(context.actionKey)
         if not allowed then
@@ -84,9 +77,45 @@ local function ResolveKitAvailability(kitKey, context)
     }
 end
 
-function addon.AvailabilityResolver.Resolve(entityKey, kind, context)
+function Resolver.RegisterResolver(kind, group, fn)
+    return RegisterResolver(kind, group, fn)
+end
+
+function Resolver.Resolve(entityKey, kind, context)
     if kind == "kit" then
         return ResolveKitAvailability(entityKey, context)
     end
-    return ResolveChannelAvailability(entityKey, context)
+
+    local stream = addon:GetStreamByKey(entityKey)
+    if type(stream) ~= "table" then
+        return {
+            available = false,
+            state = "blocked",
+            reason = "missing_stream",
+        }
+    end
+
+    local streamKind = addon:GetStreamKind(entityKey)
+    local streamGroup = addon:GetStreamGroup(entityKey)
+    local kindResolvers = Resolver.registry[streamKind] or nil
+    local fn = kindResolvers and kindResolvers[streamGroup] or nil
+    if type(fn) ~= "function" then
+        return ResolveDefaultReady()
+    end
+
+    local ok, result = pcall(fn, entityKey, context)
+    if ok and type(result) == "table" then
+        return result
+    end
+
+    return {
+        available = false,
+        state = "blocked",
+        reason = "resolver_error",
+    }
 end
+
+RegisterResolver("channel", "dynamic", ResolveChannelDynamicAvailability)
+RegisterResolver("notice", "system", ResolveDefaultReady)
+RegisterResolver("notice", "alert", ResolveDefaultReady)
+RegisterResolver("notice", "log", ResolveDefaultReady)

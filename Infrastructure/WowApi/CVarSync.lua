@@ -12,11 +12,11 @@ local function IsSystemTimestampEnabled()
     return (systemTimestamp and systemTimestamp ~= "none") and true or false
 end
 
-local function TimestampMiddleware(chatData)
+local function TimestampMiddleware(streamContext)
     if not addon.db or not addon.db.enabled then return end
-    local event = chatData.event or ""
+    local event = streamContext.event or ""
     if not event:match("^CHAT_MSG_") then return end
-    chatData.metadata.systemTimestampEnabled = IsSystemTimestampEnabled()
+    streamContext.metadata.systemTimestampEnabled = IsSystemTimestampEnabled()
 end
 
 function addon:InitSystemTimestampSyncMiddleware()
@@ -46,14 +46,14 @@ function addon:InitSystemTimestampSyncMiddleware()
     end
 
     local function EnableTimestamp()
-        if addon.ChatPipeline and not addon.ChatPipeline:IsMiddlewareRegistered("TRANSFORM", "Timestamp") then
-            addon.ChatPipeline:RegisterMiddleware("TRANSFORM", 35, "Timestamp", TimestampMiddleware)
+        if addon.StreamEventDispatcher and not addon.StreamEventDispatcher:IsMiddlewareRegistered("TRANSFORM", "Timestamp") then
+            addon.StreamEventDispatcher:RegisterMiddleware("TRANSFORM", 35, "Timestamp", TimestampMiddleware)
         end
     end
 
     local function DisableTimestamp()
-        if addon.ChatPipeline then
-            addon.ChatPipeline:UnregisterMiddleware("TRANSFORM", "Timestamp")
+        if addon.StreamEventDispatcher then
+            addon.StreamEventDispatcher:UnregisterMiddleware("TRANSFORM", "Timestamp")
         end
     end
 

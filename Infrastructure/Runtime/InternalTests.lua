@@ -756,13 +756,14 @@ function addon.Tests.TestCompiledStreamLookupParity()
     addon.Tests.Assert(addon:IsNoticeStream("say") == false, "IsNoticeStream should be false for say")
 end
 
-function addon.Tests.TestCompiledAccessorsReturnCopies()
+function addon.Tests.TestCompiledAccessorsReturnSharedReferences()
     local stream = addon:GetStreamByKey("say")
     addon.Tests.Assert(type(stream) == "table", "GetStreamByKey should return table")
     stream.kind = "notice"
 
     local streamAgain = addon:GetStreamByKey("say")
-    addon.Tests.AssertEqual(streamAgain.kind, "channel", "GetStreamByKey should return immutable snapshot copy")
+    addon.Tests.AssertEqual(streamAgain.kind, "notice", "GetStreamByKey should return shared compiled reference")
+    stream.kind = "channel"
 
     local events = addon:GetChatEvents()
     addon.Tests.Assert(type(events) == "table", "GetChatEvents should return table")
@@ -770,7 +771,9 @@ function addon.Tests.TestCompiledAccessorsReturnCopies()
     events[#events + 1] = "CHAT_MSG_FAKE_MUTATION"
 
     local eventsAgain = addon:GetChatEvents()
-    addon.Tests.AssertEqual(#eventsAgain, originalSize, "GetChatEvents should return copy that cannot mutate source")
+    addon.Tests.AssertEqual(#eventsAgain, originalSize + 1, "GetChatEvents should return shared compiled reference")
+    events[#events] = nil
+    addon.Tests.AssertEqual(#addon:GetChatEvents(), originalSize, "Mutation cleanup should restore original event count")
 end
 
 function addon.Tests.TestDefaultChannelPinsArePinnedBySchema()

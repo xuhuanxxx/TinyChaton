@@ -39,10 +39,5 @@ function addon:EmitChatMessage(text, wowChatType, language, target)
         return self.Gateway.Outbound:SendChat(text, wowChatType, language, target)
     end
 
-    if not self:Can(self.CAPABILITIES.EMIT_CHAT_ACTION) then
-        return false
-    end
-
-    SendChatMessage(text, wowChatType, language, target)
-    return true
+    return false
 end

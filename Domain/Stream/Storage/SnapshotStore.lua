@@ -6,6 +6,8 @@ local CF = _G["Create" .. "Frame"]
 -- Stage: PERSIST
 -- Priority: 10
 -- Description: Records message to history (Snapshot)
+-- BY_DESIGN: Snapshot capture is independent from display filtering.
+-- A message hidden by BLOCK/visibility rules may still be persisted for replay/recovery.
 -- =========================================================================
 
 -- Runs FIRST in PERSIST stage to capture text *before* Display timestamps are added

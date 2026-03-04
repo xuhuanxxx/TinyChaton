@@ -49,6 +49,7 @@ addon.EmotesRender.GetEmotes = EnsureEmotes
 function addon.EmotesRender.Parse(msg)
     if not msg or type(msg) ~= "string" then return msg end
     if not addon:GetConfig("profile.chat.content.emoteRender", true) then return msg end
+    if not msg:find("{", 1, true) then return msg end
 
     local emotes = EnsureEmotes()
     for _, e in ipairs(emotes) do

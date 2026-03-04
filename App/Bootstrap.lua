@@ -21,22 +21,31 @@ function addon:ApplyFilterSettings()
     end
 end
 
+local function RequireAddonMethod(methodName)
+    local fn = addon[methodName]
+    if type(fn) ~= "function" then
+        error(string.format("Required addon method missing: %s", tostring(methodName)))
+    end
+    return fn
+end
+
 function addon:ApplyAllSettings()
+    local fireEvent = RequireAddonMethod("FireEvent")
     if not addon.db.enabled then
         if addon.Shelf and addon.Shelf.frame then addon.Shelf.frame:Hide() end
         addon:Shutdown()
-        if addon.FireEvent then addon:FireEvent("SETTINGS_APPLIED") end
+        fireEvent(addon, "SETTINGS_APPLIED")
         return
     end
 
-    if addon.ApplyChatFontSettings then addon:ApplyChatFontSettings() end
-    if addon.ApplyStickyChannelSettings then addon:ApplyStickyChannelSettings() end
-    if addon.ApplyFilterSettings then addon:ApplyFilterSettings() end
-    if addon.ApplyAutoJoinSettings then addon:ApplyAutoJoinSettings() end
-    if addon.ApplyAutoWelcomeSettings then addon:ApplyAutoWelcomeSettings() end
-    if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
-    if addon.RefreshShelf then addon:RefreshShelf() end
-    if addon.FireEvent then addon:FireEvent("SETTINGS_APPLIED") end
+    RequireAddonMethod("ApplyChatFontSettings")(addon)
+    RequireAddonMethod("ApplyStickyChannelSettings")(addon)
+    RequireAddonMethod("ApplyFilterSettings")(addon)
+    RequireAddonMethod("ApplyAutoJoinSettings")(addon)
+    RequireAddonMethod("ApplyAutoWelcomeSettings")(addon)
+    RequireAddonMethod("ApplyShelfSettings")(addon)
+    RequireAddonMethod("RefreshShelf")(addon)
+    fireEvent(addon, "SETTINGS_APPLIED")
 end
 
 -- Profile Management & Data Proxy
@@ -329,8 +338,12 @@ function addon:CopyFromProfile(sourceProfileName)
 end
 
 function addon:SynchronizeConfig(isReset)
-    if not addon.db.profile then addon.db.profile = {} end
-    if not addon.db.account then addon.db.account = {} end
+    if type(addon.db.profile) ~= "table" then
+        error("addon.db.profile not initialized")
+    end
+    if type(addon.db.account) ~= "table" then
+        error("addon.db.account not initialized")
+    end
 
     if isReset or addon.db.enabled == nil then
         addon.db.enabled = (addon.DEFAULTS.enabled ~= nil) and addon.DEFAULTS.enabled or true

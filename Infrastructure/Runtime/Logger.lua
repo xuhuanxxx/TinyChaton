@@ -81,7 +81,7 @@ end
 
 function addon:Error(msg, ...)
     local formatted = FormatMessage(msg, ...)
-    local timestamp = GetTime()
+    local timestamp = time()
 
     table.insert(self.errors, {
         msg = formatted,

@@ -11,8 +11,7 @@ local function GetDefaultWelcomeTemplates(scene)
             table.insert(templates, text)
         end
     end
-    -- Fallback to empty table if no translations found
-    return #templates > 0 and templates or {}
+    return templates
 end
 
 
@@ -93,22 +92,6 @@ end
 
 local STREAM_COMPILED = addon.StreamRegistryCompiler:Compile(addon.STREAM_REGISTRY)
 
-local function CloneValue(value, seen)
-    if type(value) ~= "table" then
-        return value
-    end
-    seen = seen or {}
-    if seen[value] then
-        return seen[value]
-    end
-    local out = {}
-    seen[value] = out
-    for key, nested in pairs(value) do
-        out[CloneValue(key, seen)] = CloneValue(nested, seen)
-    end
-    return out
-end
-
 local function GetCompiledRegistry()
     local compiled = STREAM_COMPILED
     if type(compiled) ~= "table" then
@@ -123,7 +106,7 @@ function addon:GetStreamByKey(key)
     if type(byKey) ~= "table" then
         return nil
     end
-    return CloneValue(byKey[key])
+    return byKey[key]
 end
 
 function addon:IsChannelStream(key)
@@ -160,7 +143,7 @@ function addon:GetStreamCapabilities(key)
     if type(map) ~= "table" then
         return nil
     end
-    return CloneValue(map[key])
+    return map[key]
 end
 
 function addon:GetStreamKeysByGroup(group)
@@ -170,17 +153,17 @@ function addon:GetStreamKeysByGroup(group)
         return {}
     end
     local key = type(group) == "string" and string.lower(group) or nil
-    return CloneValue(byGroup[key] or {})
+    return byGroup[key] or {}
 end
 
 function addon:GetOutboundStreamKeys()
     local compiled = GetCompiledRegistry()
-    return CloneValue(compiled.outboundStreamKeys or {})
+    return compiled.outboundStreamKeys or {}
 end
 
 function addon:GetDynamicStreamKeys()
     local compiled = GetCompiledRegistry()
-    return CloneValue(compiled.dynamicStreamKeys or {})
+    return compiled.dynamicStreamKeys or {}
 end
 
 function addon:IterateCompiledStreams()
@@ -195,7 +178,7 @@ function addon:IterateCompiledStreams()
         if not streamKey then
             return nil
         end
-        return index, CloneValue(byKey[streamKey])
+        return index, byKey[streamKey]
     end
 end
 
@@ -228,7 +211,7 @@ end
 
 function addon:GetChatEvents()
     local compiled = GetCompiledRegistry()
-    return CloneValue(compiled.chatEvents or {})
+    return compiled.chatEvents or {}
 end
 
 function addon:GetStreamKeyByEvent(eventName)
@@ -439,21 +422,24 @@ function addon:GetSettingValue(key)
     local reg = addon:GetSettingInfo(key)
     if not reg then return nil end
 
-    if reg.accessor and reg.accessor.get then return reg.accessor.get() end
-    if reg.get then return reg.get() end
-    if reg.getValue then return reg.getValue() end
+    local getter = reg.accessor and reg.accessor.get
+    if type(getter) == "function" then
+        return getter()
+    end
 
     if reg.scope == "system_cvar" then return addon:GetSettingDefault(key) end
-    return nil
+    error(string.format("Setting '%s' missing getter accessor", tostring(key)))
 end
 
 function addon:SetSettingValue(key, value)
     local reg = addon:GetSettingInfo(key)
     if not reg then return end
 
-    if reg.accessor and reg.accessor.set then reg.accessor.set(value) end
-    if reg.set then reg.set(value) end
-    if reg.setValue then reg.setValue(value) end
+    local setter = reg.accessor and reg.accessor.set
+    if type(setter) ~= "function" then
+        error(string.format("Setting '%s' missing setter accessor", tostring(key)))
+    end
+    setter(value)
 end
 
 function addon:IsSystemSetting(key)

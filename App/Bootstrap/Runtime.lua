@@ -67,3 +67,19 @@ function addon:RegisterModule(name, initFn)
     end
     table.insert(self.moduleRegistry, { name = name, init = initFn })
 end
+
+function addon:RegisterSettingsSubscriber(spec)
+    local registry = addon.SettingsSubscriberRegistry
+    if not registry or type(registry.Register) ~= "function" then
+        error("SettingsSubscriberRegistry is not initialized")
+    end
+    registry:Register(spec)
+end
+
+function addon:UnregisterSettingsSubscriber(key)
+    local registry = addon.SettingsSubscriberRegistry
+    if not registry or type(registry.Unregister) ~= "function" then
+        error("SettingsSubscriberRegistry is not initialized")
+    end
+    registry:Unregister(key)
+end

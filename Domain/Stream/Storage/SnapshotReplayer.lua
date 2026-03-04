@@ -489,8 +489,8 @@ function addon:SetSnapshotStreamSelection(filter, selection, opts)
         sc[item.key] = selection[item.key] and true or false
     end
 
-    if not (opts and opts.skipApply) and addon.ApplyAllSettings then
-        addon:ApplyAllSettings()
+    if not (opts and opts.skipApply) and addon.CommitSettings then
+        addon:CommitSettings()
     end
 
     -- Trigger cleanup in case limits changed
@@ -546,8 +546,8 @@ function addon:SetCopyStreamSelection(filter, selection, opts)
         copyStreams[item.key] = selection[item.key] and true or false
     end
 
-    if not (opts and opts.skipApply) and addon.ApplyAllSettings then
-        addon:ApplyAllSettings()
+    if not (opts and opts.skipApply) and addon.CommitSettings then
+        addon:CommitSettings()
     end
 end
 

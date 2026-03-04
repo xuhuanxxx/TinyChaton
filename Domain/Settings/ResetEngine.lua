@@ -162,8 +162,8 @@ function SettingsReset:RunReset(spec, opts)
         spec.postRefresh(opts or {})
     end
 
-    if not spec.skipApply and addon.ApplyAllSettings then
-        addon:ApplyAllSettings()
+    if not spec.skipApply and addon.CommitSettings then
+        addon:CommitSettings()
     end
 end
 
@@ -218,8 +218,8 @@ function SettingsReset:ResetAllProfile()
         addon.StreamRuleEngine:ClearAllCaches("settings_reset_all")
     end
 
-    if addon.ApplyAllSettings then
-        addon:ApplyAllSettings()
+    if addon.CommitSettings then
+        addon:CommitSettings()
     end
     if addon.RefreshAllSettings then
         addon:RefreshAllSettings()

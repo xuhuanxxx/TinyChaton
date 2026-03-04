@@ -6,13 +6,13 @@ local L = addon.L
 -- Description: Manages chat frame font settings
 -- =========================================================================
 
-addon.ChatFont = {}
+addon.ChatFontService = addon.ChatFontService or {}
 
 addon.FONT_PATHS = {
     Default = nil,
 }
 
-local function ApplyChatFontSettings()
+local function CommitChatFontSettings()
     if not addon.db then return end
 
     -- Use registry value for managed toggle
@@ -56,11 +56,21 @@ local function ApplyChatFontSettings()
         end
     end
 end
--- Keep global reference for external calls (e.g. from Settings)
-addon.ApplyChatFontSettings = ApplyChatFontSettings
 
 function addon:InitChatFont()
-    ApplyChatFontSettings()
+    addon:RegisterSettingsSubscriber({
+        key = "settings.chat.font",
+        phase = "chat",
+        priority = 10,
+        apply = function(ctx)
+            local service = addon:ResolveRequiredService("ChatFontService")
+            service:Commit(ctx)
+        end,
+    })
+end
+
+function addon.ChatFontService:Commit()
+    CommitChatFontSettings()
 end
 
 addon:RegisterModule("ChatFont", addon.InitChatFont)

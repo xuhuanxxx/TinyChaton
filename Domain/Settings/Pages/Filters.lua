@@ -66,7 +66,7 @@ CategoryBuilders.filters = function(rootCat)
             if not db[currentMode] then db[currentMode] = {} end
             db[currentMode][key] = value
         end
-        addon:ApplyAllSettings()
+        addon:CommitSettings()
     end
 
     -- Filter Mode Dropdown (blacklist/whitelist/disabled)
@@ -122,7 +122,7 @@ CategoryBuilders.filters = function(rootCat)
         function(v)
             local db = GetHighlightDB()
             if db then db.enabled = v end
-            addon:ApplyAllSettings()
+            addon:CommitSettings()
         end,
         nil)
 
@@ -145,7 +145,7 @@ CategoryBuilders.filters = function(rootCat)
                 local cr, cg, cb = ColorPickerFrame:GetColorRGB()
                 local ca = ColorPickerFrame:GetColorAlpha()
                 db.color = addon.Utils.FormatColorHex(cr,cg,cb,ca)
-                addon:ApplyAllSettings()
+                addon:CommitSettings()
             end
         })
     end, nil)

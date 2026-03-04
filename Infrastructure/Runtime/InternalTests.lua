@@ -562,6 +562,125 @@ function addon.Tests.TestDIResolveSemantics()
     addon.Tests.Assert(type(err) == "string" and err ~= "", "TryResolve should return error message")
 end
 
+function addon.Tests.TestDIContainerDependencyFailures()
+    local containerType = addon.DIContainer and addon.DIContainer.Container
+    addon.Tests.Assert(type(containerType) == "table", "DI container type missing")
+
+    local c = containerType:New()
+    c:RegisterSingleton("NeedsMissing", function() return true end, { "MissingService" })
+    local okMissing, errMissing = pcall(function()
+        c:Resolve("NeedsMissing")
+    end)
+    addon.Tests.Assert(okMissing == false, "Resolve should fail when dependency is missing")
+    addon.Tests.Assert(type(errMissing) == "string" and errMissing:find("service not registered"), "Missing dependency error mismatch")
+
+    local c2 = containerType:New()
+    c2:RegisterSingleton("A", function(b) return b end, { "B" })
+    c2:RegisterSingleton("B", function(a) return a end, { "A" })
+    local okCircular, errCircular = pcall(function()
+        c2:Resolve("A")
+    end)
+    addon.Tests.Assert(okCircular == false, "Resolve should fail on circular dependency")
+    addon.Tests.Assert(type(errCircular) == "string" and errCircular:find("circular dependency"), "Circular dependency error mismatch")
+end
+
+function addon.Tests.TestSettingsSubscriberRegistryOrdering()
+    local registry = addon.SettingsSubscriberRegistry
+    addon.Tests.Assert(type(registry) == "table" and type(registry.GetByPhase) == "function", "SettingsSubscriberRegistry missing")
+
+    local keyA = "__test.settings.order.a"
+    local keyB = "__test.settings.order.b"
+    local keyC = "__test.settings.order.c"
+
+    pcall(registry.Unregister, registry, keyA)
+    pcall(registry.Unregister, registry, keyB)
+    pcall(registry.Unregister, registry, keyC)
+
+    registry:Register({ key = keyA, phase = "chat", priority = 20, apply = function() end })
+    registry:Register({ key = keyB, phase = "chat", priority = 10, apply = function() end })
+    registry:Register({ key = keyC, phase = "chat", priority = 10, apply = function() end })
+
+    local list = registry:GetByPhase("chat")
+    addon.Tests.AssertEqual(list[1].key, keyB, "Priority sort should run lower number first")
+    addon.Tests.AssertEqual(list[2].key, keyC, "Same priority should sort by key")
+    addon.Tests.AssertEqual(list[3].key, keyA, "Higher priority should run later")
+
+    local okDup = pcall(function()
+        registry:Register({ key = keyA, phase = "chat", priority = 99, apply = function() end })
+    end)
+    addon.Tests.Assert(okDup == false, "Duplicate subscriber key should fail")
+
+    local okPhase = pcall(function()
+        registry:Register({ key = "__test.settings.invalid.phase", phase = "invalid", priority = 1, apply = function() end })
+    end)
+    addon.Tests.Assert(okPhase == false, "Invalid phase should fail")
+
+    registry:Unregister(keyA)
+    registry:Unregister(keyB)
+    registry:Unregister(keyC)
+end
+
+function addon.Tests.TestSettingsOrchestratorFailureTrace()
+    addon.Tests.Assert(type(addon.SettingsOrchestrator) == "table", "SettingsOrchestrator missing")
+
+    local oldResolve = addon.ResolveRequiredService
+    local events = {}
+    local phaseList = { "core", "chat", "automation", "shelf", "ui" }
+
+    local mockRegistry = {
+        Validate = function() end,
+        GetPhaseOrder = function() return phaseList end,
+        GetByPhase = function(_, phase)
+            if phase ~= "chat" then return {} end
+            return {
+                {
+                    key = "__test.settings.failing_subscriber",
+                    apply = function()
+                        error("boom")
+                    end,
+                }
+            }
+        end,
+    }
+
+    local mockEventBus = {
+        Emit = function(_, eventName)
+            events[#events + 1] = eventName
+        end,
+    }
+
+    addon.ResolveRequiredService = function(_, name)
+        if name == "SettingsSubscriberRegistry" then
+            return mockRegistry
+        end
+        if name == "EventBus" then
+            return mockEventBus
+        end
+        if name == "SettingsOrchestrator" then
+            return addon.SettingsOrchestrator
+        end
+        error("unexpected service: " .. tostring(name))
+    end
+
+    local ok, err = pcall(function()
+        addon.SettingsOrchestrator:Run({
+            reason = "unit_test",
+            scope = "chat",
+            timestamp = 0,
+            profileName = "TestProfile",
+            traceId = "trace-123",
+        })
+    end)
+
+    addon.ResolveRequiredService = oldResolve
+
+    addon.Tests.Assert(ok == false, "Orchestrator should fail-fast on subscriber error")
+    addon.Tests.Assert(type(err) == "string" and err:find("trace=trace%-123"), "Error should include trace id")
+    addon.Tests.Assert(type(err) == "string" and err:find("key=__test.settings.failing_subscriber"), "Error should include subscriber key")
+    addon.Tests.AssertEqual(events[1], "SETTINGS_COMMITTING", "First emitted event should be SETTINGS_COMMITTING")
+    addon.Tests.AssertEqual(events[2], "SETTINGS_PHASE_COMMITTING", "Second emitted event should be phase committing")
+end
+
 function addon.Tests.TestResolveTemplatePath()
     local Resolve = addon.Utils and addon.Utils.ResolveTemplatePath
     local Validate = addon.Utils and addon.Utils.ValidatePath
@@ -623,9 +742,9 @@ function addon.Tests.TestRegistryOnChangeHook()
     local changed
     local changedCount = 0
 
-    local oldApply = addon.ApplyAllSettings
+    local oldApply = addon.CommitSettings
     local applyCount = 0
-    addon.ApplyAllSettings = function()
+    addon.CommitSettings = function()
         applyCount = applyCount + 1
     end
 
@@ -635,7 +754,7 @@ function addon.Tests.TestRegistryOnChangeHook()
             changed = v
             changedCount = changedCount + 1
         end,
-        applyAllSettings = false,
+        commitSettings = false,
     }
 
     local setter = internals.BuildRegistrySetter(reg, function(v) written = v end)
@@ -644,13 +763,13 @@ function addon.Tests.TestRegistryOnChangeHook()
     addon.Tests.AssertEqual(written, 6, "normalizeSet should transform value before write")
     addon.Tests.AssertEqual(changed, 6, "onChange should receive normalized value")
     addon.Tests.AssertEqual(changedCount, 1, "onChange should fire once")
-    addon.Tests.AssertEqual(applyCount, 0, "applyAllSettings=false should skip ApplyAllSettings")
+    addon.Tests.AssertEqual(applyCount, 0, "commitSettings=false should skip CommitSettings")
 
     local setter2 = internals.BuildRegistrySetter({}, function() end)
     setter2(1)
-    addon.Tests.AssertEqual(applyCount, 1, "Default setter should call ApplyAllSettings")
+    addon.Tests.AssertEqual(applyCount, 1, "Default setter should call CommitSettings")
 
-    addon.ApplyAllSettings = oldApply
+    addon.CommitSettings = oldApply
 end
 
 function addon.Tests.TestRegistryDefaultIsRuntimeResolved()
@@ -1598,8 +1717,8 @@ function addon.Tests.TestResetEngineSingleApplyInvocation()
     addon.Tests.Assert(type(addon.SettingsReset.RunReset) == "function", "RunReset missing")
 
     local applyCount = 0
-    local oldApply = addon.ApplyAllSettings
-    addon.ApplyAllSettings = function()
+    local oldApply = addon.CommitSettings
+    addon.CommitSettings = function()
         applyCount = applyCount + 1
     end
 
@@ -1609,8 +1728,8 @@ function addon.Tests.TestResetEngineSingleApplyInvocation()
         postRefresh = function() end,
     })
 
-    addon.Tests.AssertEqual(applyCount, 1, "RunReset should call ApplyAllSettings once")
-    addon.ApplyAllSettings = oldApply
+    addon.Tests.AssertEqual(applyCount, 1, "RunReset should call CommitSettings once")
+    addon.CommitSettings = oldApply
 end
 
 function addon.Tests.TestStreamRegistryDefaultSchemaValidation()

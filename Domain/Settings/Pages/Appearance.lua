@@ -64,7 +64,7 @@ CategoryBuilders.appearance = function(rootCat, opts)
         function(v)
             local db = GetShelfDB()
             if db then db.anchor = v end
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
         end,
         nil)
 
@@ -82,7 +82,7 @@ CategoryBuilders.appearance = function(rootCat, opts)
         function(v)
             local db = GetShelfDB()
             if db then db.direction = v end
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
         end,
         nil)
     if inGeneral then
@@ -125,7 +125,7 @@ CategoryBuilders.appearance = function(rootCat, opts)
         function(v)
             local db = GetShelfDB()
             if db then db.theme = v end
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
             RefreshThemeSettingsUi()
         end,
         nil)

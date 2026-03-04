@@ -38,7 +38,91 @@ function addon:InitServiceContainer()
         return self.StreamVisibilityService
     end)
 
+    c:RegisterSingleton("SettingsSubscriberRegistry", function()
+        if not self.SettingsSubscriberRegistry then
+            error("SettingsSubscriberRegistry not initialized")
+        end
+        return self.SettingsSubscriberRegistry
+    end)
+
+    c:RegisterSingleton("SettingsOrchestrator", function(registry, eventBus)
+        if not self.SettingsOrchestrator then
+            error("SettingsOrchestrator not initialized")
+        end
+        if type(registry.Validate) ~= "function" then
+            error("SettingsSubscriberRegistry invalid")
+        end
+        if type(eventBus.Emit) ~= "function" then
+            error("EventBus invalid")
+        end
+        return self.SettingsOrchestrator
+    end, { "SettingsSubscriberRegistry", "EventBus" })
+
+    c:RegisterSingleton("FilterSettingsService", function()
+        if not self.FilterSettingsService then
+            error("FilterSettingsService not initialized")
+        end
+        return self.FilterSettingsService
+    end)
+
+    c:RegisterSingleton("ChatFontService", function()
+        if not self.ChatFontService then
+            error("ChatFontService not initialized")
+        end
+        return self.ChatFontService
+    end)
+
+    c:RegisterSingleton("StickyChannelService", function()
+        if not self.StickyChannelService then
+            error("StickyChannelService not initialized")
+        end
+        return self.StickyChannelService
+    end)
+
+    c:RegisterSingleton("AutoJoinService", function()
+        if not self.AutoJoinService then
+            error("AutoJoinService not initialized")
+        end
+        return self.AutoJoinService
+    end)
+
+    c:RegisterSingleton("AutoWelcomeService", function()
+        if not self.AutoWelcomeService then
+            error("AutoWelcomeService not initialized")
+        end
+        return self.AutoWelcomeService
+    end)
+
+    c:RegisterSingleton("ShelfService", function()
+        if not self.ShelfSettingsService then
+            error("ShelfSettingsService not initialized")
+        end
+        return self.ShelfSettingsService
+    end)
+
     self.ServiceContainer = c
+end
+
+function addon:ValidateRequiredServices()
+    local required = {
+        "Addon",
+        "TinyReactor",
+        "EventBus",
+        "ChatGateway",
+        "StreamVisibilityService",
+        "SettingsSubscriberRegistry",
+        "SettingsOrchestrator",
+        "FilterSettingsService",
+        "ChatFontService",
+        "StickyChannelService",
+        "AutoJoinService",
+        "AutoWelcomeService",
+        "ShelfService",
+    }
+
+    for _, name in ipairs(required) do
+        self:ResolveRequiredService(name)
+    end
 end
 
 function addon:RegisterServiceValue(name, value)

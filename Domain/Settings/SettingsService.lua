@@ -174,8 +174,8 @@ function addon:SetSetting(key, value, opts)
 
     if reg.apply then
         reg.apply(value, oldValue)
-    elseif not (opts and opts.skipApply) and addon.ApplyAllSettings then
-        addon:ApplyAllSettings()
+    elseif not (opts and opts.skipApply) and addon.CommitSettings then
+        addon:CommitSettings()
     end
 
     return true
@@ -224,8 +224,8 @@ function addon:ResetSettings(scopeOrPage)
             end
         end
     end
-    if addon.ApplyAllSettings then
-        addon:ApplyAllSettings()
+    if addon.CommitSettings then
+        addon:CommitSettings()
     end
 end
 

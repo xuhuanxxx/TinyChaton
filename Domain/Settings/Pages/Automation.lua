@@ -45,7 +45,7 @@ CategoryBuilders.automation = function(rootCat)
 
     local tabSetting = Settings.RegisterAddOnSetting(cat, P .. "CurrentSocialTab", "currentSocialTab", autoDB, Settings.VarType.String, L["LABEL_SELECT_SOCIAL_TAB"], "guild")
     if tabSetting and tabSetting.SetValueChangedCallback then
-        tabSetting:SetValueChangedCallback(function() RefreshTabSettings(); addon:ApplyAllSettings() end)
+        tabSetting:SetValueChangedCallback(function() RefreshTabSettings(); addon:CommitSettings() end)
     end
     Settings.CreateDropdown(cat, tabSetting, function()
         local c = Settings.CreateControlTextContainer()

@@ -17,6 +17,7 @@ status: ACTIVE
 2. `ApplyAllSettings` 中心化编排与模块耦合度过高，缺少事件驱动边界。
 
 目标是形成单一执行路径、可验证迁移步骤和清晰验收标准。
+本方案按“可破坏、无兼容包袱、允许大规模重构、优雅优先”执行。
 
 ## 范围
 
@@ -32,79 +33,117 @@ status: ACTIVE
 2. UI 样式与交互视觉调整。
 3. 非关键性能微优化（由其他文档追踪）。
 
-## 决策议题 A：DI 单轨化（#1.4）
+## 决策 A（已拍板）：DI 走单轨容器化
 
-### 方案 A（保留并扩展 DI）
+1. 采用原“方案 A”：保留并扩展 DI 容器。
+2. 业务模块禁止直接读取 `addon.XXX` 作为依赖注入手段。
+3. 删除双轨兼容层，不保留过渡壳。
+4. Bootstrap 在启动期执行依赖图校验：缺失、循环、未注册依赖均 fail-fast。
 
-1. 所有核心服务通过容器注册和解析。
-2. 模块禁止直接读取 `addon.XXX`（仅保留兼容壳一段迁移期）。
-3. 启动流程中增加容器一致性校验（缺失依赖直接 fail-fast）。
+## 决策 B（已拍板）：Settings 走编排器，不走中心串行调用
 
-优点：依赖关系显式、可测试性更强。  
-代价：迁移面大，短期改动量高。
+1. 引入 `SettingsOrchestrator` 作为唯一编排入口。
+2. 订阅者必须显式声明阶段与优先级，不依赖注册先后顺序。
+3. 禁止在 `ApplyAllSettings` 内直接调业务模块方法（该方法将删除）。
 
-### 方案 B（冻结并移除 DI）
+## 命名决策（ApplyAllSettings 是否重命名）
 
-1. 不再新增 DI 注册。
-2. 将现有容器用途回退为薄封装或移除。
-3. 统一回到 `addon.XXX` + `RequireMethod` 的硬依赖模型。
+结论：**需要重命名，且是强制项**。
 
-优点：改造速度快，认知模型简单。  
-代价：失去容器化带来的可组合性。
+1. 删除旧名 `ApplyAllSettings`，避免继续表达“巨型全量串行应用”的旧语义。
+2. 新入口统一为：
+   - `addon:CommitSettings(reason, scope)`（应用层 API）
+   - `SettingsOrchestrator:Run(ctx)`（编排层 API）
+3. 如有历史调用点，直接替换；不保留 alias。
 
-### 当前建议
+## 目标架构
 
-优先选一条路，不接受继续双轨并存。  
-若团队近期以交付速度优先，先落方案 B；若准备做中期平台化，落方案 A。
+1. `addon:CommitSettings(reason, scope)` 只负责构建上下文并调用 orchestrator。
+2. `SettingsOrchestrator` 负责：
+   - 阶段调度（示例：`core -> chat -> shelf -> ui`）
+   - 优先级排序（数值越小越先执行）
+   - 失败策略（默认 fail-fast，并记录 subscriber key）
+3. 各子系统实现 `SettingsSubscriber` 契约：
+   - `key`、`phase`、`priority`、`apply(ctx)` 必填
+4. 事件仅作为观测与扩展点，不承担顺序控制：
+   - `SETTINGS_COMMITTING(ctx)`
+   - `SETTINGS_PHASE_APPLYING(phase, ctx)`
+   - `SETTINGS_PHASE_APPLIED(phase, ctx)`
+   - `SETTINGS_COMMITTED(ctx)`
 
-## 决策议题 B：ApplyAllSettings 事件化（#4.4）
+## 执行计划（破坏式 Cutover，无双写）
 
-### 目标架构
+### M1：编排基础设施（Day 1-2）
 
-1. `ApplyAllSettings` 仅负责发布 `SETTINGS_APPLYING/SETTINGS_APPLIED` 事件。
-2. 各子系统以订阅者模式处理自己的设置应用逻辑。
-3. 编排顺序通过优先级或分阶段事件控制，不靠手写串行调用。
+1. 新建 `SettingsOrchestrator` 与 `SettingsSubscriberRegistry`。
+2. 为 `RegisterCallback/FireEvent` 补充阶段事件与上下文透传。
+3. 新增启动期断言：
+   - 所有 subscriber 的 `phase` 合法
+   - 同 key 不重复注册
+   - phase+priority 排序稳定
 
-### 迁移策略
+交付件：
+1. 编排器实现 + 单测。
+2. 架构图（phase 与关键 subscriber）。
 
-1. 第一步：保留旧入口，新增事件发布（双写期）。
-2. 第二步：将核心子系统（字体/过滤/自动加入/欢迎词/货架）迁移为订阅者。
-3. 第三步：删除 `ApplyAllSettings` 内部直接调用，保留事件入口。
-4. 第四步：补齐回归后移除双写兼容代码。
+### M2：DI 全量收敛（Day 3-4）
+
+1. 扩展容器注册覆盖核心服务（Settings、Stream、Shelf、Automation 等）。
+2. 业务模块改为依赖注入获取服务实例。
+3. 删除/禁止新增 `addon.XXX` 依赖读取模式（除 pure utility 常量）。
+4. 启动阶段执行容器依赖图校验。
+
+交付件：
+1. `ServiceContainer` 成为唯一依赖入口。
+2. DI 验证测试。
+
+### M3：Settings 订阅迁移（Day 5-7）
+
+1. 首批迁移：字体、过滤、自动加入、欢迎词、货架。
+2. 将 Settings 页面、Reset、Profile 切换、Snapshot 相关触发点统一改为 `addon:CommitSettings(...)`。
+3. 删除 `ApplyAllSettings` 定义与全部调用点。
+
+交付件：
+1. `rg "ApplyAllSettings\\("` 结果为 0。
+2. 关键场景回归通过。
+
+### M4：清理与封板（Day 8）
+
+1. 删除双轨残留代码与文档。
+2. 更新 `#0008` 总览、`#0021` 审计状态、迁移说明。
+3. 执行全量回归并冻结接口。
 
 ## 实施里程碑
 
-1. M1（设计冻结）
-   - 选定 DI 方案（A 或 B）。
-   - 产出目标依赖图与迁移边界清单。
-
-2. M2（核心迁移）
-   - 完成 5 个核心模块迁移。
-   - 关键路径移除双轨调用。
-
-3. M3（收口与清理）
-   - 删除废弃路径和兼容壳。
-   - 文档/测试全量对齐。
+1. M1：编排基础设施完成并可运行。
+2. M2：DI 单轨落地，启动期依赖图可验证。
+3. M3：核心 settings subscriber 完成，删除 `ApplyAllSettings`。
+4. M4：文档与测试收口，接口冻结。
 
 ## 验收标准
 
-1. DI：核心能力只有一种获取路径（容器或 `addon.XXX` 其一）。
-2. Settings：`ApplyAllSettings` 不再直接调业务模块方法。
-3. 回归：设置变更、profile 切换、reset 场景行为一致。
-4. 故障：缺依赖时明确报错，不允许静默跳过。
+1. DI：核心能力只有容器一种获取路径。
+2. Settings：`ApplyAllSettings` 不存在；`CommitSettings` 为唯一入口。
+3. 编排：顺序由 `phase + priority` 决定，不依赖注册顺序。
+4. 回归：设置变更、profile 切换、reset 场景行为一致。
+5. 故障：缺依赖/订阅冲突/阶段非法均明确报错，不允许静默跳过。
+6. 静态检查：
+   - `rg "ApplyAllSettings\\("` = 0
+   - `rg "ResolveRequiredService\\("` 在业务层有实际使用
+   - `rg "addon\\.[A-Z].*="` 不作为服务注入手段新增
 
 ## 风险与控制
 
-1. 风险：迁移期行为漂移。  
-   - 控制：双写阶段 + 核心场景回归用例。
+1. 风险：订阅顺序冲突。  
+   - 控制：phase+priority 校验、冲突测试、可视化执行日志。
 
-2. 风险：模块订阅顺序不稳定。  
-   - 控制：显式优先级、阶段事件、冲突测试。
+2. 风险：大改引入启动时序问题。  
+   - 控制：Bootstrap 断言 + fail-fast，不做静默降级。
 
-3. 风险：大改引入启动时序问题。  
-   - 控制：在 Bootstrap 增加启动期断言与日志。
+3. 风险：迁移范围大导致一次性回归压力高。  
+   - 控制：按 M1-M4 切分提交，但不保留运行时双轨。
 
 ## 下一步
 
-1. 先做一次 60 分钟决策会，拍板 DI 走 A 还是 B。
-2. 根据选型拆 2-3 个可合并小 PR，避免单次超大变更。
+1. 立即开始 M1：先落编排器和 subscriber 契约。
+2. 同步创建迁移任务单（按模块切分，按 M1-M4 验收）。

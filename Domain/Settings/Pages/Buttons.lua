@@ -210,7 +210,7 @@ CategoryBuilders.buttons = function(rootCat)
         bindingDialog:Open(items, currentAction, title, function(selectedKey)
             bindings[streamKey][buttonType] = selectedKey
 
-            addon:ApplyAllSettings()
+            addon:CommitSettings()
             if addon.RefreshShelf then addon:RefreshShelf() end
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
             if addon.RefreshShelfList then addon.RefreshShelfList() end
@@ -274,7 +274,7 @@ CategoryBuilders.buttons = function(rootCat)
                     if not db.channelPins then db.channelPins = {} end
                     local list = typeKey == "kit" and db.kitPins or db.channelPins
                     list[item.key] = self:GetChecked()
-                    addon:ApplyAllSettings()
+                    addon:CommitSettings()
                     if addon.RefreshShelf then addon:RefreshShelf() end
                     if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
                 end)

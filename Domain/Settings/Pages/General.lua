@@ -17,7 +17,7 @@ CategoryBuilders.general = function(rootCat)
         function() return addon.db and addon.db.enabled end,
         function(v)
             if addon.db then addon.db.enabled = v end
-            if addon.ApplyAllSettings then addon:ApplyAllSettings() end
+            addon:CommitSettings("settings_ui_change", "all")
         end,
         L["LABEL_MASTER_SWITCH_DESC"])
 
@@ -36,7 +36,7 @@ CategoryBuilders.general = function(rootCat)
         function(v)
             local db = GetButtonsDB()
             if db then db.enabled = v end
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
         end,
         nil)
     addon.AddRegistrySetting(cat, "shelfDisplayNameStyle")

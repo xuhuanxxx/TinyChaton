@@ -6,7 +6,7 @@ local L = addon.L
 -- Description: Manages sticky channel settings (remembering last channel)
 -- =========================================================================
 
-addon.StickyChannels = {}
+addon.StickyChannelService = addon.StickyChannelService or {}
 
 local function UpdateSticky()
     if not addon.db or not addon.db.profile.chat or not addon.db.profile.chat.interaction then return end
@@ -18,7 +18,6 @@ local function UpdateSticky()
         end
     end
 end
-addon.ApplyStickyChannelSettings = UpdateSticky
 
 local stickyEditBoxHooked = false
 local function HookEditBoxForSticky()
@@ -43,6 +42,15 @@ local function HookEditBoxForSticky()
 end
 
 function addon:InitStickyChannels()
+    addon:RegisterSettingsSubscriber({
+        key = "settings.chat.sticky",
+        phase = "chat",
+        priority = 20,
+        apply = function(ctx)
+            local service = addon:ResolveRequiredService("StickyChannelService")
+            service:Commit(ctx)
+        end,
+    })
     UpdateSticky()
     HookEditBoxForSticky()
 
@@ -53,6 +61,10 @@ function addon:InitStickyChannels()
             end
         end)
     end
+end
+
+function addon.StickyChannelService:Commit()
+    UpdateSticky()
 end
 
 addon:RegisterModule("StickyChannels", addon.InitStickyChannels)

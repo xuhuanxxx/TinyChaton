@@ -12,41 +12,28 @@ function addon:GetChannelLabel(item, channelNumber)
     return tostring(label)
 end
 
--- Apply filter settings and invalidate cache
-function addon:ApplyFilterSettings()
-    addon.FilterVersion = (addon.FilterVersion or 0) + 1
+addon.FilterSettingsService = addon.FilterSettingsService or {}
 
+function addon.FilterSettingsService:Commit()
+    addon.FilterVersion = (addon.FilterVersion or 0) + 1
     if addon.Debug then
         addon:Debug(string.format("Filter cache invalidated (version: %d)", addon.FilterVersion))
     end
 end
 
-local function RequireAddonMethod(methodName)
-    local fn = addon[methodName]
-    if type(fn) ~= "function" then
-        error(string.format("Required addon method missing: %s", tostring(methodName)))
-    end
-    return fn
+function addon:InitFilterSettings()
+    addon:RegisterSettingsSubscriber({
+        key = "settings.filter",
+        phase = "core",
+        priority = 20,
+        apply = function(ctx)
+            local service = addon:ResolveRequiredService("FilterSettingsService")
+            service:Commit(ctx)
+        end,
+    })
 end
 
-function addon:ApplyAllSettings()
-    local fireEvent = RequireAddonMethod("FireEvent")
-    if not addon.db.enabled then
-        if addon.Shelf and addon.Shelf.frame then addon.Shelf.frame:Hide() end
-        addon:Shutdown()
-        fireEvent(addon, "SETTINGS_APPLIED")
-        return
-    end
-
-    RequireAddonMethod("ApplyChatFontSettings")(addon)
-    RequireAddonMethod("ApplyStickyChannelSettings")(addon)
-    RequireAddonMethod("ApplyFilterSettings")(addon)
-    RequireAddonMethod("ApplyAutoJoinSettings")(addon)
-    RequireAddonMethod("ApplyAutoWelcomeSettings")(addon)
-    RequireAddonMethod("ApplyShelfSettings")(addon)
-    RequireAddonMethod("RefreshShelf")(addon)
-    fireEvent(addon, "SETTINGS_APPLIED")
-end
+addon:RegisterModule("FilterSettings", addon.InitFilterSettings)
 
 -- Profile Management & Data Proxy
 local function RecursiveSync(target, source, isReset)
@@ -205,7 +192,7 @@ function addon:SetProfile(profileName)
         addon.StreamRuleEngine:ClearAllCaches("profile_switch")
     end
     addon:FireEvent("PROFILE_CHANGED", profileName)
-    self:ApplyAllSettings()
+    self:CommitSettings("profile_switch", "all")
     self:RefreshAllSettings()
 
     return true
@@ -331,7 +318,7 @@ function addon:CopyFromProfile(sourceProfileName)
     currentProfile.profile = addon.Utils.DeepCopy(sourceProfile.profile)
 
     self:LoadProfile(currentProfileName)
-    self:ApplyAllSettings()
+    self:CommitSettings("profile_copy", "all")
     addon:FireEvent("PROFILE_UPDATED", currentProfileName)
 
     return true

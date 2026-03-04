@@ -104,6 +104,8 @@ Domain\Shelf\ShelfRender.lua
 Domain\Shelf\SelectionDialog.lua
 
 Domain\Settings\SettingsSchema.lua
+Domain\Settings\SettingsSubscriberRegistry.lua
+Domain\Settings\SettingsOrchestrator.lua
 Domain\Settings\SettingsControls.lua
 Domain\Settings\ResetEngine.lua
 Domain\Settings\Pages\General.lua

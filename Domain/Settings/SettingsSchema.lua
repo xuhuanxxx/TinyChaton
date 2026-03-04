@@ -56,7 +56,7 @@ addon.SETTING_REGISTRY = {
         getValue = function()
             return addon.db.profile.chat.font.size
         end,
-        setValue = function(v) end, -- Managed by ApplyChatFontSettings
+        setValue = function(v) end, -- Managed by settings commit orchestration
         default = 16,
         ui = { 
             type = "slider", label = "LABEL_FONT_SIZE", page = "chat", section = "SECTION_CHAT_FONT", min = 10, max = 24, step = 1,
@@ -340,10 +340,10 @@ addon.SETTING_REGISTRY = {
             return value
         end,
         onChange = function()
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = {
             type = "dropdown",
             page = "appearance",
@@ -373,10 +373,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("colorSet") or addon.CONSTANTS.SHELF_DEFAULT_COLORSET
         end,
         onChange = function()
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = {
             type = "dropdown",
             page = "appearance",
@@ -396,10 +396,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("fontSize") or addon.CONSTANTS.SHELF_DEFAULT_FONT_SIZE
         end,
         onChange = function()
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_FONT_SIZE", min = 8, max = 24, step = 1 },
     },
     themeButtonSize = {
@@ -411,10 +411,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("buttonSize") or addon.CONSTANTS.SHELF_DEFAULT_BUTTON_SIZE
         end,
         onChange = function()
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_SHELF_BUTTON_SIZE", min = 16, max = 40, step = 1 },
     },
     themeSpacing = {
@@ -426,10 +426,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("spacing") or addon.CONSTANTS.SHELF_DEFAULT_SPACING
         end,
         onChange = function()
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_SHELF_SPACING", min = 0, max = 10, step = 1 },
     },
     themeScale = {
@@ -441,10 +441,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("scale") or addon.CONSTANTS.SHELF_DEFAULT_SCALE
         end,
         onChange = function()
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_SHELF_SCALE", min = 0.5, max = 2.0, step = 0.1 },
     },
     themeAlpha = {
@@ -456,10 +456,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("alpha") or addon.CONSTANTS.SHELF_DEFAULT_ALPHA
         end,
         onChange = function()
-            if addon.ApplyShelfSettings then addon:ApplyShelfSettings() end
+            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_SHELF_ALPHA", min = 0.2, max = 1.0, step = 0.1 },
     },
 
@@ -479,7 +479,7 @@ addon.SETTING_REGISTRY = {
             if addon.TriggerEviction then addon:TriggerEviction() end
             if addon.RefreshAllSettings then addon:RefreshAllSettings() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "data", section = "SECTION_HISTORY_STORAGE", label = "LABEL_SNAPSHOT_STORAGE_DEFAULT_MAX", tooltip = "TOOLTIP_SNAPSHOT_STORAGE_DEFAULT_MAX", min = addon.CONSTANTS.SNAPSHOT_STORAGE_MAX_MIN, max = addon.CONSTANTS.SNAPSHOT_STORAGE_MAX_MAX, step = addon.CONSTANTS.SNAPSHOT_STORAGE_MAX_STEP },
     },
     dataSnapshotStorageOverrideEnabled = {
@@ -509,7 +509,7 @@ addon.SETTING_REGISTRY = {
             if addon.TriggerEviction then addon:TriggerEviction() end
             if addon.RefreshAllSettings then addon:RefreshAllSettings() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "checkbox", page = "data", section = "SECTION_HISTORY_STORAGE", label = "LABEL_SNAPSHOT_STORAGE_OVERRIDE_ENABLE", tooltip = "TOOLTIP_SNAPSHOT_STORAGE_OVERRIDE_ENABLE" },
     },
     dataSnapshotStorageOverrideValue = {
@@ -536,7 +536,7 @@ addon.SETTING_REGISTRY = {
             if addon.TriggerEviction then addon:TriggerEviction() end
             if addon.RefreshAllSettings then addon:RefreshAllSettings() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "data", section = "SECTION_HISTORY_STORAGE", label = "LABEL_SNAPSHOT_STORAGE_OVERRIDE_VALUE", tooltip = "TOOLTIP_SNAPSHOT_STORAGE_OVERRIDE_VALUE", min = addon.CONSTANTS.SNAPSHOT_STORAGE_MAX_MIN, max = addon.CONSTANTS.SNAPSHOT_STORAGE_MAX_MAX, step = addon.CONSTANTS.SNAPSHOT_STORAGE_MAX_STEP },
     },
     dataSnapshotReplayDefaultMax = {
@@ -552,7 +552,7 @@ addon.SETTING_REGISTRY = {
             if addon.TriggerEviction then addon:TriggerEviction() end
             if addon.RefreshAllSettings then addon:RefreshAllSettings() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "data", section = "SECTION_HISTORY_REPLAY", label = "LABEL_SNAPSHOT_REPLAY_DEFAULT_MAX", tooltip = "TOOLTIP_SNAPSHOT_REPLAY_DEFAULT_MAX", min = addon.CONSTANTS.SNAPSHOT_REPLAY_MAX_MIN, max = addon.CONSTANTS.SNAPSHOT_REPLAY_MAX_MAX, step = addon.CONSTANTS.SNAPSHOT_REPLAY_MAX_STEP },
     },
     dataSnapshotReplayOverrideEnabled = {
@@ -582,7 +582,7 @@ addon.SETTING_REGISTRY = {
             if addon.TriggerEviction then addon:TriggerEviction() end
             if addon.RefreshAllSettings then addon:RefreshAllSettings() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "checkbox", page = "data", section = "SECTION_HISTORY_REPLAY", label = "LABEL_SNAPSHOT_REPLAY_OVERRIDE_ENABLE", tooltip = "TOOLTIP_SNAPSHOT_REPLAY_OVERRIDE_ENABLE" },
     },
     dataSnapshotReplayOverrideValue = {
@@ -609,7 +609,7 @@ addon.SETTING_REGISTRY = {
             if addon.TriggerEviction then addon:TriggerEviction() end
             if addon.RefreshAllSettings then addon:RefreshAllSettings() end
         end,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "data", section = "SECTION_HISTORY_REPLAY", label = "LABEL_SNAPSHOT_REPLAY_OVERRIDE_VALUE", tooltip = "TOOLTIP_SNAPSHOT_REPLAY_OVERRIDE_VALUE", min = addon.CONSTANTS.SNAPSHOT_REPLAY_MAX_MIN, max = addon.CONSTANTS.SNAPSHOT_REPLAY_MAX_MAX, step = addon.CONSTANTS.SNAPSHOT_REPLAY_MAX_STEP },
     },
 
@@ -622,7 +622,7 @@ addon.SETTING_REGISTRY = {
         path = "profile.automation.welcome.enabled",
         default = false,
         ensureTablePath = true,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "checkbox", page = "automation", section = "LABEL_AUTO_WELCOME", label = "LABEL_ENABLED" },
     },
     automationWelcomeCooldownMinutes = {
@@ -631,7 +631,7 @@ addon.SETTING_REGISTRY = {
         path = "profile.automation.welcome.cooldownMinutes",
         default = 5,
         ensureTablePath = true,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "automation", section = "LABEL_AUTO_WELCOME", label = "LABEL_WELCOME_COOLDOWN", min = 0, max = 60, step = 5 },
     },
     automationCountdownPrimarySeconds = {
@@ -640,7 +640,7 @@ addon.SETTING_REGISTRY = {
         path = "profile.automation.countdown.primarySeconds",
         default = 10,
         ensureTablePath = true,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "automation", section = "SECTION_COUNTDOWN_TIMER", label = "ACTION_TIMER_PRIMARY", tooltip = "ACTION_TIMER_PRIMARY_DESC", min = 3, max = 60, step = 1 },
     },
     automationCountdownSecondarySeconds = {
@@ -649,7 +649,7 @@ addon.SETTING_REGISTRY = {
         path = "profile.automation.countdown.secondarySeconds",
         default = 5,
         ensureTablePath = true,
-        applyAllSettings = false,
+        commitSettings = false,
         ui = { type = "slider", page = "automation", section = "SECTION_COUNTDOWN_TIMER", label = "ACTION_TIMER_SECONDARY", tooltip = "ACTION_TIMER_SECONDARY_DESC", min = 3, max = 60, step = 1 },
     },
 }

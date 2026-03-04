@@ -4,7 +4,7 @@ local addonName, addon = ...
 -- Helper functions for social automation settings (auto-join channels etc.)
 -- Note: Welcome message logic has been moved to Domain/Chat/Automation/AutoWelcome.lua
 
-addon.AutoJoinHelper = {}
+addon.AutoJoinService = addon.AutoJoinService or {}
 
 -- =========================================================================
 -- Auto Join Logic
@@ -80,8 +80,8 @@ function addon:SetAutoJoinDynamicChannelSelection(selection, opts)
             end
         end
     end
-    if not (opts and opts.skipApply) and addon.ApplyAllSettings then
-        addon:ApplyAllSettings()
+    if not (opts and opts.skipApply) and addon.CommitSettings then
+        addon:CommitSettings("auto_join_selection", "automation")
     end
 end
 
@@ -99,7 +99,7 @@ local function TryJoinChannel(channelName, joinedByName)
     end
 end
 
-function addon:ApplyAutoJoinSettings()
+local function CommitAutoJoinSettings(self)
     if not self.db or not self.db.profile.automation then return end
     if addon.IsChatBypassed and addon:IsChatBypassed() then
         return
@@ -129,8 +129,18 @@ function addon:ApplyAutoJoinSettings()
 end
 
 function addon:InitAutoJoinHelper()
+    addon:RegisterSettingsSubscriber({
+        key = "settings.automation.auto_join",
+        phase = "automation",
+        priority = 10,
+        apply = function(ctx)
+            local service = addon:ResolveRequiredService("AutoJoinService")
+            service:Commit(ctx)
+        end,
+    })
+
     local function EnableAutoJoin()
-        addon:ApplyAutoJoinSettings()
+        addon:CommitSettings("feature_auto_join_enable", "automation")
     end
 
     local function DisableAutoJoin()
@@ -147,6 +157,10 @@ function addon:InitAutoJoinHelper()
         -- this feature controls auto-join behavior only and does not roll back player channel state.
         onDisable = DisableAutoJoin,
     })
+end
+
+function addon.AutoJoinService:Commit()
+    CommitAutoJoinSettings(addon)
 end
 
 addon:RegisterModule("AutoJoinHelper", addon.InitAutoJoinHelper)

@@ -14,6 +14,8 @@ local state = {
     patternByScene = {},
 }
 
+addon.AutoWelcomeService = addon.AutoWelcomeService or {}
+
 local function EscapeLuaPattern(text)
     if type(text) ~= "string" then return "" end
     return (text:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1"))
@@ -249,7 +251,7 @@ function addon:CancelPendingWelcomeTimers()
     end
 end
 
-function addon:ApplyAutoWelcomeSettings()
+local function CommitAutoWelcomeSettings()
     local shouldEnable = addon.db
         and addon.db.enabled
         and state.featureEnabled
@@ -264,18 +266,32 @@ function addon:ApplyAutoWelcomeSettings()
 end
 
 function addon:InitAutoWelcome()
+    addon:RegisterSettingsSubscriber({
+        key = "settings.automation.auto_welcome",
+        phase = "automation",
+        priority = 20,
+        apply = function(ctx)
+            local service = addon:ResolveRequiredService("AutoWelcomeService")
+            service:Commit(ctx)
+        end,
+    })
+
     addon:RegisterFeature("AutoWelcome", {
         requires = { "READ_CHAT_EVENT", "EMIT_CHAT_ACTION" },
         plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
         onEnable = function()
             state.featureEnabled = true
-            addon:ApplyAutoWelcomeSettings()
+            addon:CommitSettings("feature_auto_welcome_enable", "automation")
         end,
         onDisable = function()
             state.featureEnabled = false
-            addon:ApplyAutoWelcomeSettings()
+            addon:CommitSettings("feature_auto_welcome_disable", "automation")
         end,
     })
+end
+
+function addon.AutoWelcomeService:Commit()
+    CommitAutoWelcomeSettings()
 end
 
 addon:RegisterModule("AutoWelcome", addon.InitAutoWelcome)

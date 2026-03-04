@@ -23,7 +23,7 @@ local function CreateSettingFromRegistry(subCat, key)
                 local cr, cg, cb = ColorPickerFrame:GetColorRGB()
                 local ca = ColorPickerFrame:GetColorAlpha()
                 setter(addon.Utils.FormatColorHex(cr,cg,cb,ca))
-                if addon.ApplyAllSettings then addon:ApplyAllSettings() end
+                addon:CommitSettings("settings_ui_change", "all")
             end
         })
     end)
@@ -71,7 +71,7 @@ CategoryBuilders.chat = function(rootCat)
         function(v)
             local db = GetChatFontDB()
             if db then db.font = (v ~= "STANDARD") and v or nil end
-            if addon.ApplyChatFontSettings then addon:ApplyChatFontSettings() end
+            addon:CommitSettings("chat_font_change", "chat")
         end, nil)
 
     CreateSettingFromRegistry(subCat, "fontSize")
@@ -91,7 +91,7 @@ CategoryBuilders.chat = function(rootCat)
         function(v)
             local db = GetChatContentDB()
             if db then db.repeatFilter = v end
-            if addon.ApplyAllSettings then addon:ApplyAllSettings() end
+            addon:CommitSettings("settings_ui_change", "all")
         end,
         L["LABEL_REPEAT_FILTER_DESC"])
     CreateSettingFromRegistry(subCat, "snapshotEnabled")

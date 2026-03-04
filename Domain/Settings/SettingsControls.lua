@@ -124,7 +124,7 @@ function addon.AddAddOnCheckbox(cat, variable, tbl, key, name, default, tooltip,
     if setting then
         if setting.SetValueChangedCallback then
             setting:SetValueChangedCallback(function()
-                if applyFunc then applyFunc() else addon:ApplyAllSettings() end
+                if applyFunc then applyFunc() else addon:CommitSettings() end
             end)
         end
         Settings.CreateCheckbox(cat, setting, tooltip)
@@ -148,7 +148,7 @@ function addon.AddAddOnDropdown(cat, variable, tbl, key, name, optionsFunc, defa
         if setting.SetValueChangedCallback then
             setting:SetValueChangedCallback(function(_, value)
                 if not valueChangedCallback then
-                    if applyFunc then applyFunc() else addon:ApplyAllSettings() end
+                    if applyFunc then applyFunc() else addon:CommitSettings() end
                 end
                 if valueChangedCallback then valueChangedCallback(value) end
             end)
@@ -172,7 +172,7 @@ function addon.AddAddOnSlider(cat, variable, tbl, key, name, default, minVal, ma
     if setting then
         if setting.SetValueChangedCallback then
             setting:SetValueChangedCallback(function()
-                if applyFunc then applyFunc() else addon:ApplyAllSettings() end
+                if applyFunc then applyFunc() else addon:CommitSettings() end
             end)
         end
         local options = Settings.CreateSliderOptions(minVal, maxVal, step)
@@ -434,9 +434,9 @@ local function BuildRegistrySetter(reg, rawSetter)
             pcall(reg.onChange, value, ctx)
         end
 
-        if (not reg) or reg.applyAllSettings ~= false then
-            if addon.ApplyAllSettings then
-                addon:ApplyAllSettings()
+        if (not reg) or reg.commitSettings ~= false then
+            if addon.CommitSettings then
+                addon:CommitSettings()
             end
         end
     end

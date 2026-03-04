@@ -2,6 +2,8 @@ local addonName, addon = ...
 local CF = _G["Create" .. "Frame"]
 local L = addon.L
 
+addon.ShelfSettingsService = addon.ShelfSettingsService or {}
+
 local Shelf = nil
 local shelfEventFrame = nil
 local editModeCallbackRegistered = false
@@ -69,7 +71,7 @@ local function SavePosition()
     db.anchor = "custom"
 
     if SettingsPanel and SettingsPanel:IsShown() then
-        addon:ApplyAllSettings()
+        addon:CommitSettings("shelf_position_drag", "shelf")
     end
 end
 
@@ -614,11 +616,6 @@ function addon:RefreshShelf()
     end
 end
 
--- Alias for settings hooks to ensure real-time updates
-function addon:ApplyShelfSettings()
-    self:RefreshShelf()
-end
-
 function addon:RegisterChannelButtons()
     if addon.Shelf then
         addon.Shelf:Render()
@@ -628,6 +625,16 @@ end
 function addon:InitShelf()
     if not addon.Shelf then return end
 
+    addon:RegisterSettingsSubscriber({
+        key = "settings.shelf.render",
+        phase = "shelf",
+        priority = 10,
+        apply = function(ctx)
+            local service = addon:ResolveRequiredService("ShelfService")
+            service:Commit(ctx)
+        end,
+    })
+
     if addon.Shelf.InitActionRegistry then
         addon.Shelf:InitActionRegistry()
     end
@@ -635,6 +642,10 @@ function addon:InitShelf()
     if addon.Shelf.InitRender then
         addon.Shelf:InitRender()
     end
+end
+
+function addon.ShelfSettingsService:Commit()
+    addon:RefreshShelf()
 end
 
 addon:RegisterModule("Shelf", addon.InitShelf)

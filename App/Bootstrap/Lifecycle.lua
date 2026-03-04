@@ -84,17 +84,23 @@ function addon:OnInitialize()
         return
     end
 
-    RunPhase("Phase6 Apply Settings", function()
+    RunPhase("Phase6 Commit Settings", function()
         local L = addon.L
         if addon.db and not addon.db.enabled then
             print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_DISABLED"])
         else
             print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_LOADED"])
         end
-        RequireMethod(addon, "ApplyAllSettings")(addon)
+        RequireMethod(addon, "CommitSettings")(addon, "bootstrap_init", "all")
 
         if addon.MemoryDiagnostics and addon.MemoryDiagnostics.StartSession then
             addon.MemoryDiagnostics:StartSession()
+        end
+
+        if addon.ValidateRequiredServices then
+            addon:ValidateRequiredServices()
+        else
+            WarnOptionalMissing("ValidateRequiredServices")
         end
 
         if addon.BootstrapFinalizeContainer then

@@ -5,7 +5,54 @@ addon.MessageFormatter = addon.MessageFormatter or {}
 local Formatter = addon.MessageFormatter
 
 local DEFAULT_TIMESTAMP_COLOR = "FF888888"
-local KIND_FORMATTERS = Formatter.kindFormatters or {}
+local function ResolveKindFromContext(context)
+    local streamKey = type(context) == "table" and context.streamKey or nil
+    if type(streamKey) ~= "string" or streamKey == "" then
+        return nil
+    end
+    return addon.GetStreamKind and addon:GetStreamKind(streamKey) or nil
+end
+
+local function EnsureKindPlugins()
+    if addon._tinyCoreStreamKindPlugins then
+        return addon._tinyCoreStreamKindPlugins
+    end
+    if not addon.TinyCoreStreamKindPlugins or type(addon.TinyCoreStreamKindPlugins.New) ~= "function" then
+        error("TinyCore Stream KindPlugins is not initialized")
+    end
+    addon._tinyCoreStreamKindPlugins = addon.TinyCoreStreamKindPlugins:New({
+        resolveKind = ResolveKindFromContext,
+    })
+    return addon._tinyCoreStreamKindPlugins
+end
+
+local function EnsureRenderEngine()
+    if addon._tinyCoreStreamRenderEngine then
+        return addon._tinyCoreStreamRenderEngine
+    end
+    if not addon.TinyCoreStreamRenderEngine or type(addon.TinyCoreStreamRenderEngine.New) ~= "function" then
+        error("TinyCore Stream RenderEngine is not initialized")
+    end
+    addon._tinyCoreStreamRenderEngine = addon.TinyCoreStreamRenderEngine:New({
+        resolveKind = function(line)
+            local streamKey = type(line) == "table" and line.streamKey or nil
+            if (type(streamKey) ~= "string" or streamKey == "") or not addon.GetStreamKind then
+                return nil
+            end
+            return addon:GetStreamKind(streamKey)
+        end,
+        getFormatter = function(kind)
+            return EnsureKindPlugins():GetFormatter(kind)
+        end,
+        fallbackRenderer = function(line)
+            local r, g, b = Formatter.GetLineColor(line)
+            return line.text, r, g, b
+        end,
+    })
+    return addon._tinyCoreStreamRenderEngine
+end
+
+local KIND_FORMATTERS = EnsureKindPlugins().formatters
 Formatter.kindFormatters = KIND_FORMATTERS
 
 local function ResolveColorChatType(line)
@@ -38,11 +85,7 @@ local function IsClickToCopyEnabledForLine(line)
 end
 
 function Formatter.RegisterKindFormatter(kind, formatterFn)
-    if type(kind) ~= "string" or kind == "" or type(formatterFn) ~= "function" then
-        return false
-    end
-    KIND_FORMATTERS[kind] = formatterFn
-    return true
+    return EnsureKindPlugins():RegisterFormatter(kind, formatterFn)
 end
 
 function Formatter.GetTimestampText(timeVal)
@@ -209,23 +252,7 @@ function Formatter.BuildRealtimeLineFromContext(streamContext)
 end
 
 function Formatter.BuildDisplayLine(line, options)
-    if type(line) ~= "table" then
-        return nil, 1, 1, 1
-    end
-
-    local kind = line.kind
-    if (type(kind) ~= "string" or kind == "") and type(line.streamKey) == "string" and addon.GetStreamKind then
-        kind = addon:GetStreamKind(line.streamKey)
-        line.kind = kind
-    end
-
-    local formatter = type(kind) == "string" and KIND_FORMATTERS[kind] or nil
-    if type(formatter) ~= "function" then
-        local r, g, b = Formatter.GetLineColor(line)
-        return line.text, r, g, b
-    end
-
-    return formatter(line, options, {
+    return EnsureRenderEngine():BuildDisplayLine(line, options, {
         getLineColor = Formatter.GetLineColor,
         getTimestamp = Formatter.GetTimestamp,
         getTimestampText = Formatter.GetTimestampText,

@@ -23,6 +23,9 @@ Libs\MultiDropdown\MultiDropdown.xml
 Libs\MultiDropdown\Core.lua
 Libs\TinyReactor\TinyReactor.xml
 Libs\TinyCore\Stream\Pipeline.lua
+Libs\TinyCore\Stream\RuleEngine.lua
+Libs\TinyCore\Stream\KindPlugins.lua
+Libs\TinyCore\Stream\RenderEngine.lua
 
 Infrastructure\Runtime\Logger.lua
 App\DI\Container.lua

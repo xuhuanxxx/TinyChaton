@@ -28,6 +28,8 @@ Libs\TinyCore\Stream\KindPlugins.lua
 Libs\TinyCore\Stream\RenderEngine.lua
 Libs\TinyCore\SettingsOrchestrator\SubscriberRegistry.lua
 Libs\TinyCore\SettingsOrchestrator\Orchestrator.lua
+Libs\TinyCore\DI\Container.lua
+Libs\TinyCore\DI\Validation.lua
 
 Infrastructure\Runtime\Logger.lua
 App\DI\Container.lua

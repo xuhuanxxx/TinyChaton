@@ -18,81 +18,40 @@ local CATEGORY_ORDER = {
 -- Settings structure version (increment when changing settings structure)
 local SETTINGS_VERSION = 6
 
-local function ResolveAccessor(reg)
-    local accessor = reg and reg.accessor or nil
-    if not accessor then
-        accessor = {
-            get = reg and (reg.get or reg.getValue) or nil,
-            set = reg and (reg.set or reg.setValue) or nil,
-        }
+local function EnsureSchemaCore()
+    if not addon.TinyCoreSettingsSchemaRegistry or type(addon.TinyCoreSettingsSchemaRegistry.New) ~= "function" then
+        error("TinyCore SettingsSchemaRegistry is not initialized")
     end
-    return accessor
+    if not addon.TinyCoreSettingsSchemaValidator or type(addon.TinyCoreSettingsSchemaValidator.ValidateByType) ~= "function" then
+        error("TinyCore SettingsSchemaValidator is not initialized")
+    end
+
+    addon._tinyCoreSettingsSchemaRegistry = addon._tinyCoreSettingsSchemaRegistry
+        or addon.TinyCoreSettingsSchemaRegistry:New({
+            getStaticRegistry = function()
+                return addon.SETTING_REGISTRY
+            end,
+            getRuntimeRegistry = function()
+                return addon.RUNTIME_SETTING_REGISTRY
+            end,
+        })
+
+    return addon._tinyCoreSettingsSchemaRegistry, addon.TinyCoreSettingsSchemaValidator
 end
 
 local function GetRegistryByKey(key)
-    local staticReg = addon.SETTING_REGISTRY and addon.SETTING_REGISTRY[key]
-    if staticReg then
-        return staticReg
-    end
-    return addon.RUNTIME_SETTING_REGISTRY and addon.RUNTIME_SETTING_REGISTRY[key] or nil
+    local schemaRegistry = EnsureSchemaCore()
+    return schemaRegistry:GetByKey(key)
 end
 
 local function ResolveDefault(reg)
-    if not reg then return nil end
-    -- Default values are runtime-resolved. Do not cache function defaults
-    -- across context changes (e.g. theme-dependent appearance settings).
-    if type(reg.default) == "function" then
-        return reg.default()
-    end
-    return reg.default
+    local _, validator = EnsureSchemaCore()
+    return validator.ResolveDefault(reg)
 end
 
 local function ValidateByType(reg, value)
-    if not reg then
-        return false, "unknown setting"
-    end
-
-    if reg.validate then
-        return reg.validate(value)
-    end
-
-    local t = reg.valueType
-    if t == "boolean" and type(value) ~= "boolean" then
-        return false, "expected boolean"
-    elseif t == "number" and type(value) ~= "number" then
-        return false, "expected number"
-    elseif (t == "string" or t == "color") and type(value) ~= "string" then
-        return false, "expected string"
-    elseif t == "table" and type(value) ~= "table" then
-        return false, "expected table"
-    end
-
-    if reg.ui and reg.ui.type == "slider" and type(value) == "number" then
-        if reg.ui.min and value < reg.ui.min then
-            return false, "below min"
-        end
-        if reg.ui.max and value > reg.ui.max then
-            return false, "above max"
-        end
-    end
-
-    if reg.ui and reg.ui.options and type(value) == "string" then
-        local options = reg.ui.options()
-        if type(options) == "table" and #options > 0 then
-            local found = false
-            for _, opt in ipairs(options) do
-                if opt.value == value then
-                    found = true
-                    break
-                end
-            end
-            if not found then
-                return false, "invalid option"
-            end
-        end
-    end
-
-    return true
+    local _, validator = EnsureSchemaCore()
+    return validator.ValidateByType(reg, value)
 end
 
 function addon:RegisterSettings()
@@ -131,22 +90,15 @@ function addon:RegisterSettings()
 end
 
 function addon:GetAllSettings()
-    local merged = {}
-    for k, reg in pairs(addon.SETTING_REGISTRY or {}) do
-        merged[k] = reg
-    end
-    for k, reg in pairs(addon.RUNTIME_SETTING_REGISTRY or {}) do
-        if not merged[k] then
-            merged[k] = reg
-        end
-    end
-    return merged
+    local schemaRegistry = EnsureSchemaCore()
+    return schemaRegistry:GetAll()
 end
 
 function addon:GetSetting(key)
     local reg = GetRegistryByKey(key)
     if not reg then return nil end
-    local accessor = ResolveAccessor(reg)
+    local _, validator = EnsureSchemaCore()
+    local accessor = validator.ResolveAccessor(reg)
     if accessor and accessor.get then
         return accessor.get()
     end
@@ -164,7 +116,8 @@ function addon:SetSetting(key, value, opts)
         return false, err
     end
 
-    local accessor = ResolveAccessor(reg)
+    local _, validator = EnsureSchemaCore()
+    local accessor = validator.ResolveAccessor(reg)
     if not accessor or not accessor.set then
         return false, "setting is read-only"
     end
@@ -218,7 +171,8 @@ function addon:ResetSettings(scopeOrPage)
             or (reg.ui and reg.ui.page == scopeOrPage)
         if isMatch then
             local def = ResolveDefault(reg)
-            local accessor = ResolveAccessor(reg)
+            local _, validator = EnsureSchemaCore()
+            local accessor = validator.ResolveAccessor(reg)
             if accessor and accessor.set then
                 accessor.set(def)
             end

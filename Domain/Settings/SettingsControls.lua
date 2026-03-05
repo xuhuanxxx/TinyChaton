@@ -5,8 +5,11 @@ addon.__silentSettingSync = addon.__silentSettingSync or {}
 
 local function TrackRuntimeSetting(meta)
     if not meta or not meta.key then return end
-    addon.RUNTIME_SETTING_REGISTRY = addon.RUNTIME_SETTING_REGISTRY or {}
-    addon.RUNTIME_SETTING_REGISTRY[meta.key] = meta
+    if not addon.TinyCoreSettingsSchemaControlModel
+        or type(addon.TinyCoreSettingsSchemaControlModel.TrackRuntimeSetting) ~= "function" then
+        error("TinyCore SettingsSchemaControlModel is not initialized")
+    end
+    addon.TinyCoreSettingsSchemaControlModel.TrackRuntimeSetting(addon, meta)
 end
 
 function addon.ClearSettingsListHighlight(frame)

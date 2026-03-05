@@ -33,6 +33,9 @@ Libs\TinyCore\DI\Validation.lua
 Libs\TinyCore\RuntimeGovernor\CapabilityMatrix.lua
 Libs\TinyCore\RuntimeGovernor\FeatureRegistry.lua
 Libs\TinyCore\RuntimeGovernor\Reconciler.lua
+Libs\TinyCore\RegistryCompiler\Artifact.lua
+Libs\TinyCore\RegistryCompiler\Compiler.lua
+Libs\TinyCore\RegistryCompiler\Passes\StreamPasses.lua
 
 Infrastructure\Runtime\Logger.lua
 App\DI\Container.lua

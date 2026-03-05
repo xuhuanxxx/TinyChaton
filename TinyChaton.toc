@@ -26,6 +26,8 @@ Libs\TinyCore\Stream\Pipeline.lua
 Libs\TinyCore\Stream\RuleEngine.lua
 Libs\TinyCore\Stream\KindPlugins.lua
 Libs\TinyCore\Stream\RenderEngine.lua
+Libs\TinyCore\SettingsOrchestrator\SubscriberRegistry.lua
+Libs\TinyCore\SettingsOrchestrator\Orchestrator.lua
 
 Infrastructure\Runtime\Logger.lua
 App\DI\Container.lua

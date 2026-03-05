@@ -25,13 +25,16 @@ local CAP_MATRIX = {
     },
 }
 
+if not addon.TinyCoreRuntimeCapabilityMatrix or type(addon.TinyCoreRuntimeCapabilityMatrix.New) ~= "function" then
+    error("TinyCore Runtime CapabilityMatrix is not initialized")
+end
+
+addon.RuntimeCapabilityMatrix = addon.RuntimeCapabilityMatrix
+    or addon.TinyCoreRuntimeCapabilityMatrix:New(CAP_MATRIX, "ACTIVE")
+
 function addon:Can(capability)
-    if not capability then
-        return true
-    end
     local mode = self.GetChatRuntimeMode and self:GetChatRuntimeMode() or "ACTIVE"
-    local row = CAP_MATRIX[mode] or CAP_MATRIX.ACTIVE
-    return row[capability] == true
+    return addon.RuntimeCapabilityMatrix:Can(mode, capability)
 end
 
 function addon:EmitChatMessage(text, wowChatType, language, target)

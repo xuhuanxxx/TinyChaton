@@ -7,8 +7,8 @@ Compiler.__index = Compiler
 function Compiler:New(opts)
     local options = type(opts) == "table" and opts or {}
     local artifact = options.artifact
-    if type(artifact) ~= "table" or type(artifact.Freeze) ~= "function" then
-        error("TinyCore RegistryCompiler requires artifact with Freeze(value)")
+    if artifact ~= nil and (type(artifact) ~= "table" or type(artifact.Freeze) ~= "function") then
+        error("TinyCore RegistryCompiler artifact must expose Freeze(value)")
     end
 
     return setmetatable({
@@ -28,5 +28,8 @@ function Compiler:Run(input, context)
         state = pass(state, ctx)
     end
 
-    return self.artifact:Freeze(state)
+    if self.artifact then
+        return self.artifact:Freeze(state)
+    end
+    return state
 end

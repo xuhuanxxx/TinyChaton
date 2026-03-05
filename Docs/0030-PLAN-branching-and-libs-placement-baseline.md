@@ -4,7 +4,7 @@ priority: P1
 created: 2026-03-05
 updated: 2026-03-05
 relates: [#0024, #0025, #0026, #0027, #0028, #0029]
-status: COMPLETED
+status: RESOLVED
 ---
 
 # 分支与 Libs 落位基线（适用于 STEP 01-06）

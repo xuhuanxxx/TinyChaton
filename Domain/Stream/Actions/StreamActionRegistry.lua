@@ -198,112 +198,25 @@ addon.ACTION_DEFINITIONS = {
 -- =========================================================================
 
 function addon:BuildActionRegistryFromDefinitions()
-    local registry = {}
-
-    local function StreamMatchesCapabilities(streamKey, requirement)
-        if type(requirement) ~= "table" then
-            return false
-        end
-        local caps = addon:GetStreamCapabilities(streamKey)
-        if type(caps) ~= "table" then
-            return false
-        end
-        for capKey, expected in pairs(requirement) do
-            if caps[capKey] ~= expected then
-                return false
-            end
-        end
-        return true
+    if not addon.TinyCoreRegistryCompiler or type(addon.TinyCoreRegistryCompiler.New) ~= "function" then
+        error("TinyCore RegistryCompiler is not initialized")
+    end
+    if not addon.TinyCoreRegistryActionPasses or type(addon.TinyCoreRegistryActionPasses.CreatePipeline) ~= "function" then
+        error("TinyCore Registry ActionPasses is not initialized")
     end
 
-    local function StreamMatchesScope(stream, appliesTo)
-        if type(stream) ~= "table" or type(appliesTo) ~= "table" then
-            return false
-        end
+    self._actionRegistryCompiler = self._actionRegistryCompiler or addon.TinyCoreRegistryCompiler:New({
+        passes = addon.TinyCoreRegistryActionPasses.CreatePipeline(),
+    })
 
-        if type(appliesTo.streamKind) == "string" and stream.kind ~= appliesTo.streamKind then
-            return false
-        end
-        if type(appliesTo.streamGroup) == "string" and stream.group ~= appliesTo.streamGroup then
-            return false
-        end
-        return true
-    end
-
-    local function RegisterActionForStream(actionDef, stream)
-        local fullKey = actionDef.key .. "_" .. stream.key
-        if registry[fullKey] then
-            return
-        end
-        local label = actionDef.getLabel and actionDef.getLabel(stream.key) or actionDef.label
-
-        if actionDef.category == "channel" and actionDef.key:match("send") then
-            label = L["ACTION_PREFIX_SEND"] .. (label or "")
-        end
-
-        registry[fullKey] = {
-            key = fullKey,
-            label = label,
-            tooltip = actionDef.getTooltip and actionDef.getTooltip(stream.key) or nil,
-            streamKey = stream.key,
-            category = actionDef.category,
-            actionPlane = actionDef.actionPlane or "UI_ONLY",
-            execute = function(...)
-                actionDef.execute(stream.key, ...)
-            end
-        }
-    end
-
-    local function BuildStreamKeySet(streamKeys)
-        if type(streamKeys) ~= "table" then
-            return nil
-        end
-        local set = {}
-        for _, key in ipairs(streamKeys) do
-            if type(key) == "string" and key ~= "" then
-                set[key] = true
-            end
-        end
-        return set
-    end
-
-    -- 遍历所有 ACTION 定义
-    for _, actionDef in ipairs(self.ACTION_DEFINITIONS or {}) do
-        if actionDef.appliesTo and not actionDef.appliesTo.kits then
-            local keySet = BuildStreamKeySet(actionDef.appliesTo.streamKeys)
-            for _, stream in self:IterateCompiledStreams() do
-                if (not keySet or keySet[stream.key] == true)
-                    and StreamMatchesScope(stream, actionDef.appliesTo)
-                    and (not actionDef.appliesTo.streamCapabilities
-                        or StreamMatchesCapabilities(stream.key, actionDef.appliesTo.streamCapabilities)) then
-                    RegisterActionForStream(actionDef, stream)
-                end
-            end
-        end
-
-        -- 如果 ACTION 声明了 kits
-        if actionDef.appliesTo and actionDef.appliesTo.kits then
-            for _, kitKey in ipairs(actionDef.appliesTo.kits) do
-                local fullKey = "kit_" .. kitKey .. "_" .. actionDef.key
-                local label = actionDef.getLabel and actionDef.getLabel(kitKey) or actionDef.label
-
-                -- 统一前缀处理：工具类
-                if actionDef.category == "kit" then
-                    label = L["ACTION_PREFIX_KIT"] .. (label or "")
-                end
-
-                registry[fullKey] = {
-                    key = fullKey,
-                    label = label,
-                    tooltip = actionDef.getTooltip and actionDef.getTooltip(kitKey) or nil,
-                    kitKey = kitKey,
-                    category = "kit",
-                    actionPlane = actionDef.actionPlane or "UI_ONLY",
-                    execute = actionDef.execute
-                }
-            end
-        end
-    end
-
-    return registry
+    return self._actionRegistryCompiler:Run(self.ACTION_DEFINITIONS or {}, {
+        iterateCompiledStreams = function()
+            return self:IterateCompiledStreams()
+        end,
+        getStreamCapabilities = function(streamKey)
+            return self:GetStreamCapabilities(streamKey)
+        end,
+        actionPrefixSend = L["ACTION_PREFIX_SEND"] or "",
+        actionPrefixKit = L["ACTION_PREFIX_KIT"] or "",
+    })
 end

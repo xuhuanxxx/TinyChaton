@@ -4,7 +4,7 @@ priority: P1
 created: 2026-03-05
 updated: 2026-03-05
 relates: [#0023, #0017, #0018]
-status: COMPLETED
+status: RESOLVED
 ---
 
 # STEP 01：stream-core 抽离与切换（不做向后兼容）

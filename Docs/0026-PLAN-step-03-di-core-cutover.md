@@ -4,7 +4,7 @@ priority: P1
 created: 2026-03-05
 updated: 2026-03-05
 relates: [#0023, #0022]
-status: COMPLETED
+status: RESOLVED
 ---
 
 # STEP 03：di-core 单轨切换（不做向后兼容）

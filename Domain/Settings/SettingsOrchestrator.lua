@@ -1,6 +1,8 @@
 local addonName, addon = ...
 
-addon.SettingsOrchestrator = addon.SettingsOrchestrator or {}
+if not addon.TinyCoreSettingsOrchestrator or type(addon.TinyCoreSettingsOrchestrator.New) ~= "function" then
+    error("TinyCore SettingsOrchestrator is not initialized")
+end
 
 local function BuildTraceId()
     local now = time and time() or 0
@@ -18,7 +20,16 @@ local function BuildContext(reason, scope)
     }
 end
 
-function addon.SettingsOrchestrator:Run(ctx)
+addon.SettingsOrchestrator = addon.SettingsOrchestrator or addon.TinyCoreSettingsOrchestrator:New({
+    getEventBus = function()
+        return addon:ResolveRequiredService("EventBus")
+    end,
+    getRegistry = function()
+        return addon:ResolveRequiredService("SettingsSubscriberRegistry")
+    end,
+})
+
+function addon.SettingsOrchestrator:NormalizeContext(ctx)
     local context = ctx or BuildContext("manual", "all")
     if type(context.reason) ~= "string" or context.reason == "" then
         context.reason = "manual"
@@ -35,39 +46,16 @@ function addon.SettingsOrchestrator:Run(ctx)
     if type(context.traceId) ~= "string" or context.traceId == "" then
         context.traceId = BuildTraceId()
     end
-
-    local eventBus = addon:ResolveRequiredService("EventBus")
-    local registry = addon:ResolveRequiredService("SettingsSubscriberRegistry")
-
-    eventBus:Emit("SETTINGS_COMMITTING", context)
-    registry:Validate()
-
-    for _, phase in ipairs(registry:GetPhaseOrder()) do
-        local subscribers = registry:GetByPhase(phase)
-        if #subscribers > 0 then
-            eventBus:Emit("SETTINGS_PHASE_COMMITTING", phase, context)
-            for _, spec in ipairs(subscribers) do
-                local ok, err = pcall(spec.apply, context)
-                if not ok then
-                    error(string.format(
-                        "Settings commit failed (trace=%s, phase=%s, key=%s): %s",
-                        tostring(context.traceId),
-                        tostring(phase),
-                        tostring(spec.key),
-                        tostring(err)
-                    ))
-                end
-            end
-            eventBus:Emit("SETTINGS_PHASE_COMMITTED", phase, context)
-        end
-    end
-
-    eventBus:Emit("SETTINGS_COMMITTED", context)
     return context
 end
 
+local CoreRun = addon.SettingsOrchestrator.Run
+function addon.SettingsOrchestrator:Run(ctx)
+    return CoreRun(self, self:NormalizeContext(ctx))
+end
+
 function addon:CommitSettings(reason, scope)
-    local context = BuildContext(reason, scope)
+    local context = addon.SettingsOrchestrator:NormalizeContext(BuildContext(reason, scope))
     local eventBus = addon:ResolveRequiredService("EventBus")
 
     if addon.db and addon.db.enabled == false then

@@ -4,7 +4,7 @@ priority: P1
 created: 2026-03-05
 updated: 2026-03-05
 relates: [#0023, #0022]
-status: ACTIVE
+status: COMPLETED
 ---
 
 # STEP 02：settings-orchestrator-core 切换（不做向后兼容）

@@ -120,6 +120,11 @@ function addon:ValidateRequiredServices()
         "ShelfService",
     }
 
+    if addon.TinyCoreDIValidation and type(addon.TinyCoreDIValidation.ResolveRequired) == "function" then
+        addon.TinyCoreDIValidation.ResolveRequired(self.ServiceContainer, required)
+        return
+    end
+
     for _, name in ipairs(required) do
         self:ResolveRequiredService(name)
     end

@@ -66,22 +66,15 @@ local function ResolveColorChatType(line)
     return line.wowChatType
 end
 
-local function IsClickToCopyEnabledForLine(line)
-    local interaction = addon.db and addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.interaction
-    if not interaction or interaction.clickToCopy == false then
+local function IsClickToCopyEnabledForLine(line, options)
+    if type(options) == "table" and options.enableCopyLink == false then
         return false
     end
-
-    local streamKey = line and line.streamKey or nil
-    if type(streamKey) ~= "string" or streamKey == "" then
-        return true
+    local policy = addon.DisplayPolicyService
+    if policy and type(policy.CanInjectCopy) == "function" then
+        return policy:CanInjectCopy(line and line.streamKey or nil)
     end
-
-    local copyStreams = interaction.copyStreams
-    if addon.ResolveStreamToggle then
-        return addon:ResolveStreamToggle(streamKey, copyStreams, "copyDefault", true)
-    end
-    return true
+    return false
 end
 
 function Formatter.RegisterKindFormatter(kind, formatterFn)
@@ -134,7 +127,7 @@ function Formatter.GetLineColor(line)
     return 1, 1, 1
 end
 
-function Formatter.GetStreamTag(line)
+function Formatter.GetStreamTag(line, options)
     if type(line) ~= "table" then
         return ""
     end
@@ -170,11 +163,13 @@ function Formatter.GetStreamTag(line)
         streamTag = string.format("|cff%02x%02x%02x%s|r", (info.r or 1) * 255, (info.g or 1) * 255, (info.b or 1) * 255, displayText)
     end
 
-    local caps = addon.GetStreamCapabilities and addon:GetStreamCapabilities(streamKey) or nil
-    if type(caps) == "table" and caps.outbound == true then
-        return string.format("|Htinychat:send:%s|h%s|h", streamKey, streamTag)
+    local sendEnabled = type(options) == "table" and options.enableSendLink == true
+    if sendEnabled then
+        local caps = addon.GetStreamCapabilities and addon:GetStreamCapabilities(streamKey) or nil
+        if type(caps) == "table" and caps.outbound == true then
+            return string.format("|Htinychat:send:%s|h%s|h", streamKey, streamTag)
+        end
     end
-
     return streamTag
 end
 

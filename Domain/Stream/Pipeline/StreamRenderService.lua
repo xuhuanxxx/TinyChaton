@@ -31,34 +31,7 @@ local function BuildLine(msg)
 end
 
 function Service:RenderRealtime(frame, normalized)
-    if type(normalized) ~= "table" then
-        return nil, "invalid_normalized"
-    end
-
-    local displayText = normalized.text
-    local extraArgs = addon.Utils.PackArgs()
-    if type(normalized.streamKey) == "string" and normalized.streamKey ~= "" then
-        extraArgs.streamKey = normalized.streamKey
-    end
-
-    if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
-        local ok, nextMsg = pcall(function()
-            local outMsg = addon.Gateway.Display:Transform(frame, displayText, nil, nil, nil, extraArgs)
-            return outMsg
-        end)
-        if ok and type(nextMsg) == "string" then
-            displayText = nextMsg
-        end
-    end
-
-    return {
-        displayText = displayText,
-        r = nil,
-        g = nil,
-        b = nil,
-        extraArgs = extraArgs,
-        line = nil,
-    }, nil
+    return nil, "realtime_render_disabled"
 end
 
 function Service:RenderReplay(frame, normalized)
@@ -66,18 +39,29 @@ function Service:RenderReplay(frame, normalized)
         return nil, "invalid_normalized"
     end
 
-    local line = BuildLine(normalized)
-    local displayText, r, g, b, extraArgs = addon:RenderChatLine(line, frame, { preferTimestampConfig = true })
-    if type(displayText) ~= "string" then
+    local envelope = {
+        mode = "replay",
+        frameName = normalized.frameName,
+        event = normalized.event,
+        streamKey = normalized.streamKey,
+        streamKind = normalized.streamKind,
+        streamGroup = normalized.streamGroup,
+        wowChatType = normalized.wowChatType,
+        author = normalized.author,
+        channelMeta = {
+            channelId = normalized.channelId,
+            channelBaseName = normalized.channelBaseName,
+        },
+        timestamp = normalized.timestamp,
+        rawText = normalized.text,
+        classFilename = normalized.classFilename,
+    }
+
+    local rendered, err = addon.DisplayAugmentPipeline:Render(frame, envelope)
+    if type(rendered) ~= "table" or type(rendered.displayText) ~= "string" then
         return nil, "render_failed"
     end
 
-    return {
-        displayText = displayText,
-        r = r,
-        g = g,
-        b = b,
-        extraArgs = extraArgs,
-        line = line,
-    }, nil
+    rendered.line = BuildLine(normalized)
+    return rendered, err
 end

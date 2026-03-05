@@ -5,7 +5,7 @@ local function FormatChannelLine(line, options, helpers)
         return nil, 1, 1, 1
     end
 
-    local streamTag = helpers.getStreamTag(line)
+    local streamTag = helpers.getStreamTag(line, options)
     local authorTag = helpers.getAuthorTag(line)
     local contentForCopy = string.format("%s%s%s", streamTag, authorTag, line.text)
     local r, g, b = helpers.getLineColor(line)
@@ -13,7 +13,7 @@ local function FormatChannelLine(line, options, helpers)
     local preferConfig = options and options.preferTimestampConfig == true
 
     local timestamp = helpers.getTimestamp(line.time, msgColor, preferConfig)
-    if timestamp ~= "" and helpers.isClickToCopyEnabledForLine(line) then
+    if timestamp ~= "" and helpers.isClickToCopyEnabledForLine(line, options) then
         local colorHex = helpers.resolveTimestampColor(msgColor, preferConfig)
         local plainText = helpers.getTimestampText(line.time)
         timestamp = addon:CreateClickableTimestamp(plainText, contentForCopy, colorHex)

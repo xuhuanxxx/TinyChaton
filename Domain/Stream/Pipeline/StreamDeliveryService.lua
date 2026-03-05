@@ -15,9 +15,17 @@ function Service:DeliverRealtime(frame, event, streamContext, packedArgs, option
 
     local targetFrame = addon.FrameResolver:ResolveRealtime(frame, event)
     if type(targetFrame) == "table" then
-        local normalized = addon.StreamNormalizeService:NormalizeRealtime(targetFrame, event, streamContext)
-        local rendered = normalized and addon.StreamRenderService:RenderRealtime(targetFrame, normalized) or nil
-        if type(rendered) == "table" and type(rendered.displayText) == "string" then packedArgs[1] = rendered.displayText end
+        local envelope = addon.DisplayEnvelope and addon.DisplayEnvelope.FromRealtime
+            and addon.DisplayEnvelope.FromRealtime(targetFrame, event, streamContext)
+            or nil
+
+        if type(envelope) == "table" and addon.RealtimeDisplayBridge and addon.RealtimeDisplayBridge.Push then
+            addon.RealtimeDisplayBridge:Push(targetFrame, envelope)
+        end
+
+        if addon.FrameDisplayHookService and addon.FrameDisplayHookService.EnsureHook then
+            addon.FrameDisplayHookService:EnsureHook(targetFrame)
+        end
     end
     return false, addon.Utils.UnpackArgs(packedArgs)
 end
@@ -29,12 +37,16 @@ function Service:DeliverReplay(line, options)
         return false
     end
 
-    local normalized = addon.StreamNormalizeService:NormalizeReplay(line, frame)
-    if type(normalized) ~= "table" then
+    local envelope = addon.DisplayEnvelope and addon.DisplayEnvelope.FromReplayLine
+        and addon.DisplayEnvelope.FromReplayLine(line, frame)
+        or nil
+    if type(envelope) ~= "table" then
         return false
     end
 
-    local rendered = addon.StreamRenderService:RenderReplay(frame, normalized)
+    local rendered = addon.DisplayAugmentPipeline and addon.DisplayAugmentPipeline.Render
+        and addon.DisplayAugmentPipeline:Render(frame, envelope)
+        or nil
     if type(rendered) ~= "table" or type(rendered.displayText) ~= "string" then
         return false
     end

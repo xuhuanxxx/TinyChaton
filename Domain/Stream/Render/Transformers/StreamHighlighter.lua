@@ -43,34 +43,12 @@ function Highlighter:ApplyDisplayText(text, streamKey)
     return out and out.text or text
 end
 
-local function DisplayTransformer(frame, text, r, g, b, extraArgs)
-    if not addon.db or not addon.db.enabled then
-        return text, r, g, b, extraArgs
-    end
-
-    local streamKey = type(extraArgs) == "table" and extraArgs.streamKey or nil
-    if (type(streamKey) ~= "string" or streamKey == "") and type(text) == "string" then
-        streamKey = text:match("|Htinychat:send:([^|]+)|h")
-    end
-
-    local nextText = addon.StreamHighlighter:ApplyDisplayText(text, streamKey)
-    return nextText, r, g, b, extraArgs
-end
-
 function addon:InitStreamHighlight()
-    local function EnableStreamHighlight()
-        addon:RegisterChatFrameTransformer("display_highlight", DisplayTransformer)
-    end
-
-    local function DisableStreamHighlight()
-        addon.chatFrameTransformers["display_highlight"] = nil
-    end
-
     addon:RegisterFeature("StreamHighlight", {
         requires = { "MUTATE_CHAT_DISPLAY" },
         plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
-        onEnable = EnableStreamHighlight,
-        onDisable = DisableStreamHighlight,
+        onEnable = function() end,
+        onDisable = function() end,
     })
 end
 

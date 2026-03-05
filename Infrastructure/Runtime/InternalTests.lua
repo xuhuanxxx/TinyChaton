@@ -1840,6 +1840,7 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
     local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
     _G.C_CVar = _G.C_CVar or {}
     local capturedReplay
+    local capturedRealtime
 
     addon.Gateway = {
         Display = {
@@ -1850,7 +1851,9 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
     }
 
     local frame = {
-        AddMessage = function() end,
+        AddMessage = function(_, msg)
+            capturedRealtime = msg
+        end,
         IsEventRegistered = function()
             return true
         end,
@@ -1880,16 +1883,31 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
         end,
     }
 
-    local packedArgs = addon.Utils.PackArgs("hello", "tester")
-    local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", {
+    local streamContext = {
         text = "hello",
         author = "tester",
         wowChatType = "SAY",
         streamKey = "say",
+        args = addon.Utils.PackArgs("hello", "tester", nil, nil, nil, nil, nil, nil, nil, nil, 1001),
+    }
+    local packedArgs = addon.Utils.PackArgs("hello", "tester")
+    local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", {
+        text = streamContext.text,
+        author = streamContext.author,
+        wowChatType = streamContext.wowChatType,
+        streamKey = streamContext.streamKey,
+        args = streamContext.args,
     }, packedArgs, { shouldHide = false })
 
     addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block")
-    addon.Tests.AssertEqual(realtimeMsg, "[PIPE]hello", "Realtime delivery should only mutate message body")
+    addon.Tests.AssertEqual(realtimeMsg, "hello", "Realtime delivery should keep filter-stage body untouched")
+    frame:AddMessage("hello", 1, 1, 1, 0, 0, nil, 0, 1001)
+    addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("[PIPE]", 1, true) ~= nil,
+        "Realtime display should flow through unified display pipeline")
+    addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:send:say", 1, true) ~= nil,
+        "Realtime display should include stream send link")
+    addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:copy:", 1, true) ~= nil,
+        "Realtime display should include clickable timestamp copy link")
 
     addon.StreamDeliveryService:DeliverReplay({
         event = "CHAT_MSG_SAY",
@@ -1946,15 +1964,24 @@ function addon.Tests.TestRealtimeAndReplayClickToCopyRespectsCopyStreams()
         end,
     }
 
-    local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", {
+    local streamContext = {
         text = "copy-disabled",
         author = "tester",
         wowChatType = "SAY",
         streamKey = "say",
-    }, addon.Utils.PackArgs("copy-disabled", "tester"), { shouldHide = false })
+        args = addon.Utils.PackArgs("copy-disabled", "tester", nil, nil, nil, nil, nil, nil, nil, nil, 1102),
+    }
+    local realtimeRendered
+    frame.AddMessage = function(_, msg)
+        realtimeRendered = msg
+    end
+    local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", streamContext,
+        addon.Utils.PackArgs("copy-disabled", "tester"), { shouldHide = false })
     addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block when visible")
-    addon.Tests.Assert(type(realtimeMsg) == "string" and realtimeMsg:find("tinychat:copy:", 1, true) == nil,
-        "Realtime delivery should not inject copy link when stream copy is disabled")
+    addon.Tests.AssertEqual(realtimeMsg, "copy-disabled", "Realtime delivery should keep filter-stage body untouched")
+    frame:AddMessage("copy-disabled", 1, 1, 1, 0, 0, nil, 0, 1102)
+    addon.Tests.Assert(type(realtimeRendered) == "string" and realtimeRendered:find("tinychat:copy:", 1, true) == nil,
+        "Realtime display should not inject copy link when stream copy is disabled")
 
     addon.StreamDeliveryService:DeliverReplay({
         event = "CHAT_MSG_SAY",
@@ -2000,7 +2027,7 @@ function addon.Tests.TestRealtimeChannelPrefixPreservesCanonicalChannelString()
             return true
         end,
     }
-    local packedArgs = addon.Utils.PackArgs("hello", "tester", nil, "1. World", nil, nil, nil, 1, "World")
+    local packedArgs = addon.Utils.PackArgs("hello", "tester", nil, "1. World", nil, nil, nil, 1, "World", nil, 1203)
     local blocked, msg, author, _, channelString = addon.StreamDeliveryService:DeliverRealtime(
         frame,
         "CHAT_MSG_CHANNEL",
@@ -2012,13 +2039,14 @@ function addon.Tests.TestRealtimeChannelPrefixPreservesCanonicalChannelString()
             channelString = "1. World",
             channelName = "World",
             channelNumber = 1,
+            args = packedArgs,
         },
         packedArgs,
         { shouldHide = false }
     )
 
     addon.Tests.AssertEqual(blocked, false, "Realtime channel delivery should not block")
-    addon.Tests.Assert(type(msg) == "string" and msg ~= "", "Realtime channel delivery should return rendered display text")
+    addon.Tests.AssertEqual(msg, "hello", "Realtime channel delivery should keep body passthrough in filter stage")
     addon.Tests.AssertEqual(author, "tester", "Realtime channel delivery should preserve author")
     addon.Tests.AssertEqual(channelString, "1. World", "Realtime channel delivery should preserve channelString for Blizzard routing")
 
@@ -2028,7 +2056,155 @@ end
 function addon.Tests.TestNoGlobalAddMessageHookSideEffects()
     addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
     addon.Tests.Assert(type(addon.StreamDeliveryService.EnsureFrameHook) ~= "function",
-        "StreamDeliveryService should not expose global AddMessage hook API")
+        "StreamDeliveryService should not expose frame hook API")
+    addon.Tests.Assert(type(addon.FrameDisplayHookService) == "table", "FrameDisplayHookService missing")
+    addon.Tests.Assert(type(addon.FrameDisplayHookService.EnsureHook) == "function",
+        "FrameDisplayHookService should own scoped frame hook")
+end
+
+function addon.Tests.TestDisplayPolicyCopyToggleRespectsSettings()
+    addon.Tests.Assert(type(addon.DisplayPolicyService) == "table", "DisplayPolicyService missing")
+    addon.Tests.Assert(type(addon.DisplayPolicyService.CanInjectCopy) == "function", "CanInjectCopy missing")
+
+    local interaction = addon.db and addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.interaction
+    addon.Tests.Assert(type(interaction) == "table", "interaction settings missing")
+
+    local oldClick = interaction.clickToCopy
+    local oldCopyStreams = addon.Utils.DeepCopy(interaction.copyStreams or {})
+
+    interaction.clickToCopy = false
+    addon.Tests.AssertEqual(addon.DisplayPolicyService:CanInjectCopy("say"), false, "clickToCopy=false should disable copy")
+
+    interaction.clickToCopy = true
+    interaction.copyStreams = interaction.copyStreams or {}
+    interaction.copyStreams.say = false
+    addon.Tests.AssertEqual(addon.DisplayPolicyService:CanInjectCopy("say"), false, "copyStreams=false should disable copy")
+
+    interaction.copyStreams.say = true
+    addon.Tests.AssertEqual(addon.DisplayPolicyService:CanInjectCopy("say"), true, "copyStreams=true should enable copy")
+
+    interaction.clickToCopy = oldClick
+    interaction.copyStreams = oldCopyStreams
+end
+
+function addon.Tests.TestDisplayPolicySendToggleRespectsCapabilities()
+    addon.Tests.Assert(type(addon.DisplayPolicyService) == "table", "DisplayPolicyService missing")
+    addon.Tests.Assert(type(addon.DisplayPolicyService.CanInjectSend) == "function", "CanInjectSend missing")
+
+    addon.Tests.AssertEqual(addon.DisplayPolicyService:CanInjectSend("say"), true, "say should support outbound send")
+    addon.Tests.AssertEqual(addon.DisplayPolicyService:CanInjectSend("system"), false, "system should not support outbound send")
+end
+
+function addon.Tests.TestRealtimeBridgeLineIdMatchAndFallback()
+    addon.Tests.Assert(type(addon.RealtimeDisplayBridge) == "table", "RealtimeDisplayBridge missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayBridge.Push) == "function", "RealtimeDisplayBridge.Push missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayBridge.Consume) == "function", "RealtimeDisplayBridge.Consume missing")
+
+    local frame = {
+        name = "TinyChatonBridgeTestFrame",
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return true
+        end,
+        GetName = function(self)
+            return self.name
+        end,
+    }
+
+    local first = {
+        lineId = 3001,
+        author = "tester",
+        rawText = "hello-one",
+        streamKey = "say",
+        wowChatType = "SAY",
+    }
+    addon.RealtimeDisplayBridge:Push(frame, first)
+    local consumedFirst = addon.RealtimeDisplayBridge:Consume(frame, "native", 3001)
+    addon.Tests.Assert(consumedFirst == first, "lineId should consume exact envelope")
+
+    local second = {
+        lineId = nil,
+        author = "tester",
+        rawText = "hello-two",
+        streamKey = "say",
+        wowChatType = "SAY",
+    }
+    addon.RealtimeDisplayBridge:Push(frame, second)
+    local nativeText = "|Hplayer:tester|h[tester]|h: hello-two"
+    local consumedSecond = addon.RealtimeDisplayBridge:Consume(frame, nativeText, nil)
+    addon.Tests.Assert(consumedSecond == second, "fallback author+body should consume envelope")
+end
+
+function addon.Tests.TestFrameHookDoesNotMutateUnmatchedMessages()
+    addon.Tests.Assert(type(addon.FrameDisplayHookService) == "table", "FrameDisplayHookService missing")
+    addon.Tests.Assert(type(addon.FrameDisplayHookService.EnsureHook) == "function", "EnsureHook missing")
+
+    local captured
+    local frame = {
+        AddMessage = function(_, msg)
+            captured = msg
+        end,
+        IsEventRegistered = function()
+            return true
+        end,
+        GetName = function()
+            return "TinyChatonHookTestFrame"
+        end,
+    }
+
+    addon.FrameDisplayHookService:EnsureHook(frame)
+    frame:AddMessage("plain message")
+    addon.Tests.AssertEqual(captured, "plain message", "Unmatched message should passthrough unchanged")
+end
+
+function addon.Tests.TestDisplayAugmentHighlightUsesEnvelopeStreamKey()
+    addon.Tests.Assert(type(addon.DisplayAugmentPipeline) == "table", "DisplayAugmentPipeline missing")
+    addon.Tests.Assert(type(addon.DisplayAugmentPipeline.Render) == "function", "DisplayAugmentPipeline.Render missing")
+
+    local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
+    addon.db.profile.filter = addon.db.profile.filter or {}
+    addon.db.profile.filter.highlight = {
+        enabled = true,
+        names = {},
+        keywords = { "danger" },
+        color = "FF00FF00",
+    }
+
+    local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
+    _G.C_CVar = _G.C_CVar or {}
+    _G.C_CVar.GetCVar = function(name)
+        if name == "showTimestamps" then
+            return "none"
+        end
+        if oldCVarApi then
+            return oldCVarApi(name)
+        end
+        return nil
+    end
+
+    local frame = {
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return true
+        end,
+    }
+
+    local rendered = addon.DisplayAugmentPipeline:Render(frame, {
+        mode = "replay",
+        streamKey = "say",
+        streamKind = "channel",
+        wowChatType = "SAY",
+        author = "tester",
+        rawText = "danger here",
+        timestamp = time(),
+    })
+
+    addon.Tests.Assert(type(rendered) == "table" and type(rendered.displayText) == "string", "Render should return display text")
+    addon.Tests.Assert(rendered.displayText:find("|cFF00FF00", 1, true) ~= nil,
+        "DisplayAugment should apply highlight with envelope stream key")
+
+    addon.db.profile.filter = oldFilter
+    _G.C_CVar.GetCVar = oldCVarApi
 end
 
 function addon.Tests.TestThemeColorOrthogonalResolution()

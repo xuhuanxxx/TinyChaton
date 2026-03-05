@@ -180,6 +180,9 @@ function Pipeline:Render(frame, envelope, opts)
     if type(envelope) ~= "table" then
         return nil, "invalid_envelope"
     end
+    if addon.ValidateContract then
+        addon:ValidateContract("DisplayEnvelope", envelope)
+    end
 
     EnsureDefaultStages(self)
 

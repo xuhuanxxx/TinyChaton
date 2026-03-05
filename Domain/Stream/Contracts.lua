@@ -26,6 +26,22 @@ addon.StreamContracts.SnapshotRecord = {
     time = "number",
 }
 
+addon.StreamContracts.DisplayEnvelope = {
+    mode = "string",
+    frameName = "string|nil",
+    event = "string",
+    streamKey = "string",
+    streamKind = "string|nil",
+    streamGroup = "string|nil",
+    wowChatType = "string",
+    author = "string",
+    channelMeta = "table",
+    timestamp = "number",
+    lineId = "number|string|nil",
+    rawText = "string",
+    classFilename = "string|nil",
+}
+
 local function IsDebugValidationEnabled()
     return addon.runtime and addon.runtime.debug == true
 end

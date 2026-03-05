@@ -19,6 +19,13 @@ local function ResolveFrameName(frame)
     return nil
 end
 
+local function Validate(envelope)
+    if addon.ValidateContract then
+        addon:ValidateContract("DisplayEnvelope", envelope)
+    end
+    return envelope
+end
+
 function Envelope.FromRealtime(frame, event, streamContext)
     if type(streamContext) ~= "table" then
         return nil
@@ -52,7 +59,7 @@ function Envelope.FromRealtime(frame, event, streamContext)
         end
     end
 
-    return {
+    return Validate({
         mode = "realtime",
         frameName = ResolveFrameName(frame),
         event = type(event) == "string" and event or "",
@@ -69,7 +76,7 @@ function Envelope.FromRealtime(frame, event, streamContext)
         lineId = lineId,
         rawText = type(streamContext.text) == "string" and streamContext.text or "",
         classFilename = nil,
-    }
+    })
 end
 
 function Envelope.FromReplayLine(line, frame)
@@ -87,7 +94,7 @@ function Envelope.FromReplayLine(line, frame)
         wowChatType = type(stream) == "table" and stream.wowChatType or ""
     end
 
-    return {
+    return Validate({
         mode = "replay",
         frameName = ResolveFrameName(frame) or (type(line.frameName) == "string" and line.frameName or nil),
         event = type(line.event) == "string" and line.event or "",
@@ -104,7 +111,7 @@ function Envelope.FromReplayLine(line, frame)
         lineId = nil,
         rawText = type(line.text) == "string" and line.text or "",
         classFilename = line.classFilename,
-    }
+    })
 end
 
 return Envelope

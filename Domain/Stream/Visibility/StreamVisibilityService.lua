@@ -3,15 +3,6 @@ local addonName, addon = ...
 addon.StreamVisibilityService = addon.StreamVisibilityService or {}
 local Service = addon.StreamVisibilityService
 
-local function IsDynamicStreamKey(streamKey)
-    if type(streamKey) ~= "string" or streamKey == "" then
-        return false
-    end
-    local kind = addon:GetStreamKind(streamKey)
-    local group = addon:GetStreamGroup(streamKey)
-    return kind == "channel" and group == "dynamic"
-end
-
 local function EnsureStreamBlockedConfig()
     if not addon.db or not addon.db.profile then
         return nil
@@ -130,20 +121,6 @@ function Service:ToggleStreamBlocked(streamKey)
 
     blocked[streamKey] = true
     return true
-end
-
-function Service:IsDynamicChannelMuted(streamKey)
-    if not IsDynamicStreamKey(streamKey) then
-        return false
-    end
-    return self:IsStreamBlocked(streamKey)
-end
-
-function Service:ToggleDynamicChannelMute(streamKey)
-    if not IsDynamicStreamKey(streamKey) then
-        return false
-    end
-    return self:ToggleStreamBlocked(streamKey)
 end
 
 function Service:IsVisibleRealtime(streamContext)

@@ -456,11 +456,6 @@ function addon.Shelf:Render()
             end,
             onRightClick = rightActionKey and function(btnSelf)
                 addon.Shelf:ExecuteAction(rightActionKey, btnSelf, item)
-                if rightActionKey and rightActionKey:match("mute_toggle_") then
-                    C_Timer.After(0.1, function()
-                        addon.Shelf:Render()
-                    end)
-                end
             end or nil,
         }))
     end

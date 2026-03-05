@@ -40,8 +40,8 @@ local function ResolveChannelDynamicAvailability(streamKey, context)
         }
     end
 
-    local muted = addon.StreamVisibilityService and addon.StreamVisibilityService.IsDynamicChannelMuted
-        and addon.StreamVisibilityService:IsDynamicChannelMuted(streamKey) or false
+    local muted = addon.StreamVisibilityService and addon.StreamVisibilityService.IsStreamBlocked
+        and addon.StreamVisibilityService:IsStreamBlocked(streamKey) or false
 
     return {
         available = true,

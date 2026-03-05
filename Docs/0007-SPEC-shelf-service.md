@@ -44,8 +44,8 @@ status: ACTIVE
    - 静态频道（如 `SAY`, `GUILD`）：始终生成
    - 动态频道（如 `CHANNEL`）：检查 `GetChannelList()` 是否存在
 4. 检查屏蔽状态：
-   - `streamBlocked[stream.key] == true`：跳过（不显示）
-   - 否则：生成按钮
+   - `streamBlocked[stream.key] == true`：保留按钮，状态标记为 `muted`
+   - `streamBlocked[stream.key] ~= true`：按钮状态为 `ready/joined/unjoined`
 
 **按钮数据**：
 ```lua
@@ -144,8 +144,8 @@ GetCachedChannelList() -> { id, name, ... }
 
 **可见性判定**：
 1. 频道必须在 `GetChannelList()` 中存在
-2. 频道未被 `streamBlocked[stream.key] == true` 屏蔽
-3. 频道 Pin 状态为 `true`
+2. 频道 Pin 状态为 `true`
+3. `streamBlocked[stream.key] == true` 时显示 `muted` 覆盖层（不隐藏）
 
 **活跃频道解析**：
 ```lua
@@ -196,7 +196,7 @@ GetApplicableActions(target) -> { actionKey, ... }
 
 #### 无频道可用
 
-- 所有频道被静音或未 Pin：生成空按钮列表
+- 所有频道未 Pin：生成空按钮列表
 - Shelf 显示空白或隐藏（由渲染层决定）
 
 #### 动态频道全部离线
@@ -284,7 +284,7 @@ addon:GetShelfThemeProperties(themeKey) -> properties
 
 - [ ] Pin 的频道生成按钮
 - [ ] 未 Pin 的频道不生成按钮
-- [ ] 静音的动态频道不生成按钮
+- [ ] 静音的 system/dynamic 频道生成按钮并显示 `muted`
 - [ ] 离线的动态频道不生成按钮
 
 ### 按钮排序

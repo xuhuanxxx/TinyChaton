@@ -39,7 +39,7 @@ status: ACTIVE
 
 1. `mute_toggle` 动作为 capability 驱动（`supportsMute=true`）。
 2. system + dynamic channel stream 均可挂载该动作。
-3. `ToggleDynamicChannelMute` 仅为语义包装，底层统一 `ToggleStreamBlocked`。
+3. `mute_toggle` 统一调用 `ToggleStreamBlocked`（stream-only）。
 
 ## 非目标
 

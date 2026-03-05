@@ -1056,6 +1056,135 @@ function addon.Tests.TestShelfDefaultOrderUsesCompiledStreams()
     addon.db.profile.buttons.buttonOrder = oldOrder
 end
 
+function addon.Tests.TestShelfVisibleItemsSystemChannelShowsMutedWhenStreamBlocked()
+    addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
+    addon.Tests.Assert(type(addon.Shelf.GetVisibleItems) == "function", "Shelf.GetVisibleItems missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
+
+    local oldButtons = addon.Utils.DeepCopy(addon.db.profile.buttons)
+    local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
+    addon.db.profile.buttons = addon.db.profile.buttons or {}
+    addon.db.profile.filter = addon.db.profile.filter or {}
+    addon.db.profile.filter.streamBlocked = {}
+    addon.db.profile.buttons.buttonOrder = { "say" }
+    addon.db.profile.buttons.channelPins = addon.db.profile.buttons.channelPins or {}
+    addon.db.profile.buttons.channelPins.say = true
+
+    addon.StreamVisibilityService:SetStreamBlocked("say", true)
+    local items = addon.Shelf:GetVisibleItems()
+    addon.Tests.Assert(type(items) == "table", "Visible items should be table")
+    addon.Tests.AssertEqual(#items, 1, "System stream should remain visible when muted")
+    addon.Tests.AssertEqual(items[1].itemKey, "say", "Expected say stream item")
+    addon.Tests.AssertEqual(items[1].channelState, "muted", "System stream should expose muted state")
+    addon.Tests.AssertEqual(items[1].isMuted, true, "System stream should mark isMuted=true")
+
+    addon.db.profile.buttons = oldButtons
+    addon.db.profile.filter = oldFilter
+end
+
+function addon.Tests.TestShelfVisibleItemsDynamicChannelShowsMutedWhenJoinedAndBlocked()
+    addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
+    addon.Tests.Assert(type(addon.Shelf.GetVisibleItems) == "function", "Shelf.GetVisibleItems missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
+
+    local dynamicKey = nil
+    for _, stream in addon:IterateCompiledStreams() do
+        if addon:GetStreamKind(stream.key) == "channel" and addon:GetStreamGroup(stream.key) == "dynamic" then
+            dynamicKey = stream.key
+            break
+        end
+    end
+    addon.Tests.Assert(type(dynamicKey) == "string" and dynamicKey ~= "", "Missing dynamic stream for test")
+
+    local oldButtons = addon.Utils.DeepCopy(addon.db.profile.buttons)
+    local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
+    local oldResolve = addon.AvailabilityResolver and addon.AvailabilityResolver.Resolve
+    addon.db.profile.buttons = addon.db.profile.buttons or {}
+    addon.db.profile.filter = addon.db.profile.filter or {}
+    addon.db.profile.filter.streamBlocked = {}
+    addon.db.profile.buttons.buttonOrder = { dynamicKey }
+    addon.db.profile.buttons.channelPins = addon.db.profile.buttons.channelPins or {}
+    addon.db.profile.buttons.channelPins[dynamicKey] = true
+    addon.db.profile.buttons.dynamicMode = "hide"
+
+    addon.AvailabilityResolver.Resolve = function(entityKey, kind, _)
+        if entityKey == dynamicKey and kind == "channel" then
+            return {
+                available = true,
+                state = "joined",
+                reason = "test_joined",
+                channelId = 9,
+            }
+        end
+        return {
+            available = true,
+            state = "ready",
+            reason = "default",
+        }
+    end
+
+    addon.StreamVisibilityService:SetStreamBlocked(dynamicKey, true)
+    local items = addon.Shelf:GetVisibleItems()
+    addon.Tests.Assert(type(items) == "table", "Visible items should be table")
+    addon.Tests.AssertEqual(#items, 1, "Joined dynamic stream should remain visible when muted")
+    addon.Tests.AssertEqual(items[1].itemKey, dynamicKey, "Expected dynamic stream item")
+    addon.Tests.AssertEqual(items[1].channelState, "muted", "Joined blocked dynamic stream should expose muted state")
+    addon.Tests.AssertEqual(items[1].isMuted, true, "Joined blocked dynamic stream should mark isMuted=true")
+
+    if addon.AvailabilityResolver then
+        addon.AvailabilityResolver.Resolve = oldResolve
+    end
+    addon.db.profile.buttons = oldButtons
+    addon.db.profile.filter = oldFilter
+end
+
+function addon.Tests.TestShelfVisibleItemsDynamicChannelHideWhenUnjoinedAndModeHide()
+    addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
+    addon.Tests.Assert(type(addon.Shelf.GetVisibleItems) == "function", "Shelf.GetVisibleItems missing")
+
+    local dynamicKey = nil
+    for _, stream in addon:IterateCompiledStreams() do
+        if addon:GetStreamKind(stream.key) == "channel" and addon:GetStreamGroup(stream.key) == "dynamic" then
+            dynamicKey = stream.key
+            break
+        end
+    end
+    addon.Tests.Assert(type(dynamicKey) == "string" and dynamicKey ~= "", "Missing dynamic stream for test")
+
+    local oldButtons = addon.Utils.DeepCopy(addon.db.profile.buttons)
+    local oldResolve = addon.AvailabilityResolver and addon.AvailabilityResolver.Resolve
+    addon.db.profile.buttons = addon.db.profile.buttons or {}
+    addon.db.profile.buttons.buttonOrder = { dynamicKey }
+    addon.db.profile.buttons.channelPins = addon.db.profile.buttons.channelPins or {}
+    addon.db.profile.buttons.channelPins[dynamicKey] = true
+    addon.db.profile.buttons.dynamicMode = "hide"
+
+    addon.AvailabilityResolver.Resolve = function(entityKey, kind, _)
+        if entityKey == dynamicKey and kind == "channel" then
+            return {
+                available = false,
+                state = "unjoined",
+                reason = "test_unjoined",
+                channelId = nil,
+            }
+        end
+        return {
+            available = true,
+            state = "ready",
+            reason = "default",
+        }
+    end
+
+    local items = addon.Shelf:GetVisibleItems()
+    addon.Tests.Assert(type(items) == "table", "Visible items should be table")
+    addon.Tests.AssertEqual(#items, 0, "Unjoined dynamic stream should be hidden when dynamicMode=hide")
+
+    if addon.AvailabilityResolver then
+        addon.AvailabilityResolver.Resolve = oldResolve
+    end
+    addon.db.profile.buttons = oldButtons
+end
+
 function addon.Tests.TestMessageFormatterStreamTagLinkPolicy()
     addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
     addon.Tests.Assert(type(addon.MessageFormatter.GetStreamTag) == "function", "MessageFormatter.GetStreamTag missing")
@@ -1464,24 +1593,24 @@ function addon.Tests.TestStreamVisibilityServiceUsesStreamBlocked()
     addon.db.profile.filter = oldFilter
 end
 
-function addon.Tests.TestDynamicMuteWrapperUsesUnifiedStreamBlocked()
+function addon.Tests.TestStreamBlockedToggleUsesUnifiedStorage()
     addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
-    addon.Tests.Assert(type(addon.StreamVisibilityService.ToggleDynamicChannelMute) == "function", "ToggleDynamicChannelMute missing")
-    addon.Tests.Assert(type(addon.StreamVisibilityService.IsDynamicChannelMuted) == "function", "IsDynamicChannelMuted missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.ToggleStreamBlocked) == "function", "ToggleStreamBlocked missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.IsStreamBlocked) == "function", "IsStreamBlocked missing")
 
     local policy = addon.StreamVisibilityService
     local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
     addon.db.profile.filter = addon.db.profile.filter or {}
     addon.db.profile.filter.streamBlocked = {}
 
-    local mutedOn = policy:ToggleDynamicChannelMute("general")
-    addon.Tests.AssertEqual(mutedOn, true, "Dynamic mute toggle should enable")
-    addon.Tests.AssertEqual(policy:IsDynamicChannelMuted("general"), true, "Dynamic mute read should be true")
-    addon.Tests.AssertEqual(addon.db.profile.filter.streamBlocked.general, true, "Unified streamBlocked should store dynamic mute")
+    local blockedOn = policy:ToggleStreamBlocked("general")
+    addon.Tests.AssertEqual(blockedOn, true, "Stream blocked toggle should enable")
+    addon.Tests.AssertEqual(policy:IsStreamBlocked("general"), true, "Stream blocked read should be true")
+    addon.Tests.AssertEqual(addon.db.profile.filter.streamBlocked.general, true, "Unified streamBlocked should store blocked state")
 
-    local mutedOff = policy:ToggleDynamicChannelMute("general")
-    addon.Tests.AssertEqual(mutedOff, false, "Dynamic mute toggle should disable")
-    addon.Tests.AssertEqual(policy:IsDynamicChannelMuted("general"), false, "Dynamic mute read should be false")
+    local blockedOff = policy:ToggleStreamBlocked("general")
+    addon.Tests.AssertEqual(blockedOff, false, "Stream blocked toggle should disable")
+    addon.Tests.AssertEqual(policy:IsStreamBlocked("general"), false, "Stream blocked read should be false")
     addon.Tests.Assert(addon.db.profile.filter.streamBlocked.general == nil, "Unified streamBlocked should clear after unmute")
 
     addon.db.profile.filter = oldFilter

@@ -61,8 +61,6 @@ addon.ACTION_DEFINITIONS = {
         execute = function(streamKey)
             if addon.StreamVisibilityService and addon.StreamVisibilityService.ToggleStreamBlocked then
                 addon.StreamVisibilityService:ToggleStreamBlocked(streamKey)
-            elseif addon.StreamVisibilityService and addon.StreamVisibilityService.ToggleDynamicChannelMute then
-                addon.StreamVisibilityService:ToggleDynamicChannelMute(streamKey)
             end
             if addon.RefreshShelf then
                 addon:RefreshShelf()

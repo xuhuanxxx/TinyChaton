@@ -194,8 +194,7 @@ function addon.Shelf:GetVisibleItems()
     local buttonOrder = self:GetOrder()
     local channelPins = addon.db.profile.buttons.channelPins or {}
     local kitPins = addon.db.profile.buttons.kitPins or {}
-    -- IMPORTANT: dynamicMode applies to stream group=dynamic only.
-    -- System channels are not availability-checked and remain pin-driven.
+    -- dynamicMode only controls unjoined dynamic channels.
     local dynamicMode = addon.db.profile.buttons.dynamicMode or "hide"
 
     -- Iterate by buttonOrder
@@ -221,9 +220,13 @@ function addon.Shelf:GetVisibleItems()
                 local channelNumber = nil
                 local shouldShow = true
                 local channelState = "ready"
+                local isBlocked = false
 
-                -- Availability detection is intentionally scoped to dynamic channels only.
-                -- System channels do not have a unified joined/available API in this layer.
+                if isChannel and addon.StreamVisibilityService and addon.StreamVisibilityService.IsStreamBlocked then
+                    isBlocked = addon.StreamVisibilityService:IsStreamBlocked(item.key)
+                end
+
+                -- Availability detection remains scoped to dynamic channels only.
                 if isChannel and item.isDynamic then
                     local availability = addon.AvailabilityResolver and addon.AvailabilityResolver.Resolve
                         and addon.AvailabilityResolver.Resolve(item.key, "channel", {}) or nil
@@ -231,11 +234,16 @@ function addon.Shelf:GetVisibleItems()
                     isJoined = availability and availability.available == true or false
                     channelState = (availability and availability.state) or "unjoined"
 
+                    -- streamBlocked is authoritative for muted state after availability resolved.
+                    if isJoined and isBlocked then
+                        channelState = "muted"
+                    end
+
                     if not isJoined and dynamicMode == "hide" then
                         shouldShow = false
                     end
                 elseif isChannel then
-                    channelState = "ready"
+                    channelState = isBlocked and "muted" or "ready"
                 end
 
                 if shouldShow then

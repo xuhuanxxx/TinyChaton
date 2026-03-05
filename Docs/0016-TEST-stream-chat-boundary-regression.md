@@ -37,6 +37,7 @@ status: ACTIVE
 - capability 注册不再强绑 channel；通过 `appliesTo.streamKind/group` 约束。
 - `AvailabilityResolver.RegisterResolver(kind, group, fn)` 可扩展。
 - system + dynamic stream 都具备右键 `mute_toggle_*`（按 capability）。
+- Shelf 上 system + dynamic 被 `streamBlocked=true` 时都显示 `muted` 状态（按钮保留）。
 
 6. Snapshot/Copy 配置键
 - `chat.content.snapshotStreams` 生效。
@@ -60,3 +61,4 @@ status: ACTIVE
 1. 在 `notice` 上注入 mock strategy/formatter/highlighter，验证无需改主流程即可接入。
 2. 游戏内验证 system + dynamic 的右键屏蔽均可用。
 3. 验证 notice 默认可见，设置 `streamBlocked` 后实时/回放均隐藏。
+4. 验证 dynamic 未加入时：`dynamicMode=hide` 不显示；`mark` 显示 `unjoined`。

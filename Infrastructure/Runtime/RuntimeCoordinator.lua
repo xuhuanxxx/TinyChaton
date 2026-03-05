@@ -12,20 +12,39 @@ local WATCHED_EVENTS = {
 }
 
 function Coordinator:RefreshMode()
-    if not addon.EnvGate or not addon.SetChatRuntimeMode then
-        return
+    if not self.reconciler then
+        if not addon.TinyCoreRuntimeReconciler or type(addon.TinyCoreRuntimeReconciler.New) ~= "function" then
+            error("TinyCore Runtime Reconciler is not initialized")
+        end
+        self.reconciler = addon.TinyCoreRuntimeReconciler:New({
+            resolveMode = function()
+                if not addon.EnvGate or type(addon.EnvGate.ResolveMode) ~= "function" then
+                    return nil, nil
+                end
+                return addon.EnvGate:ResolveMode()
+            end,
+            setMode = function(mode, reason)
+                if not addon.SetChatRuntimeMode then
+                    return false
+                end
+                return addon:SetChatRuntimeMode(mode, reason)
+            end,
+            onModeChanged = function()
+                if addon.DisableFeaturesByPlane then
+                    addon:DisableFeaturesByPlane(addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA")
+                end
+                if addon.ReconcileFeatures then
+                    addon:ReconcileFeatures()
+                end
+            end,
+            onAfterReconcile = function()
+                if addon.RefreshShelf then
+                    addon:RefreshShelf()
+                end
+            end,
+        })
     end
-    local mode, reason = addon.EnvGate:ResolveMode()
-    local changed = addon:SetChatRuntimeMode(mode, reason)
-    if changed and addon.DisableFeaturesByPlane then
-        addon:DisableFeaturesByPlane(addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA")
-    end
-    if changed and addon.ReconcileFeatures then
-        addon:ReconcileFeatures()
-    end
-    if changed and addon.RefreshShelf then
-        addon:RefreshShelf()
-    end
+    self.reconciler:RefreshMode()
 end
 
 function Coordinator:OnEvent(event, ...)

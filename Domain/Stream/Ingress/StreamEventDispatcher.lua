@@ -13,14 +13,19 @@ local Dispatcher = addon.StreamEventDispatcher
 local STAGES = { "VALIDATE", "BLOCK", "TRANSFORM", "PERSIST" }
 
 local function EnsurePipeline(self)
-    if self.pipeline then
-        return self.pipeline
+    if not self.pipeline then
+        if not addon.TinyCoreStreamPipeline or type(addon.TinyCoreStreamPipeline.New) ~= "function" then
+            error("Stream pipeline core is not initialized")
+        end
+        self.pipeline = addon.TinyCoreStreamPipeline:New(STAGES)
     end
-    if not addon.TinyCoreStreamPipeline or type(addon.TinyCoreStreamPipeline.New) ~= "function" then
-        error("Stream pipeline core is not initialized")
+
+    -- Preserve legacy behavior: callers/tests may swap Dispatcher.middlewares directly.
+    if type(self.middlewares) == "table" and self.middlewares ~= self.pipeline.middlewares then
+        self.pipeline.middlewares = self.middlewares
+    else
+        self.middlewares = self.pipeline.middlewares
     end
-    self.pipeline = addon.TinyCoreStreamPipeline:New(STAGES)
-    self.middlewares = self.pipeline.middlewares
     return self.pipeline
 end
 

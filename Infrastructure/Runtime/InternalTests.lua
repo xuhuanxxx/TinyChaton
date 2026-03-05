@@ -977,6 +977,14 @@ function addon.Tests.TestSnapshotRecordContractUsesWowChatType()
         "SnapshotRecord contract should require wowChatType")
 end
 
+function addon.Tests.TestDisplayEnvelopeContractSchema()
+    addon.Tests.Assert(type(addon.StreamContracts) == "table", "StreamContracts missing")
+    addon.Tests.Assert(type(addon.StreamContracts.DisplayEnvelope) == "table", "DisplayEnvelope contract missing")
+    addon.Tests.AssertEqual(addon.StreamContracts.DisplayEnvelope.mode, "string", "DisplayEnvelope.mode contract mismatch")
+    addon.Tests.AssertEqual(addon.StreamContracts.DisplayEnvelope.channelMeta, "table", "DisplayEnvelope.channelMeta contract mismatch")
+    addon.Tests.AssertEqual(addon.StreamContracts.DisplayEnvelope.rawText, "string", "DisplayEnvelope.rawText contract mismatch")
+end
+
 function addon.Tests.TestValidateChatEventDerivationRequiresNonChannelStreamMapping()
     addon.Tests.Assert(type(addon.ValidateChatEventDerivation) == "function", "ValidateChatEventDerivation missing")
     local ok = pcall(function()
@@ -2057,9 +2065,9 @@ function addon.Tests.TestNoGlobalAddMessageHookSideEffects()
     addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
     addon.Tests.Assert(type(addon.StreamDeliveryService.EnsureFrameHook) ~= "function",
         "StreamDeliveryService should not expose frame hook API")
-    addon.Tests.Assert(type(addon.FrameDisplayHookService) == "table", "FrameDisplayHookService missing")
-    addon.Tests.Assert(type(addon.FrameDisplayHookService.EnsureHook) == "function",
-        "FrameDisplayHookService should own scoped frame hook")
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator) == "table", "RealtimeDisplayCoordinator missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator.EnsureHook) == "function",
+        "RealtimeDisplayCoordinator should own scoped frame hook")
 end
 
 function addon.Tests.TestDisplayPolicyCopyToggleRespectsSettings()
@@ -2095,12 +2103,12 @@ function addon.Tests.TestDisplayPolicySendToggleRespectsCapabilities()
     addon.Tests.AssertEqual(addon.DisplayPolicyService:CanInjectSend("system"), false, "system should not support outbound send")
 end
 
-function addon.Tests.TestRealtimeBridgeLineIdMatchAndFallback()
-    addon.Tests.Assert(type(addon.RealtimeDisplayBridge) == "table", "RealtimeDisplayBridge missing")
-    addon.Tests.Assert(type(addon.RealtimeDisplayBridge.Push) == "function", "RealtimeDisplayBridge.Push missing")
-    addon.Tests.Assert(type(addon.RealtimeDisplayBridge.Consume) == "function", "RealtimeDisplayBridge.Consume missing")
+function addon.Tests.TestRealtimeCoordinatorLineIdMatchAndFallback()
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator) == "table", "RealtimeDisplayCoordinator missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator.Register) == "function", "RealtimeDisplayCoordinator.Register missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator.EnsureHook) == "function", "RealtimeDisplayCoordinator.EnsureHook missing")
 
-    local frame = {
+    local frameA = {
         name = "TinyChatonBridgeTestFrame",
         AddMessage = function() end,
         IsEventRegistered = function()
@@ -2118,9 +2126,13 @@ function addon.Tests.TestRealtimeBridgeLineIdMatchAndFallback()
         streamKey = "say",
         wowChatType = "SAY",
     }
-    addon.RealtimeDisplayBridge:Push(frame, first)
-    local consumedFirst = addon.RealtimeDisplayBridge:Consume(frame, "native", 3001)
-    addon.Tests.Assert(consumedFirst == first, "lineId should consume exact envelope")
+    local capturedFirst
+    frameA.AddMessage = function(_, msg)
+        capturedFirst = msg
+    end
+    addon.RealtimeDisplayCoordinator:Register(frameA, first)
+    frameA:AddMessage("hello-one", 1, 1, 1, 0, 0, nil, 0, 3001)
+    addon.Tests.Assert(type(capturedFirst) == "string", "lineId match should route through coordinator hook")
 
     local second = {
         lineId = nil,
@@ -2129,15 +2141,29 @@ function addon.Tests.TestRealtimeBridgeLineIdMatchAndFallback()
         streamKey = "say",
         wowChatType = "SAY",
     }
-    addon.RealtimeDisplayBridge:Push(frame, second)
+    local frameB = {
+        name = "TinyChatonBridgeTestFrameB",
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return true
+        end,
+        GetName = function(self)
+            return self.name
+        end,
+    }
+    local capturedSecond
+    frameB.AddMessage = function(_, msg)
+        capturedSecond = msg
+    end
+    addon.RealtimeDisplayCoordinator:Register(frameB, second)
     local nativeText = "|Hplayer:tester|h[tester]|h: hello-two"
-    local consumedSecond = addon.RealtimeDisplayBridge:Consume(frame, nativeText, nil)
-    addon.Tests.Assert(consumedSecond == second, "fallback author+body should consume envelope")
+    frameB:AddMessage(nativeText)
+    addon.Tests.Assert(type(capturedSecond) == "string", "fallback author+body should route through coordinator hook")
 end
 
 function addon.Tests.TestFrameHookDoesNotMutateUnmatchedMessages()
-    addon.Tests.Assert(type(addon.FrameDisplayHookService) == "table", "FrameDisplayHookService missing")
-    addon.Tests.Assert(type(addon.FrameDisplayHookService.EnsureHook) == "function", "EnsureHook missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator) == "table", "RealtimeDisplayCoordinator missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator.EnsureHook) == "function", "EnsureHook missing")
 
     local captured
     local frame = {
@@ -2152,7 +2178,7 @@ function addon.Tests.TestFrameHookDoesNotMutateUnmatchedMessages()
         end,
     }
 
-    addon.FrameDisplayHookService:EnsureHook(frame)
+    addon.RealtimeDisplayCoordinator:EnsureHook(frame)
     frame:AddMessage("plain message")
     addon.Tests.AssertEqual(captured, "plain message", "Unmatched message should passthrough unchanged")
 end

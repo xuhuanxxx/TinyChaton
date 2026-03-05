@@ -19,12 +19,10 @@ function Service:DeliverRealtime(frame, event, streamContext, packedArgs, option
             and addon.DisplayEnvelope.FromRealtime(targetFrame, event, streamContext)
             or nil
 
-        if type(envelope) == "table" and addon.RealtimeDisplayBridge and addon.RealtimeDisplayBridge.Push then
-            addon.RealtimeDisplayBridge:Push(targetFrame, envelope)
-        end
-
-        if addon.FrameDisplayHookService and addon.FrameDisplayHookService.EnsureHook then
-            addon.FrameDisplayHookService:EnsureHook(targetFrame)
+        if type(envelope) == "table"
+            and addon.RealtimeDisplayCoordinator
+            and addon.RealtimeDisplayCoordinator.Register then
+            addon.RealtimeDisplayCoordinator:Register(targetFrame, envelope)
         end
     end
     return false, addon.Utils.UnpackArgs(packedArgs)

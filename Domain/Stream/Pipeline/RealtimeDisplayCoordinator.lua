@@ -1,0 +1,269 @@
+local addonName, addon = ...
+
+addon.RealtimeDisplayCoordinator = addon.RealtimeDisplayCoordinator or {}
+local Coordinator = addon.RealtimeDisplayCoordinator
+
+local TTL_SECONDS = 2
+local MAX_PENDING_PER_FRAME = 128
+
+Coordinator.pendingByFrame = Coordinator.pendingByFrame or {}
+Coordinator.hookedFrames = Coordinator.hookedFrames or {}
+Coordinator.stats = Coordinator.stats or {
+    pushed = 0,
+    consumedByLineId = 0,
+    consumedByFallback = 0,
+    consumedByQueue = 0,
+    missed = 0,
+    pruned = 0,
+}
+
+local function GetNow()
+    return GetTime and GetTime() or time()
+end
+
+local function GetFrameKey(frame)
+    if type(frame) ~= "table" then
+        return nil
+    end
+    if addon.FrameResolver and type(addon.FrameResolver.GetFrameName) == "function" then
+        local name = addon.FrameResolver:GetFrameName(frame)
+        if type(name) == "string" and name ~= "" then
+            return name
+        end
+    end
+    return tostring(frame)
+end
+
+local function ResolveLineId(...)
+    local packed = addon.Utils and addon.Utils.PackArgs and addon.Utils.PackArgs(...) or { ... }
+    for i = 1, packed.n or #packed do
+        local value = packed[i]
+        if type(value) == "number" then
+            return value
+        end
+    end
+    return nil
+end
+
+local function EnsureBucket(self, frame)
+    local key = GetFrameKey(frame)
+    if not key then
+        return nil
+    end
+
+    local bucket = self.pendingByFrame[key]
+    if type(bucket) ~= "table" then
+        bucket = {
+            items = {},
+            byLineId = {},
+        }
+        self.pendingByFrame[key] = bucket
+    end
+
+    return bucket
+end
+
+local function ReindexLineIds(bucket)
+    local byLineId = {}
+    for _, item in ipairs(bucket.items) do
+        if item.lineId ~= nil then
+            byLineId[tostring(item.lineId)] = item
+        end
+    end
+    bucket.byLineId = byLineId
+end
+
+local function Prune(self, bucket)
+    local now = GetNow()
+    local kept = {}
+
+    for _, item in ipairs(bucket.items) do
+        if (now - (item.createdAt or 0)) <= TTL_SECONDS then
+            kept[#kept + 1] = item
+        else
+            self.stats.pruned = self.stats.pruned + 1
+        end
+    end
+
+    local overflow = #kept - MAX_PENDING_PER_FRAME
+    if overflow > 0 then
+        for _ = 1, overflow do
+            table.remove(kept, 1)
+            self.stats.pruned = self.stats.pruned + 1
+        end
+    end
+
+    bucket.items = kept
+    ReindexLineIds(bucket)
+end
+
+local function RemoveItem(bucket, item)
+    if not bucket or not item then
+        return
+    end
+
+    for i = #bucket.items, 1, -1 do
+        if bucket.items[i] == item then
+            table.remove(bucket.items, i)
+            break
+        end
+    end
+
+    if item.lineId ~= nil then
+        bucket.byLineId[tostring(item.lineId)] = nil
+    end
+end
+
+local function TryExtractAuthorAndBody(msg)
+    if type(msg) ~= "string" or msg == "" then
+        return nil, nil
+    end
+
+    local startPos, endPos, author = msg:find("|Hplayer:([^|]+)|h%[[^%]]+%]|h")
+    if not startPos then
+        return nil, nil
+    end
+
+    local separator = addon.L and addon.L["CHAT_MESSAGE_SEPARATOR"] or ":"
+    local bodyStart = endPos + 1
+    if msg:sub(bodyStart, bodyStart + #separator - 1) == separator then
+        bodyStart = bodyStart + #separator
+    end
+    if msg:sub(bodyStart, bodyStart) == " " then
+        bodyStart = bodyStart + 1
+    end
+
+    return author, msg:sub(bodyStart)
+end
+
+local function ConsumeEnvelope(self, frame, msg, lineId)
+    local bucket = EnsureBucket(self, frame)
+    if not bucket then
+        return nil
+    end
+
+    Prune(self, bucket)
+
+    local matched = nil
+    if lineId ~= nil then
+        matched = bucket.byLineId[tostring(lineId)]
+        if matched then
+            self.stats.consumedByLineId = self.stats.consumedByLineId + 1
+        end
+    end
+
+    if not matched then
+        local author, body = TryExtractAuthorAndBody(msg)
+        if type(author) == "string" and type(body) == "string" then
+            for _, item in ipairs(bucket.items) do
+                local envelope = item.envelope
+                if type(envelope) == "table" and envelope.author == author and envelope.rawText == body then
+                    matched = item
+                    self.stats.consumedByFallback = self.stats.consumedByFallback + 1
+                    break
+                end
+            end
+        end
+    end
+
+    if not matched and #bucket.items > 0 then
+        matched = bucket.items[1]
+        self.stats.consumedByQueue = self.stats.consumedByQueue + 1
+    end
+
+    if not matched then
+        self.stats.missed = self.stats.missed + 1
+        return nil
+    end
+
+    RemoveItem(bucket, matched)
+    return matched.envelope
+end
+
+function Coordinator:EnsureHook(frame)
+    if type(frame) ~= "table" or type(frame.AddMessage) ~= "function" then
+        return false
+    end
+
+    local key = GetFrameKey(frame)
+    if self.hookedFrames[key] then
+        return true
+    end
+
+    local origAddMessage = frame.AddMessage
+    frame._TinyChatonOrigAddMessage = frame._TinyChatonOrigAddMessage or origAddMessage
+    frame._TinyChatonHookedAddMessage = true
+
+    frame.AddMessage = function(targetFrame, msg, ...)
+        if targetFrame._TinyChatonInAddMessageHook then
+            return origAddMessage(targetFrame, msg, ...)
+        end
+
+        targetFrame._TinyChatonInAddMessageHook = true
+        local finalMsg = msg
+
+        local lineId = ResolveLineId(...)
+        local envelope = ConsumeEnvelope(Coordinator, targetFrame, msg, lineId)
+        if type(envelope) == "table" and addon.DisplayAugmentPipeline and addon.DisplayAugmentPipeline.Render then
+            local rendered = addon.DisplayAugmentPipeline:Render(targetFrame, envelope)
+            if type(rendered) == "table" and type(rendered.displayText) == "string" then
+                finalMsg = rendered.displayText
+            end
+        end
+
+        local ok, result = pcall(origAddMessage, targetFrame, finalMsg, ...)
+        targetFrame._TinyChatonInAddMessageHook = nil
+        if not ok then
+            error(result)
+        end
+        return result
+    end
+
+    self.hookedFrames[key] = true
+    return true
+end
+
+function Coordinator:Register(frame, envelope)
+    if type(envelope) ~= "table" then
+        return false
+    end
+
+    if addon.ValidateContract then
+        addon:ValidateContract("DisplayEnvelope", envelope)
+    end
+
+    local bucket = EnsureBucket(self, frame)
+    if not bucket then
+        return false
+    end
+
+    Prune(self, bucket)
+
+    local item = {
+        createdAt = GetNow(),
+        lineId = envelope.lineId,
+        envelope = envelope,
+    }
+    bucket.items[#bucket.items + 1] = item
+    if envelope.lineId ~= nil then
+        bucket.byLineId[tostring(envelope.lineId)] = item
+    end
+
+    self.stats.pushed = self.stats.pushed + 1
+    Prune(self, bucket)
+
+    return self:EnsureHook(frame)
+end
+
+function Coordinator:GetStats()
+    return {
+        pushed = self.stats.pushed,
+        consumedByLineId = self.stats.consumedByLineId,
+        consumedByFallback = self.stats.consumedByFallback,
+        consumedByQueue = self.stats.consumedByQueue,
+        missed = self.stats.missed,
+        pruned = self.stats.pruned,
+    }
+end
+
+return Coordinator

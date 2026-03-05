@@ -62,6 +62,19 @@ local function InteractionTimestampTransformer(frame, text, r, g, b, extraArgs)
     if not addon.db or not addon.db.enabled then return text, r, g, b, extraArgs end
     if type(text) ~= "string" or text == "" then return text, r, g, b, extraArgs end
 
+    local interaction = addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.interaction
+    if interaction and interaction.clickToCopy == false then
+        return text, r, g, b, extraArgs
+    end
+
+    local streamKey = type(extraArgs) == "table" and extraArgs.streamKey or nil
+    if type(streamKey) == "string" and streamKey ~= "" and addon.ResolveStreamToggle then
+        local copyStreams = interaction and interaction.copyStreams or nil
+        if addon:ResolveStreamToggle(streamKey, copyStreams, "copyDefault", true) == false then
+            return text, r, g, b, extraArgs
+        end
+    end
+
     -- Skip if already processed
     if text:find("|Htinychat:copy:") then return text, r, g, b, extraArgs end
 

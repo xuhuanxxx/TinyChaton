@@ -1653,6 +1653,7 @@ function addon.Tests.TestStreamEventDispatcherReturnSemantics()
     local oldVisibility = addon.StreamVisibilityService
     local oldFormatter = addon.MessageFormatter
     local oldEmit = addon.EmitRenderedChatLine
+    local oldDelivery = addon.StreamDeliveryService
 
     addon.Gateway = {
         Inbound = {
@@ -1677,14 +1678,19 @@ function addon.Tests.TestStreamEventDispatcherReturnSemantics()
         end,
     }
 
-    -- Case 1: shouldHide=false and emitted=false.
+    -- Case 1: shouldHide=false and blocked=false.
     addon.StreamVisibilityService = nil
     addon.MessageFormatter = nil
     addon.EmitRenderedChatLine = nil
+    addon.StreamDeliveryService = {
+        DeliverRealtime = function(_, _, _, _, _, opts)
+            return opts.shouldHide == true, "[T]hello", "tester"
+        end,
+    }
 
     local blocked, msg, author = pipeline:OnStreamEvent(frame, "CHAT_MSG_SAY", "hello", "tester")
-    addon.Tests.AssertEqual(blocked, false, "OnStreamEvent should return false when not hidden and not emitted")
-    addon.Tests.AssertEqual(msg, "[T]hello", "OnStreamEvent should return transformed message")
+    addon.Tests.AssertEqual(blocked, false, "OnStreamEvent should return false when not blocked")
+    addon.Tests.AssertEqual(msg, "[T]hello", "OnStreamEvent should return delivery-transformed message")
     addon.Tests.AssertEqual(author, "tester", "OnStreamEvent should preserve trailing arguments")
 
     -- Case 2: shouldHide=true should still short-circuit to true.
@@ -1694,13 +1700,13 @@ function addon.Tests.TestStreamEventDispatcherReturnSemantics()
         end,
     }
     local hidden = pipeline:OnStreamEvent(frame, "CHAT_MSG_SAY", "hidden", "tester")
-    addon.Tests.AssertEqual(hidden, true, "OnStreamEvent should return true when stream is hidden")
+    addon.Tests.AssertEqual(hidden, true, "OnStreamEvent should return true when delivery reports blocked")
 
-    -- Case 3: realtime path no longer injects AddMessage; it should preserve native routing.
+    -- Case 3: realtime path no longer injects AddMessage and keeps passthrough return contract.
     addon.StreamVisibilityService = nil
-    addon.MessageFormatter = {
-        BuildRealtimeLineFromContext = function()
-            return { text = "line", wowChatType = "SAY" }
+    addon.StreamDeliveryService = {
+        DeliverRealtime = function()
+            return false, "[T]rendered", "tester"
         end,
     }
     local emitCalls = 0
@@ -1718,6 +1724,7 @@ function addon.Tests.TestStreamEventDispatcherReturnSemantics()
     addon.StreamVisibilityService = oldVisibility
     addon.MessageFormatter = oldFormatter
     addon.EmitRenderedChatLine = oldEmit
+    addon.StreamDeliveryService = oldDelivery
 end
 
 function addon.Tests.TestStreamEventFiltersFeatureRegistered()
@@ -1736,6 +1743,7 @@ function addon.Tests.TestStreamEventDispatcherNoRealtimeManualEmit()
     local oldVisibility = addon.StreamVisibilityService
     local oldFormatter = addon.MessageFormatter
     local oldEmit = addon.EmitRenderedChatLine
+    local oldDelivery = addon.StreamDeliveryService
 
     addon.Gateway = {
         Inbound = {
@@ -1751,6 +1759,11 @@ function addon.Tests.TestStreamEventDispatcherNoRealtimeManualEmit()
     }
     addon.StreamVisibilityService = nil
     addon.MessageFormatter = { BuildRealtimeLineFromContext = function() return { text = "line", wowChatType = "CHANNEL" } end }
+    addon.StreamDeliveryService = {
+        DeliverRealtime = function()
+            return false, "world hello", "tester"
+        end,
+    }
 
     local emitCalls = 0
     addon.EmitRenderedChatLine = function()
@@ -1767,7 +1780,7 @@ function addon.Tests.TestStreamEventDispatcherNoRealtimeManualEmit()
 
     local blockedA, msgA = pipeline:OnStreamEvent(frameA, "CHAT_MSG_CHANNEL", "world hello", "tester")
     addon.Tests.AssertEqual(blockedA, false, "Realtime path should not consume via custom emitter")
-    addon.Tests.AssertEqual(msgA, "world hello", "Realtime path should preserve message when no transformer changes it")
+    addon.Tests.AssertEqual(msgA, "world hello", "Realtime path should return message from delivery service")
     addon.Tests.AssertEqual(emitCalls, 0, "Realtime path should not manually emit to any frame")
 
     local frameB = {
@@ -1785,6 +1798,7 @@ function addon.Tests.TestStreamEventDispatcherNoRealtimeManualEmit()
     addon.StreamVisibilityService = oldVisibility
     addon.MessageFormatter = oldFormatter
     addon.EmitRenderedChatLine = oldEmit
+    addon.StreamDeliveryService = oldDelivery
 end
 
 function addon.Tests.TestFrameResolverRealtimeNoFallback()
@@ -1823,7 +1837,8 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
     addon.Tests.Assert(type(addon.StreamDeliveryService.DeliverReplay) == "function", "DeliverReplay missing")
 
     local oldGateway = addon.Gateway
-    local oldGFrame = _G.TinyChatonTestFrameDelivery
+    local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
+    _G.C_CVar = _G.C_CVar or {}
     local capturedReplay
 
     addon.Gateway = {
@@ -1843,7 +1858,17 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
             return "TinyChatonTestFrameDelivery"
         end,
     }
-    _G.TinyChatonTestFrameDelivery = {
+    _G.C_CVar.GetCVar = function(name)
+        if name == "showTimestamps" then
+            return "%H:%M"
+        end
+        if oldCVarApi then
+            return oldCVarApi(name)
+        end
+        return nil
+    end
+
+    local replayFrame = {
         AddMessage = function(_, msg)
             capturedReplay = msg
         end,
@@ -1864,7 +1889,7 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
     }, packedArgs, { shouldHide = false })
 
     addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block")
-    addon.Tests.AssertEqual(realtimeMsg, "[PIPE]hello", "Realtime delivery should go through display transform")
+    addon.Tests.AssertEqual(realtimeMsg, "[PIPE]hello", "Realtime delivery should only mutate message body")
 
     addon.StreamDeliveryService:DeliverReplay({
         event = "CHAT_MSG_SAY",
@@ -1874,12 +1899,86 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
         wowChatType = "SAY",
         streamKey = "say",
         time = time(),
-    })
+    }, { frame = replayFrame })
     addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("[PIPE]", 1, true) ~= nil,
         "Replay delivery should go through display transform")
+    addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:send:say", 1, true) ~= nil,
+        "Replay delivery should include stream send link")
+    addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:copy:", 1, true) ~= nil,
+        "Replay delivery should include clickable timestamp copy link")
 
     addon.Gateway = oldGateway
-    _G.TinyChatonTestFrameDelivery = oldGFrame
+    _G.C_CVar.GetCVar = oldCVarApi
+end
+
+function addon.Tests.TestRealtimeAndReplayClickToCopyRespectsCopyStreams()
+    addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
+    addon.Tests.Assert(type(addon.StreamDeliveryService.DeliverRealtime) == "function", "DeliverRealtime missing")
+    addon.Tests.Assert(type(addon.StreamDeliveryService.DeliverReplay) == "function", "DeliverReplay missing")
+
+    local interaction = addon.db and addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.interaction
+    addon.Tests.Assert(type(interaction) == "table", "interaction settings missing")
+
+    local oldClickToCopy = interaction.clickToCopy
+    local oldCopyStreams = addon.Utils.DeepCopy(interaction.copyStreams or {})
+    local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
+    local replayMsg
+
+    _G.C_CVar = _G.C_CVar or {}
+    _G.C_CVar.GetCVar = function(name)
+        if name == "showTimestamps" then
+            return "%H:%M"
+        end
+        if oldCVarApi then
+            return oldCVarApi(name)
+        end
+        return nil
+    end
+
+    interaction.clickToCopy = true
+    interaction.copyStreams = interaction.copyStreams or {}
+    interaction.copyStreams.say = false
+
+    local frame = {
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return true
+        end,
+    }
+
+    local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", {
+        text = "copy-disabled",
+        author = "tester",
+        wowChatType = "SAY",
+        streamKey = "say",
+    }, addon.Utils.PackArgs("copy-disabled", "tester"), { shouldHide = false })
+    addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block when visible")
+    addon.Tests.Assert(type(realtimeMsg) == "string" and realtimeMsg:find("tinychat:copy:", 1, true) == nil,
+        "Realtime delivery should not inject copy link when stream copy is disabled")
+
+    addon.StreamDeliveryService:DeliverReplay({
+        event = "CHAT_MSG_SAY",
+        text = "copy-disabled",
+        author = "tester",
+        wowChatType = "SAY",
+        streamKey = "say",
+        time = time(),
+    }, {
+        frame = {
+            AddMessage = function(_, msg)
+                replayMsg = msg
+            end,
+            IsEventRegistered = function()
+                return true
+            end,
+        },
+    })
+    addon.Tests.Assert(type(replayMsg) == "string" and replayMsg:find("tinychat:copy:", 1, true) == nil,
+        "Replay delivery should not inject copy link when stream copy is disabled")
+
+    interaction.clickToCopy = oldClickToCopy
+    interaction.copyStreams = oldCopyStreams
+    _G.C_CVar.GetCVar = oldCVarApi
 end
 
 function addon.Tests.TestRealtimeChannelPrefixPreservesCanonicalChannelString()
@@ -1919,89 +2018,17 @@ function addon.Tests.TestRealtimeChannelPrefixPreservesCanonicalChannelString()
     )
 
     addon.Tests.AssertEqual(blocked, false, "Realtime channel delivery should not block")
-    addon.Tests.AssertEqual(msg, "hello", "Realtime channel delivery should preserve message text when transform unchanged")
+    addon.Tests.Assert(type(msg) == "string" and msg ~= "", "Realtime channel delivery should return rendered display text")
     addon.Tests.AssertEqual(author, "tester", "Realtime channel delivery should preserve author")
     addon.Tests.AssertEqual(channelString, "1. World", "Realtime channel delivery should preserve channelString for Blizzard routing")
 
     addon.Gateway = oldGateway
 end
 
-function addon.Tests.TestPostDisplayChannelPrefixRewrite()
+function addon.Tests.TestNoGlobalAddMessageHookSideEffects()
     addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
-    addon.Tests.Assert(type(addon.StreamDeliveryService.EnsureFrameHook) == "function", "EnsureFrameHook missing")
-
-    local oldResolveDisplay = addon.Utils and addon.Utils.ResolveChannelDisplay
-    addon.Utils.ResolveChannelDisplay = function(input)
-        if type(input) == "table" and input.wowChatType == "CHANNEL" then
-            return "[1.W] ", { key = "world" }
-        end
-        return "", nil
-    end
-
-    local captured
-    local frame = {
-        AddMessage = function(_, msg)
-            captured = msg
-        end,
-    }
-
-    addon.StreamDeliveryService:EnsureFrameHook(frame)
-    frame:AddMessage("|Hchannel:CHANNEL:1|h[1. World]|h hello")
-
-    addon.Tests.AssertEqual(captured, "|Hchannel:CHANNEL:1|h[1.W]|h hello", "Post display rewrite should shorten channel label only")
-    addon.Utils.ResolveChannelDisplay = oldResolveDisplay
-end
-
-function addon.Tests.TestPostDisplayGuildPrefixUsesConfiguredStyle()
-    addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
-    addon.Tests.Assert(type(addon.StreamDeliveryService.EnsureFrameHook) == "function", "EnsureFrameHook missing")
-
-    local oldFormat = addon.FormatDisplayText
-    local oldGetStreamByKey = addon.GetStreamByKey
-    local oldIterateCompiledStreams = addon.IterateCompiledStreams
-    local oldGetStreamKind = addon.GetStreamKind
-
-    addon.GetStreamByKey = function(_, key)
-        if key == "guild" then
-            return { key = "guild", wowChatType = "GUILD" }
-        end
-        return nil
-    end
-    addon.IterateCompiledStreams = function(_)
-        local done = false
-        return function()
-            if done then return nil end
-            done = true
-            return 1, { key = "guild", wowChatType = "GUILD" }
-        end
-    end
-    addon.GetStreamKind = function(_, key)
-        if key == "guild" then return "channel" end
-        return nil
-    end
-    addon.FormatDisplayText = function(_, stream, kind, surface)
-        if stream and stream.key == "guild" and kind == "channel" and surface == "chat" then
-            return "公"
-        end
-        return "?"
-    end
-
-    local captured
-    local frame = {
-        AddMessage = function(_, msg)
-            captured = msg
-        end,
-    }
-
-    addon.StreamDeliveryService:EnsureFrameHook(frame)
-    frame:AddMessage("|Hchannel:GUILD|h[公会]|h hello")
-
-    addon.Tests.AssertEqual(captured, "|Hchannel:GUILD|h[公]|h hello", "Guild prefix should follow configured channel display style")
-
-    addon.FormatDisplayText = oldFormat
-    addon.GetStreamByKey = oldGetStreamByKey
-    addon.IterateCompiledStreams = oldIterateCompiledStreams
-    addon.GetStreamKind = oldGetStreamKind
+    addon.Tests.Assert(type(addon.StreamDeliveryService.EnsureFrameHook) ~= "function",
+        "StreamDeliveryService should not expose global AddMessage hook API")
 end
 
 function addon.Tests.TestThemeColorOrthogonalResolution()

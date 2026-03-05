@@ -3,7 +3,7 @@ local addonName, addon = ...
 addon.StreamRenderService = addon.StreamRenderService or {}
 local Service = addon.StreamRenderService
 
-local function BuildReplayLine(msg)
+local function BuildLine(msg)
     local streamMeta = nil
     if msg.wowChatType == "CHANNEL" then
         local normalized = msg.channelBaseName
@@ -57,6 +57,7 @@ function Service:RenderRealtime(frame, normalized)
         g = nil,
         b = nil,
         extraArgs = extraArgs,
+        line = nil,
     }, nil
 end
 
@@ -65,7 +66,7 @@ function Service:RenderReplay(frame, normalized)
         return nil, "invalid_normalized"
     end
 
-    local line = BuildReplayLine(normalized)
+    local line = BuildLine(normalized)
     local displayText, r, g, b, extraArgs = addon:RenderChatLine(line, frame, { preferTimestampConfig = true })
     if type(displayText) ~= "string" then
         return nil, "render_failed"

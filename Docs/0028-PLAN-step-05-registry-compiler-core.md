@@ -4,7 +4,7 @@ priority: P2
 created: 2026-03-05
 updated: 2026-03-05
 relates: [#0023, #0012]
-status: ACTIVE
+status: COMPLETED
 ---
 
 # STEP 05：registry-compiler-core 抽离（不做向后兼容）

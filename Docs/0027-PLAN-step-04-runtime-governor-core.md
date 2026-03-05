@@ -4,7 +4,7 @@ priority: P2
 created: 2026-03-05
 updated: 2026-03-05
 relates: [#0023]
-status: ACTIVE
+status: COMPLETED
 ---
 
 # STEP 04：runtime-governor-core 抽离（不做向后兼容）

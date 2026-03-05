@@ -30,7 +30,7 @@ status: ACTIVE
 
 3. Stream Domain（通用）
 - Registry: `StreamRegistry`
-- Actions: `StreamActionRegistry`
+- Actions: `StreamActionRegistry`（委托 TinyCore ActionPasses compiler）
 - Context: `StreamEventContext`
 - Ingress: `StreamEventDispatcher`
 - Rules: `StreamRuleEngine`（委托 TinyCore RuleEngine）
@@ -63,6 +63,7 @@ status: ACTIVE
 1. `STEP 01-06` 已全部完成并合并（见 `#0024-#0029`）。
 2. 分支与 Libs 落位基线已执行（见 `#0030`）。
 3. 当前结构为 `TinyCore 内核 + Domain/Infrastructure 适配` 的稳定态。
+4. RegistryCompiler 已覆盖 stream + action 两类声明式编译路径。
 
 ## 关键验收
 

@@ -50,6 +50,12 @@ status: RESOLVED
 2. `Libs/TinyCore/RegistryCompiler/Passes/*`
 3. `Libs/TinyCore/RegistryCompiler/Artifact.lua`
 
+## 落地结果（补充）
+
+1. stream 编译 pass 已落地：`Passes/StreamPasses.lua`。
+2. action 编译 pass 已落地：`Passes/ActionPasses.lua`。
+3. `Domain/Stream/Actions/StreamActionRegistry.lua` 已切换为 TinyCore compiler 薄适配。
+
 ## 执行步骤
 
 1. 抽离 pass 接口与执行器。

@@ -2207,6 +2207,74 @@ function addon.Tests.TestDisplayAugmentHighlightUsesEnvelopeStreamKey()
     _G.C_CVar.GetCVar = oldCVarApi
 end
 
+function addon.Tests.TestDisplayAugmentPipelineStageRegistryExtensionPoint()
+    addon.Tests.Assert(type(addon.DisplayAugmentPipeline) == "table", "DisplayAugmentPipeline missing")
+    addon.Tests.Assert(type(addon.DisplayAugmentPipeline.ClearStages) == "function", "ClearStages missing")
+    addon.Tests.Assert(type(addon.DisplayAugmentPipeline.RegisterStage) == "function", "RegisterStage missing")
+    addon.Tests.Assert(type(addon.DisplayAugmentPipeline.ListStages) == "function", "ListStages missing")
+
+    local pipeline = addon.DisplayAugmentPipeline
+    pipeline:ClearStages()
+    pipeline:EnsureDefaultStages()
+
+    local stages = pipeline:ListStages()
+    local hasPatchPrefix = false
+    local hasHighlight = false
+    for _, stage in ipairs(stages) do
+        if stage.name == "patch_prefix" and stage.phase == "pre_render" then
+            hasPatchPrefix = true
+        end
+        if stage.name == "apply_highlight" and stage.phase == "post_render" then
+            hasHighlight = true
+        end
+    end
+    addon.Tests.AssertEqual(hasPatchPrefix, true, "Default pre_render patch_prefix stage should exist")
+    addon.Tests.AssertEqual(hasHighlight, true, "Default post_render apply_highlight stage should exist")
+
+    local ok = pipeline:RegisterStage("test_stage_suffix", 999, "post_render", function(_, ctx)
+        if type(ctx.displayText) == "string" then
+            ctx.displayText = ctx.displayText .. "[S]"
+        end
+    end)
+    addon.Tests.AssertEqual(ok, true, "RegisterStage should succeed for valid stage")
+
+    local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
+    addon.db.profile.filter = addon.db.profile.filter or {}
+    addon.db.profile.filter.highlight = { enabled = false, names = {}, keywords = {}, color = "FF00FF00" }
+
+    local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
+    _G.C_CVar = _G.C_CVar or {}
+    _G.C_CVar.GetCVar = function(name)
+        if name == "showTimestamps" then
+            return "none"
+        end
+        if oldCVarApi then
+            return oldCVarApi(name)
+        end
+        return nil
+    end
+
+    local rendered = pipeline:Render({
+        AddMessage = function() end,
+        IsEventRegistered = function() return true end,
+    }, {
+        mode = "replay",
+        streamKey = "say",
+        streamKind = "channel",
+        wowChatType = "SAY",
+        author = "tester",
+        rawText = "hello",
+        timestamp = time(),
+    })
+    addon.Tests.Assert(type(rendered) == "table" and type(rendered.displayText) == "string", "Render should return string display text")
+    addon.Tests.Assert(rendered.displayText:sub(-3) == "[S]", "Custom stage should mutate post_render text")
+
+    pipeline:ClearStages()
+    pipeline:EnsureDefaultStages()
+    addon.db.profile.filter = oldFilter
+    _G.C_CVar.GetCVar = oldCVarApi
+end
+
 function addon.Tests.TestThemeColorOrthogonalResolution()
     addon.Tests.Assert(type(addon.ShelfVisualSpecResolver) == "table", "ShelfVisualSpecResolver missing")
 

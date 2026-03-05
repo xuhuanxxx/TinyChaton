@@ -147,14 +147,19 @@ function Formatter.GetStreamTag(line, options)
         normalizedName = addon.Utils.NormalizeChannelBaseName(streamMeta.channelBaseName)
     end
 
-    local displayText = addon.Utils.ResolveChannelDisplay({
-        wowChatType = line.wowChatType,
-        streamMeta = {
-            channelId = streamMeta and streamMeta.channelId or nil,
-            channelBaseName = normalizedName,
-        },
-        streamKey = streamKey,
-    })
+    local displayText = nil
+    if type(options) == "table" and type(options.channelPrefixHint) == "string" and options.channelPrefixHint ~= "" then
+        displayText = "[" .. options.channelPrefixHint .. "] "
+    else
+        displayText = addon.Utils.ResolveChannelDisplay({
+            wowChatType = line.wowChatType,
+            streamMeta = {
+                channelId = streamMeta and streamMeta.channelId or nil,
+                channelBaseName = normalizedName,
+            },
+            streamKey = streamKey,
+        })
+    end
 
     local streamTag = displayText
     local chatTypeForColor = ResolveColorChatType(line)

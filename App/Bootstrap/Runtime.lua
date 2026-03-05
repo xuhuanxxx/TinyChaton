@@ -51,8 +51,6 @@ function addon:RegisterChatFrameTransformer(name, fn)
 end
 
 addon.TRANSFORMER_ORDER = addon.TRANSFORMER_ORDER or {
-    "display_strip_prefix",
-    "clean_message",
     "visual_emotes",
 }
 

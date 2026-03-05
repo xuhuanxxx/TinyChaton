@@ -1,0 +1,343 @@
+local addonName, addon = ...
+
+addon.TinyCoreRegistryStreamPasses = addon.TinyCoreRegistryStreamPasses or {}
+local Passes = addon.TinyCoreRegistryStreamPasses
+
+local KIND_SET = {
+    channel = true,
+    notice = true,
+}
+
+local GROUP_SET = {
+    system = true,
+    dynamic = true,
+    private = true,
+    alert = true,
+    log = true,
+}
+
+local CAPABILITY_KEYS = {
+    "inbound",
+    "outbound",
+    "snapshotDefault",
+    "copyDefault",
+    "supportsMute",
+    "supportsAutoJoin",
+    "pinnable",
+}
+
+local CATEGORY_ORDER = { "CHANNEL", "NOTICE" }
+local GROUP_ORDER = {
+    CHANNEL = { "SYSTEM", "DYNAMIC", "PRIVATE" },
+    NOTICE = { "SYSTEM", "ALERT", "LOG" },
+}
+
+local function AssertNonEmptyString(value, label)
+    if type(value) ~= "string" or value == "" then
+        error(string.format("%s must be a non-empty string", tostring(label)))
+    end
+end
+
+local function CloneValue(value, seen)
+    if type(value) ~= "table" then
+        return value
+    end
+    seen = seen or {}
+    if seen[value] then
+        return seen[value]
+    end
+    local out = {}
+    seen[value] = out
+    for k, v in pairs(value) do
+        out[CloneValue(k, seen)] = CloneValue(v, seen)
+    end
+    return out
+end
+
+local function CollectSubKeys(category, ordered)
+    local seen = {}
+    local out = {}
+    for _, key in ipairs(ordered or {}) do
+        if type(category[key]) == "table" then
+            out[#out + 1] = key
+            seen[key] = true
+        end
+    end
+
+    local extras = {}
+    for key, value in pairs(category) do
+        if type(value) == "table" and not seen[key] then
+            extras[#extras + 1] = key
+        end
+    end
+    table.sort(extras)
+    for _, key in ipairs(extras) do
+        out[#out + 1] = key
+    end
+
+    return out
+end
+
+function Passes.CollectRaw(registry)
+    local orderedRaw = {}
+
+    for _, categoryKey in ipairs(CATEGORY_ORDER) do
+        local category = registry[categoryKey]
+        if type(category) == "table" then
+            local orderedSubKeys = CollectSubKeys(category, GROUP_ORDER[categoryKey])
+            for _, subKey in ipairs(orderedSubKeys) do
+                local streams = category[subKey]
+                if type(streams) == "table" then
+                    for index, stream in ipairs(streams) do
+                        if type(stream) == "table" then
+                            orderedRaw[#orderedRaw + 1] = {
+                                raw = stream,
+                                categoryKey = categoryKey,
+                                subKey = subKey,
+                                sourceLabel = string.format("STREAM_REGISTRY.%s.%s[%d]", tostring(categoryKey), tostring(subKey), index),
+                            }
+                        else
+                            error(string.format("STREAM_REGISTRY.%s.%s[%d] must be table", tostring(categoryKey), tostring(subKey), index))
+                        end
+                    end
+                else
+                    error(string.format("STREAM_REGISTRY.%s.%s must be table", tostring(categoryKey), tostring(subKey)))
+                end
+            end
+        end
+    end
+
+    return orderedRaw
+end
+
+function Passes.Schema(orderedRaw)
+    local seenKeys = {}
+
+    for _, row in ipairs(orderedRaw) do
+        local stream = row.raw
+        local source = row.sourceLabel
+
+        AssertNonEmptyString(stream.key, source .. ".key")
+        if seenKeys[stream.key] then
+            error(string.format("Duplicate stream key '%s': %s vs %s", stream.key, seenKeys[stream.key], source))
+        end
+        seenKeys[stream.key] = source
+
+        AssertNonEmptyString(stream.kind, source .. ".kind")
+        local kind = string.lower(stream.kind)
+        if not KIND_SET[kind] then
+            error(source .. ".kind must be 'channel'|'notice'")
+        end
+
+        AssertNonEmptyString(stream.group, source .. ".group")
+        local group = string.lower(stream.group)
+        if not GROUP_SET[group] then
+            error(source .. ".group is invalid")
+        end
+
+        AssertNonEmptyString(stream.wowChatType, source .. ".wowChatType")
+        if type(stream.priority) ~= "number" then
+            error(source .. ".priority must be number")
+        end
+        if type(stream.identity) ~= "table" then
+            error(source .. ".identity must be table")
+        end
+
+        if type(stream.events) ~= "table" then
+            error(source .. ".events must be table")
+        end
+        for eventIndex, eventName in ipairs(stream.events) do
+            AssertNonEmptyString(eventName, source .. ".events[" .. tostring(eventIndex) .. "]")
+        end
+
+        if type(stream.capabilities) ~= "table" then
+            error(source .. ".capabilities must be table")
+        end
+        for _, key in ipairs(CAPABILITY_KEYS) do
+            if type(stream.capabilities[key]) ~= "boolean" then
+                error(source .. ".capabilities." .. tostring(key) .. " must be boolean")
+            end
+        end
+
+        if kind == "notice" then
+            if stream.capabilities.outbound ~= false then
+                error(source .. ".capabilities.outbound must be false for notice")
+            end
+            if stream.capabilities.supportsAutoJoin ~= false then
+                error(source .. ".capabilities.supportsAutoJoin must be false for notice")
+            end
+        end
+
+        if stream.capabilities.outbound ~= true and stream.defaultBindings ~= nil then
+            error(source .. ".defaultBindings is not allowed when capabilities.outbound=false")
+        end
+
+        if stream.defaultAutoJoin ~= nil then
+            if type(stream.defaultAutoJoin) ~= "boolean" then
+                error(source .. ".defaultAutoJoin must be boolean when provided")
+            end
+            if stream.capabilities.supportsAutoJoin ~= true then
+                error(source .. ".defaultAutoJoin requires capabilities.supportsAutoJoin=true")
+            end
+        end
+    end
+
+    return orderedRaw
+end
+
+local function NormalizeStream(raw)
+    local normalized = CloneValue(raw)
+    local kind = string.lower(raw.kind)
+    local group = string.lower(raw.group)
+    local capabilities = {}
+    for _, key in ipairs(CAPABILITY_KEYS) do
+        capabilities[key] = raw.capabilities[key] == true
+    end
+
+    normalized.kind = kind
+    normalized.group = group
+    normalized.capabilities = capabilities
+
+    normalized.defaultPinned = capabilities.pinnable == true
+    normalized.defaultSnapshotted = capabilities.snapshotDefault == true
+    normalized.defaultCopyable = capabilities.copyDefault == true
+    normalized.isInboundOnly = capabilities.outbound ~= true
+    if capabilities.supportsAutoJoin == true then
+        normalized.defaultAutoJoin = raw.defaultAutoJoin == true
+    else
+        normalized.defaultAutoJoin = nil
+    end
+
+    if capabilities.outbound ~= true then
+        normalized.defaultBindings = nil
+    end
+
+    return normalized
+end
+
+function Passes.Normalize(orderedRaw)
+    local normalizedRows = {}
+    for _, row in ipairs(orderedRaw) do
+        normalizedRows[#normalizedRows + 1] = {
+            raw = row.raw,
+            stream = NormalizeStream(row.raw),
+            categoryKey = row.categoryKey,
+            subKey = row.subKey,
+            sourceLabel = row.sourceLabel,
+        }
+    end
+    return normalizedRows
+end
+
+function Passes.Index(normalizedRows)
+    local compiled = {
+        byKey = {},
+        rawByKey = {},
+        kindByKey = {},
+        groupByKey = {},
+        capabilitiesByKey = {},
+        streamKeysByGroup = {},
+        outboundStreamKeys = {},
+        dynamicStreamKeys = {},
+        orderedStreamKeys = {},
+    }
+
+    for _, row in ipairs(normalizedRows) do
+        local stream = row.stream
+        local key = stream.key
+
+        compiled.byKey[key] = stream
+        compiled.rawByKey[key] = row.raw
+        compiled.kindByKey[key] = stream.kind
+        compiled.groupByKey[key] = stream.group
+        compiled.capabilitiesByKey[key] = stream.capabilities
+        compiled.orderedStreamKeys[#compiled.orderedStreamKeys + 1] = key
+
+        if not compiled.streamKeysByGroup[stream.group] then
+            compiled.streamKeysByGroup[stream.group] = {}
+        end
+        compiled.streamKeysByGroup[stream.group][#compiled.streamKeysByGroup[stream.group] + 1] = key
+
+        if stream.capabilities.outbound == true then
+            compiled.outboundStreamKeys[#compiled.outboundStreamKeys + 1] = key
+        end
+        if stream.kind == "channel" and stream.group == "dynamic" then
+            compiled.dynamicStreamKeys[#compiled.dynamicStreamKeys + 1] = key
+        end
+    end
+
+    return compiled
+end
+
+function Passes.Events(compiled)
+    local eventToWowChatType = {}
+    local eventToStreamKey = {}
+
+    for _, streamKey in ipairs(compiled.orderedStreamKeys) do
+        local stream = compiled.byKey[streamKey]
+        for _, eventName in ipairs(stream.events or {}) do
+            local mappedWowChatType = eventToWowChatType[eventName]
+            if mappedWowChatType and mappedWowChatType ~= stream.wowChatType then
+                error(string.format(
+                    "Chat event mapping conflict: %s => %s vs %s (stream=%s)",
+                    tostring(eventName),
+                    tostring(mappedWowChatType),
+                    tostring(stream.wowChatType),
+                    tostring(streamKey)
+                ))
+            end
+            eventToWowChatType[eventName] = stream.wowChatType
+
+            if eventName ~= "CHAT_MSG_CHANNEL" then
+                local mappedStream = eventToStreamKey[eventName]
+                if mappedStream and mappedStream ~= streamKey then
+                    error(string.format(
+                        "Chat event stream mapping conflict: %s => %s vs %s",
+                        tostring(eventName),
+                        tostring(mappedStream),
+                        tostring(streamKey)
+                    ))
+                end
+                eventToStreamKey[eventName] = streamKey
+            end
+        end
+    end
+
+    local chatEvents = {}
+    for eventName in pairs(eventToWowChatType) do
+        chatEvents[#chatEvents + 1] = eventName
+        if eventName ~= "CHAT_MSG_CHANNEL" and string.match(eventName, "^CHAT_MSG_") then
+            local streamKey = eventToStreamKey[eventName]
+            if type(streamKey) ~= "string" or streamKey == "" then
+                error("Missing stream mapping for non-channel event: " .. tostring(eventName))
+            end
+        end
+    end
+
+    table.sort(chatEvents)
+
+    if eventToWowChatType["CHAT_MSG_CHANNEL"] ~= "CHANNEL" then
+        error("CHAT_MSG_CHANNEL must map to wowChatType CHANNEL")
+    end
+
+    compiled.eventToWowChatType = eventToWowChatType
+    compiled.eventToStreamKey = eventToStreamKey
+    compiled.chatEvents = chatEvents
+
+    return compiled
+end
+
+function Passes.CreatePipeline()
+    return {
+        function(registry)
+            if type(registry) ~= "table" then
+                error("STREAM_REGISTRY is not initialized")
+            end
+            return Passes.CollectRaw(registry)
+        end,
+        Passes.Schema,
+        Passes.Normalize,
+        Passes.Index,
+        Passes.Events,
+    }
+end

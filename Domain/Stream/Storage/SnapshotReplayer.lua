@@ -329,10 +329,8 @@ function addon:InitSnapshotManager()
                 return
             end
 
-            local frame = line.frameName and _G[line.frameName] or ChatFrame1
-            if not frame or not frame.AddMessage then
-                return
-            end
+            local frame = addon.FrameResolver:ResolveReplay(line)
+            if not frame then return end
 
             local visible = true
             if addon.StreamVisibilityService and addon.StreamVisibilityService.IsVisibleSnapshotLine then
@@ -345,7 +343,7 @@ function addon:InitSnapshotManager()
                 return
             end
 
-            addon:EmitRenderedChatLine(line, frame, { preferTimestampConfig = true })
+            addon.StreamDeliveryService:DeliverReplay(line, { frame = frame })
         end
 
         for _, state in ipairs(states) do

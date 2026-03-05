@@ -205,53 +205,17 @@ function Dispatcher:OnStreamEvent(frame, event, ...)
     -- Logging stage always runs to keep snapshot/data ingestion complete.
     self:RunMiddlewares("PERSIST", streamContext)
 
-    local emitted = false
-    if not shouldHide and addon.MessageFormatter and addon.MessageFormatter.BuildRealtimeLineFromContext and addon.EmitRenderedChatLine then
-        local line, lineErr = addon.MessageFormatter.BuildRealtimeLineFromContext(streamContext)
-        if type(line) ~= "table" then
-            if addon.WarnOnce then
-                addon:WarnOnce(
-                    "event_router:line_build:" .. tostring(event),
-                    "Realtime line build failed for %s: %s",
-                    tostring(event),
-                    tostring(lineErr)
-                )
-            elseif addon.Warn then
-                addon:Warn("Realtime line build failed for %s: %s", tostring(event), tostring(lineErr))
-            end
-        else
-            emitted = addon:EmitRenderedChatLine(line, frame, { preferTimestampConfig = false }) == true
-        end
-    end
-
-    if not shouldHide and not emitted
-        and packedArgs
-        and type(packedArgs[1]) == "string"
-        and addon.Gateway
-        and addon.Gateway.Display
-        and addon.Gateway.Display.Transform then
-        local msg = packedArgs[1]
-        local transformedMsg = msg
-        local transformExtraArgs = addon.Utils.PackArgs()
-        if type(streamContext.streamKey) == "string" and streamContext.streamKey ~= "" then
-            transformExtraArgs.streamKey = streamContext.streamKey
-        end
-        local ok, nextMsg = pcall(function()
-            local outMsg = addon.Gateway.Display:Transform(frame, msg, nil, nil, nil, transformExtraArgs)
-            return outMsg
-        end)
-        if ok and type(nextMsg) == "string" then
-            transformedMsg = nextMsg
-        end
-        packedArgs[1] = transformedMsg
-    end
+    local blocked, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15 =
+        addon.StreamDeliveryService:DeliverRealtime(frame, event, streamContext, packedArgs, {
+            shouldHide = shouldHide,
+        })
 
     addon.StreamEventContext:Release(streamContext)
 
-    if shouldHide or emitted then
+    if blocked == true then
         return true
     end
-    return false, addon.Utils.UnpackArgs(packedArgs)
+    return false, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15
 end
 
 --- Register event filters for all chat events

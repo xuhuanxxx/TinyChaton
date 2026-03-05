@@ -334,16 +334,19 @@ local function OnSnapshotEvent(self, event, ...)
         _, classFilename = GetPlayerInfoByGUID(guid)
     end
 
+    local nowTime = time()
     local record = {
+        event = event,
         text = streamContext.text,
         author = streamContext.author,
         streamKey = streamKey,
         wowChatType = wowChatType,
         streamMeta = streamMeta,
-        time = time(),
+        time = nowTime,
+        timestamp = nowTime,
         classFilename = classFilename,
-        -- frameName is less relevant in background logging, nil is fine
-        frameName = nil
+        -- Snapshot logger does not receive per-window frame callback, use deterministic target.
+        frameName = "ChatFrame1",
     }
     if addon.ValidateContract then
         addon:ValidateContract("SnapshotRecord", record)

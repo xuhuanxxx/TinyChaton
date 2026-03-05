@@ -1667,12 +1667,22 @@ function addon.Tests.TestStreamEventDispatcherReturnSemantics()
         },
     }
 
+    local frame = {
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return true
+        end,
+        GetName = function()
+            return "TinyChatonTestFrameA"
+        end,
+    }
+
     -- Case 1: shouldHide=false and emitted=false.
     addon.StreamVisibilityService = nil
     addon.MessageFormatter = nil
     addon.EmitRenderedChatLine = nil
 
-    local blocked, msg, author = pipeline:OnStreamEvent(nil, "CHAT_MSG_SAY", "hello", "tester")
+    local blocked, msg, author = pipeline:OnStreamEvent(frame, "CHAT_MSG_SAY", "hello", "tester")
     addon.Tests.AssertEqual(blocked, false, "OnStreamEvent should return false when not hidden and not emitted")
     addon.Tests.AssertEqual(msg, "[T]hello", "OnStreamEvent should return transformed message")
     addon.Tests.AssertEqual(author, "tester", "OnStreamEvent should preserve trailing arguments")
@@ -1683,21 +1693,26 @@ function addon.Tests.TestStreamEventDispatcherReturnSemantics()
             return false
         end,
     }
-    local hidden = pipeline:OnStreamEvent(nil, "CHAT_MSG_SAY", "hidden", "tester")
+    local hidden = pipeline:OnStreamEvent(frame, "CHAT_MSG_SAY", "hidden", "tester")
     addon.Tests.AssertEqual(hidden, true, "OnStreamEvent should return true when stream is hidden")
 
-    -- Case 3: emitted=true should still short-circuit to true.
+    -- Case 3: realtime path no longer injects AddMessage; it should preserve native routing.
     addon.StreamVisibilityService = nil
     addon.MessageFormatter = {
         BuildRealtimeLineFromContext = function()
             return { text = "line", wowChatType = "SAY" }
         end,
     }
+    local emitCalls = 0
     addon.EmitRenderedChatLine = function()
+        emitCalls = emitCalls + 1
         return true
     end
-    local emitted = pipeline:OnStreamEvent(nil, "CHAT_MSG_SAY", "rendered", "tester")
-    addon.Tests.AssertEqual(emitted, true, "OnStreamEvent should return true when line is emitted")
+    local passthrough, renderedMsg, renderedAuthor = pipeline:OnStreamEvent(frame, "CHAT_MSG_SAY", "rendered", "tester")
+    addon.Tests.AssertEqual(passthrough, false, "OnStreamEvent should preserve native routing in realtime")
+    addon.Tests.AssertEqual(renderedMsg, "[T]rendered", "OnStreamEvent should still return transformed message")
+    addon.Tests.AssertEqual(renderedAuthor, "tester", "OnStreamEvent should preserve trailing arguments")
+    addon.Tests.AssertEqual(emitCalls, 0, "OnStreamEvent should not use realtime manual emitter")
 
     addon.Gateway = oldGateway
     addon.StreamVisibilityService = oldVisibility
@@ -1710,6 +1725,283 @@ function addon.Tests.TestStreamEventFiltersFeatureRegistered()
     addon.Tests.Assert(type(addon.FeatureRegistry.entries) == "table", "FeatureRegistry.entries missing")
     local entry = addon.FeatureRegistry.entries["StreamEventFilters"]
     addon.Tests.Assert(type(entry) == "table", "StreamEventFilters feature should be registered")
+end
+
+function addon.Tests.TestStreamEventDispatcherNoRealtimeManualEmit()
+    addon.Tests.Assert(type(addon.StreamEventDispatcher) == "table", "StreamEventDispatcher missing")
+    addon.Tests.Assert(type(addon.StreamEventDispatcher.OnStreamEvent) == "function", "OnStreamEvent missing")
+
+    local pipeline = addon.StreamEventDispatcher
+    local oldGateway = addon.Gateway
+    local oldVisibility = addon.StreamVisibilityService
+    local oldFormatter = addon.MessageFormatter
+    local oldEmit = addon.EmitRenderedChatLine
+
+    addon.Gateway = {
+        Inbound = {
+            Allow = function()
+                return true
+            end,
+        },
+        Display = {
+            Transform = function(_, _, msg, r, g, b)
+                return msg, r, g, b
+            end,
+        },
+    }
+    addon.StreamVisibilityService = nil
+    addon.MessageFormatter = { BuildRealtimeLineFromContext = function() return { text = "line", wowChatType = "CHANNEL" } end }
+
+    local emitCalls = 0
+    addon.EmitRenderedChatLine = function()
+        emitCalls = emitCalls + 1
+        return true
+    end
+
+    local frameA = {
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return true
+        end,
+    }
+
+    local blockedA, msgA = pipeline:OnStreamEvent(frameA, "CHAT_MSG_CHANNEL", "world hello", "tester")
+    addon.Tests.AssertEqual(blockedA, false, "Realtime path should not consume via custom emitter")
+    addon.Tests.AssertEqual(msgA, "world hello", "Realtime path should preserve message when no transformer changes it")
+    addon.Tests.AssertEqual(emitCalls, 0, "Realtime path should not manually emit to any frame")
+
+    local frameB = {
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return false
+        end,
+    }
+    local blockedB, msgB = pipeline:OnStreamEvent(frameB, "CHAT_MSG_CHANNEL", "world hello", "tester")
+    addon.Tests.AssertEqual(blockedB, false, "Realtime path should stay passthrough for any frame")
+    addon.Tests.AssertEqual(msgB, "world hello", "Realtime path should stay frame-agnostic in filter stage")
+    addon.Tests.AssertEqual(emitCalls, 0, "Realtime path should not manually emit to unregistered frame")
+
+    addon.Gateway = oldGateway
+    addon.StreamVisibilityService = oldVisibility
+    addon.MessageFormatter = oldFormatter
+    addon.EmitRenderedChatLine = oldEmit
+end
+
+function addon.Tests.TestFrameResolverRealtimeNoFallback()
+    addon.Tests.Assert(type(addon.FrameResolver) == "table", "FrameResolver missing")
+    addon.Tests.Assert(type(addon.FrameResolver.ResolveRealtime) == "function", "ResolveRealtime missing")
+
+    local resolvedNil = addon.FrameResolver:ResolveRealtime(nil, "CHAT_MSG_SAY")
+    addon.Tests.Assert(resolvedNil == nil, "Realtime resolver should not fallback when frame is nil")
+
+    local frame = {
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return false
+        end,
+    }
+    local resolved = addon.FrameResolver:ResolveRealtime(frame, "CHAT_MSG_SAY")
+    addon.Tests.Assert(resolved == nil, "Realtime resolver should reject unregistered event frame")
+end
+
+function addon.Tests.TestFrameResolverReplayNoFallback()
+    addon.Tests.Assert(type(addon.FrameResolver) == "table", "FrameResolver missing")
+    addon.Tests.Assert(type(addon.FrameResolver.ResolveReplay) == "function", "ResolveReplay missing")
+
+    local lineWithoutFrame = {
+        event = "CHAT_MSG_SAY",
+        text = "hi",
+        author = "tester",
+    }
+    local resolved = addon.FrameResolver:ResolveReplay(lineWithoutFrame)
+    addon.Tests.Assert(resolved == nil, "Replay resolver should not fallback without frameName")
+end
+
+function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
+    addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
+    addon.Tests.Assert(type(addon.StreamDeliveryService.DeliverRealtime) == "function", "DeliverRealtime missing")
+    addon.Tests.Assert(type(addon.StreamDeliveryService.DeliverReplay) == "function", "DeliverReplay missing")
+
+    local oldGateway = addon.Gateway
+    local oldGFrame = _G.TinyChatonTestFrameDelivery
+    local capturedReplay
+
+    addon.Gateway = {
+        Display = {
+            Transform = function(_, frame, msg, r, g, b, extraArgs)
+                return "[PIPE]" .. tostring(msg), r, g, b, extraArgs
+            end,
+        },
+    }
+
+    local frame = {
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return true
+        end,
+        GetName = function()
+            return "TinyChatonTestFrameDelivery"
+        end,
+    }
+    _G.TinyChatonTestFrameDelivery = {
+        AddMessage = function(_, msg)
+            capturedReplay = msg
+        end,
+        IsEventRegistered = function()
+            return true
+        end,
+        GetName = function()
+            return "TinyChatonTestFrameDelivery"
+        end,
+    }
+
+    local packedArgs = addon.Utils.PackArgs("hello", "tester")
+    local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", {
+        text = "hello",
+        author = "tester",
+        wowChatType = "SAY",
+        streamKey = "say",
+    }, packedArgs, { shouldHide = false })
+
+    addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block")
+    addon.Tests.AssertEqual(realtimeMsg, "[PIPE]hello", "Realtime delivery should go through display transform")
+
+    addon.StreamDeliveryService:DeliverReplay({
+        event = "CHAT_MSG_SAY",
+        frameName = "TinyChatonTestFrameDelivery",
+        text = "hello",
+        author = "tester",
+        wowChatType = "SAY",
+        streamKey = "say",
+        time = time(),
+    })
+    addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("[PIPE]", 1, true) ~= nil,
+        "Replay delivery should go through display transform")
+
+    addon.Gateway = oldGateway
+    _G.TinyChatonTestFrameDelivery = oldGFrame
+end
+
+function addon.Tests.TestRealtimeChannelPrefixPreservesCanonicalChannelString()
+    addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
+    addon.Tests.Assert(type(addon.StreamDeliveryService.DeliverRealtime) == "function", "DeliverRealtime missing")
+
+    local oldGateway = addon.Gateway
+
+    addon.Gateway = {
+        Display = {
+            Transform = function(_, _, msg)
+                return msg
+            end,
+        },
+    }
+    local frame = {
+        AddMessage = function() end,
+        IsEventRegistered = function()
+            return true
+        end,
+    }
+    local packedArgs = addon.Utils.PackArgs("hello", "tester", nil, "1. World", nil, nil, nil, 1, "World")
+    local blocked, msg, author, _, channelString = addon.StreamDeliveryService:DeliverRealtime(
+        frame,
+        "CHAT_MSG_CHANNEL",
+        {
+            text = "hello",
+            author = "tester",
+            wowChatType = "CHANNEL",
+            streamKey = "world",
+            channelString = "1. World",
+            channelName = "World",
+            channelNumber = 1,
+        },
+        packedArgs,
+        { shouldHide = false }
+    )
+
+    addon.Tests.AssertEqual(blocked, false, "Realtime channel delivery should not block")
+    addon.Tests.AssertEqual(msg, "hello", "Realtime channel delivery should preserve message text when transform unchanged")
+    addon.Tests.AssertEqual(author, "tester", "Realtime channel delivery should preserve author")
+    addon.Tests.AssertEqual(channelString, "1. World", "Realtime channel delivery should preserve channelString for Blizzard routing")
+
+    addon.Gateway = oldGateway
+end
+
+function addon.Tests.TestPostDisplayChannelPrefixRewrite()
+    addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
+    addon.Tests.Assert(type(addon.StreamDeliveryService.EnsureFrameHook) == "function", "EnsureFrameHook missing")
+
+    local oldResolveDisplay = addon.Utils and addon.Utils.ResolveChannelDisplay
+    addon.Utils.ResolveChannelDisplay = function(input)
+        if type(input) == "table" and input.wowChatType == "CHANNEL" then
+            return "[1.W] ", { key = "world" }
+        end
+        return "", nil
+    end
+
+    local captured
+    local frame = {
+        AddMessage = function(_, msg)
+            captured = msg
+        end,
+    }
+
+    addon.StreamDeliveryService:EnsureFrameHook(frame)
+    frame:AddMessage("|Hchannel:CHANNEL:1|h[1. World]|h hello")
+
+    addon.Tests.AssertEqual(captured, "|Hchannel:CHANNEL:1|h[1.W]|h hello", "Post display rewrite should shorten channel label only")
+    addon.Utils.ResolveChannelDisplay = oldResolveDisplay
+end
+
+function addon.Tests.TestPostDisplayGuildPrefixUsesConfiguredStyle()
+    addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
+    addon.Tests.Assert(type(addon.StreamDeliveryService.EnsureFrameHook) == "function", "EnsureFrameHook missing")
+
+    local oldFormat = addon.FormatDisplayText
+    local oldGetStreamByKey = addon.GetStreamByKey
+    local oldIterateCompiledStreams = addon.IterateCompiledStreams
+    local oldGetStreamKind = addon.GetStreamKind
+
+    addon.GetStreamByKey = function(_, key)
+        if key == "guild" then
+            return { key = "guild", wowChatType = "GUILD" }
+        end
+        return nil
+    end
+    addon.IterateCompiledStreams = function(_)
+        local done = false
+        return function()
+            if done then return nil end
+            done = true
+            return 1, { key = "guild", wowChatType = "GUILD" }
+        end
+    end
+    addon.GetStreamKind = function(_, key)
+        if key == "guild" then return "channel" end
+        return nil
+    end
+    addon.FormatDisplayText = function(_, stream, kind, surface)
+        if stream and stream.key == "guild" and kind == "channel" and surface == "chat" then
+            return "公"
+        end
+        return "?"
+    end
+
+    local captured
+    local frame = {
+        AddMessage = function(_, msg)
+            captured = msg
+        end,
+    }
+
+    addon.StreamDeliveryService:EnsureFrameHook(frame)
+    frame:AddMessage("|Hchannel:GUILD|h[公会]|h hello")
+
+    addon.Tests.AssertEqual(captured, "|Hchannel:GUILD|h[公]|h hello", "Guild prefix should follow configured channel display style")
+
+    addon.FormatDisplayText = oldFormat
+    addon.GetStreamByKey = oldGetStreamByKey
+    addon.IterateCompiledStreams = oldIterateCompiledStreams
+    addon.GetStreamKind = oldGetStreamKind
 end
 
 function addon.Tests.TestThemeColorOrthogonalResolution()

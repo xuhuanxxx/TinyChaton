@@ -340,10 +340,10 @@ addon.SETTING_REGISTRY = {
             return value
         end,
         onChange = function()
-            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        commitSettings = false,
+        intentReason = "shelf_settings_change",
+        intentScope = "shelf",
         ui = {
             type = "dropdown",
             page = "appearance",
@@ -373,10 +373,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("colorSet") or addon.CONSTANTS.SHELF_DEFAULT_COLORSET
         end,
         onChange = function()
-            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        commitSettings = false,
+        intentReason = "shelf_settings_change",
+        intentScope = "shelf",
         ui = {
             type = "dropdown",
             page = "appearance",
@@ -396,10 +396,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("fontSize") or addon.CONSTANTS.SHELF_DEFAULT_FONT_SIZE
         end,
         onChange = function()
-            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        commitSettings = false,
+        intentReason = "shelf_settings_change",
+        intentScope = "shelf",
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_FONT_SIZE", min = 8, max = 24, step = 1 },
     },
     themeButtonSize = {
@@ -411,10 +411,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("buttonSize") or addon.CONSTANTS.SHELF_DEFAULT_BUTTON_SIZE
         end,
         onChange = function()
-            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        commitSettings = false,
+        intentReason = "shelf_settings_change",
+        intentScope = "shelf",
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_SHELF_BUTTON_SIZE", min = 16, max = 40, step = 1 },
     },
     themeSpacing = {
@@ -426,10 +426,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("spacing") or addon.CONSTANTS.SHELF_DEFAULT_SPACING
         end,
         onChange = function()
-            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        commitSettings = false,
+        intentReason = "shelf_settings_change",
+        intentScope = "shelf",
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_SHELF_SPACING", min = 0, max = 10, step = 1 },
     },
     themeScale = {
@@ -441,10 +441,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("scale") or addon.CONSTANTS.SHELF_DEFAULT_SCALE
         end,
         onChange = function()
-            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        commitSettings = false,
+        intentReason = "shelf_settings_change",
+        intentScope = "shelf",
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_SHELF_SCALE", min = 0.5, max = 2.0, step = 0.1 },
     },
     themeAlpha = {
@@ -456,10 +456,10 @@ addon.SETTING_REGISTRY = {
             return GetThemeVal("alpha") or addon.CONSTANTS.SHELF_DEFAULT_ALPHA
         end,
         onChange = function()
-            addon:CommitSettings("shelf_settings_change", "shelf")
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
         end,
-        commitSettings = false,
+        intentReason = "shelf_settings_change",
+        intentScope = "shelf",
         ui = { type = "slider", page = "appearance", section = "SECTION_GENERAL_APPEARANCE", label = "LABEL_SHELF_ALPHA", min = 0.2, max = 1.0, step = 0.1 },
     },
 

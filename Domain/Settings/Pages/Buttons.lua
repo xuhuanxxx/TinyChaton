@@ -210,7 +210,7 @@ CategoryBuilders.buttons = function(rootCat)
         bindingDialog:Open(items, currentAction, title, function(selectedKey)
             bindings[streamKey][buttonType] = selectedKey
 
-            addon:CommitSettings()
+            addon:ExecuteSettingsIntent()
             if addon.RefreshShelf then addon:RefreshShelf() end
             if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
             if addon.RefreshShelfList then addon.RefreshShelfList() end
@@ -274,7 +274,7 @@ CategoryBuilders.buttons = function(rootCat)
                     if not db.channelPins then db.channelPins = {} end
                     local list = typeKey == "kit" and db.kitPins or db.channelPins
                     list[item.key] = self:GetChecked()
-                    addon:CommitSettings()
+                    addon:ExecuteSettingsIntent()
                     if addon.RefreshShelf then addon:RefreshShelf() end
                     if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
                 end)
@@ -422,18 +422,17 @@ CategoryBuilders.buttons = function(rootCat)
     end
     Settings.RegisterInitializer(cat, ribbonInit)
 
-    addon.SettingsReset:RegisterPageSpec("buttons", {
+    addon.SettingsIntentRegistry:RegisterPageSpec("buttons", {
         category = cat,
+        scope = "shelf",
         writeDefaults = {
             "buttons.channelPins",
             "buttons.kitPins",
             "buttons.buttonOrder",
             "buttons.bindings",
         },
-        postRefresh = function()
-            if addon.RefreshShelf then addon:RefreshShelf() end
-            if addon.RefreshShelfList then addon.RefreshShelfList() end
-        end,
+        refreshShelf = true,
+        refreshShelfList = true,
     })
 
     addon.RegisterPageReset(cat, "buttons")

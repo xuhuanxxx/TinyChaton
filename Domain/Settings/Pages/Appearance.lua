@@ -64,7 +64,7 @@ CategoryBuilders.appearance = function(rootCat, opts)
         function(v)
             local db = GetShelfDB()
             if db then db.anchor = v end
-            addon:CommitSettings("shelf_settings_change", "shelf")
+            addon:ExecuteSettingsIntent("shelf_settings_change", "shelf")
         end,
         nil)
 
@@ -82,7 +82,7 @@ CategoryBuilders.appearance = function(rootCat, opts)
         function(v)
             local db = GetShelfDB()
             if db then db.direction = v end
-            addon:CommitSettings("shelf_settings_change", "shelf")
+            addon:ExecuteSettingsIntent("shelf_settings_change", "shelf")
         end,
         nil)
     if inGeneral then
@@ -125,7 +125,7 @@ CategoryBuilders.appearance = function(rootCat, opts)
         function(v)
             local db = GetShelfDB()
             if db then db.theme = v end
-            addon:CommitSettings("shelf_settings_change", "shelf")
+            addon:ExecuteSettingsIntent("shelf_settings_change", "shelf")
             RefreshThemeSettingsUi()
         end,
         nil)
@@ -158,10 +158,7 @@ CategoryBuilders.appearance = function(rootCat, opts)
             { type = "setting", variable = "TinyChaton_themeScale" },
             { type = "setting", variable = "TinyChaton_themeAlpha" },
         },
-        postRefresh = function()
-            RefreshThemeSettingsUi()
-            if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
-        end,
+        refreshShelfPreview = true,
     }
     if inGeneral then
         resetSpec.writeDefaults[#resetSpec.writeDefaults + 1] = "buttons.dynamicMode"
@@ -169,11 +166,12 @@ CategoryBuilders.appearance = function(rootCat, opts)
     end
 
     if not inline then
-        addon.SettingsReset:RegisterPageSpec("appearance", {
+        addon.SettingsIntentRegistry:RegisterPageSpec("appearance", {
             category = cat,
+            scope = "shelf",
             writeDefaults = resetSpec.writeDefaults,
             refreshControls = resetSpec.refreshControls,
-            postRefresh = resetSpec.postRefresh,
+            refreshShelfPreview = resetSpec.refreshShelfPreview,
         })
         addon.RegisterPageReset(cat, "appearance")
     end

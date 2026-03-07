@@ -45,7 +45,7 @@ CategoryBuilders.automation = function(rootCat)
 
     local tabSetting = Settings.RegisterAddOnSetting(cat, P .. "CurrentSocialTab", "currentSocialTab", autoDB, Settings.VarType.String, L["LABEL_SELECT_SOCIAL_TAB"], "guild")
     if tabSetting and tabSetting.SetValueChangedCallback then
-        tabSetting:SetValueChangedCallback(function() RefreshTabSettings(); addon:CommitSettings() end)
+        tabSetting:SetValueChangedCallback(function() RefreshTabSettings(); addon:ExecuteSettingsIntent() end)
     end
     Settings.CreateDropdown(cat, tabSetting, function()
         local c = Settings.CreateControlTextContainer()
@@ -135,8 +135,9 @@ CategoryBuilders.automation = function(rootCat)
     local countdownSecondarySetting = addon.AddRegistrySetting(cat, "automationCountdownSecondarySeconds")
 
 
-    addon.SettingsReset:RegisterPageSpec("automation", {
+    addon.SettingsIntentRegistry:RegisterPageSpec("automation", {
         category = cat,
+        scope = "automation",
         writeDefaults = {
             "automation",
         },
@@ -150,11 +151,6 @@ CategoryBuilders.automation = function(rootCat)
             { type = "setting", variable = P .. "welcomeTab_sendMode" },
             { type = "multidropdown", variable = P .. "autoJoinDynamic", selectionFromPath = "automation.autoJoinDynamicChannels" },
         },
-        postRefresh = function()
-            autoDef = GetAutomationDefaults()
-            countdownDef = autoDef.countdown or { primarySeconds = 10, secondarySeconds = 5 }
-            RefreshTabSettings()
-        end,
     })
 
     addon.RegisterPageReset(cat, "automation")

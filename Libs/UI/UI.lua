@@ -235,7 +235,7 @@ function addon.UI.ShowEditor(title, dbTable, dbKey, hint, validateFunc)
             end
             table.wipe(EditorFrame.dbTable[EditorFrame.dbKey])
             for _, v in ipairs(lines) do EditorFrame.dbTable[EditorFrame.dbKey][#EditorFrame.dbTable[EditorFrame.dbKey] + 1] = v end
-            addon:CommitSettings("editor_save", "all")
+            addon:ExecuteSettingsIntent("editor_save", "all")
             EditorFrame:Hide()
         end)
 

@@ -17,7 +17,7 @@ CategoryBuilders.general = function(rootCat)
         function() return addon.db and addon.db.enabled end,
         function(v)
             if addon.db then addon.db.enabled = v end
-            addon:CommitSettings("settings_ui_change", "all")
+            addon:ExecuteSettingsIntent("settings_ui_change", "all")
         end,
         L["LABEL_MASTER_SWITCH_DESC"])
 
@@ -36,7 +36,7 @@ CategoryBuilders.general = function(rootCat)
         function(v)
             local db = GetButtonsDB()
             if db then db.enabled = v end
-            addon:CommitSettings("shelf_settings_change", "shelf")
+            addon:ExecuteSettingsIntent("shelf_settings_change", "shelf")
         end,
         nil)
     addon.AddRegistrySetting(cat, "shelfDisplayNameStyle")
@@ -65,18 +65,13 @@ CategoryBuilders.general = function(rootCat)
         end
     end
 
-    addon.SettingsReset:RegisterPageSpec("general", {
+    addon.SettingsIntentRegistry:RegisterPageSpec("general", {
         category = cat,
-        preReset = function()
-            if addon.db then
-                addon.db.enabled = addon.DEFAULTS and addon.DEFAULTS.enabled
-            end
-        end,
+        scope = "all",
+        writeRootDefaults = { "enabled" },
         writeDefaults = writeDefaults,
         refreshControls = refreshControls,
-        postRefresh = function()
-            if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
-        end,
+        refreshShelfPreview = true,
     })
     addon.RegisterPageReset(cat, "general")
 

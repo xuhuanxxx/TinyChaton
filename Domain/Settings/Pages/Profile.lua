@@ -29,8 +29,6 @@ CategoryBuilders.profile = function(rootCat)
             local success = addon:SetProfile(profileName)
             if success then
                 print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r " .. string.format(L["MSG_PROFILE_SWITCHED"], profileName))
-                -- Refresh all settings to reflect new profile values
-                addon:RefreshAllSettings()
             end
         end,
         nil)
@@ -181,12 +179,12 @@ CategoryBuilders.profile = function(rootCat)
     addon.AddSectionHeader(cat, L["SECTION_RESET"])
 
     local function ResetAllSettings()
-        if addon.SettingsReset and addon.SettingsReset.ResetAllProfile then
-            addon.SettingsReset:ResetAllProfile()
-        end
-
-        if addon.RefreshShelfList then addon.RefreshShelfList() end
-        if addon.RefreshShelfPreview then addon.RefreshShelfPreview() end
+        addon:ExecuteSettingsIntent({
+            operation = "reset",
+            reason = "profile_reset_all",
+            scope = "all",
+            source = "page_button",
+        })
 
         print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r " .. L["MSG_RESET_COMPLETE"])
     end

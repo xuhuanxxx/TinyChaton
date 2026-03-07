@@ -127,7 +127,7 @@ function addon.AddAddOnCheckbox(cat, variable, tbl, key, name, default, tooltip,
     if setting then
         if setting.SetValueChangedCallback then
             setting:SetValueChangedCallback(function()
-                if applyFunc then applyFunc() else addon:CommitSettings() end
+                if applyFunc then applyFunc() else addon:ExecuteSettingsIntent() end
             end)
         end
         Settings.CreateCheckbox(cat, setting, tooltip)
@@ -151,7 +151,7 @@ function addon.AddAddOnDropdown(cat, variable, tbl, key, name, optionsFunc, defa
         if setting.SetValueChangedCallback then
             setting:SetValueChangedCallback(function(_, value)
                 if not valueChangedCallback then
-                    if applyFunc then applyFunc() else addon:CommitSettings() end
+                    if applyFunc then applyFunc() else addon:ExecuteSettingsIntent() end
                 end
                 if valueChangedCallback then valueChangedCallback(value) end
             end)
@@ -175,7 +175,7 @@ function addon.AddAddOnSlider(cat, variable, tbl, key, name, default, minVal, ma
     if setting then
         if setting.SetValueChangedCallback then
             setting:SetValueChangedCallback(function()
-                if applyFunc then applyFunc() else addon:CommitSettings() end
+                if applyFunc then applyFunc() else addon:ExecuteSettingsIntent() end
             end)
         end
         local options = Settings.CreateSliderOptions(minVal, maxVal, step)
@@ -437,10 +437,13 @@ local function BuildRegistrySetter(reg, rawSetter)
             pcall(reg.onChange, value, ctx)
         end
 
-        if (not reg) or reg.commitSettings ~= false then
-            if addon.CommitSettings then
-                addon:CommitSettings()
-            end
+        if addon.ExecuteSettingsIntent then
+            addon:ExecuteSettingsIntent({
+                operation = "commit",
+                reason = (reg and reg.intentReason) or "settings_ui_change",
+                scope = (reg and reg.intentScope) or "all",
+                source = (reg and reg.intentSource) or "settings_control",
+            })
         end
     end
 end
@@ -593,8 +596,8 @@ function addon.AddProxyMultiDropdown(cat, variable, name, optionfunc, getter, se
 end
 
 local function SerializeSelection(selection)
-    if addon.SettingsReset and type(addon.SettingsReset.SerializeSelection) == "function" then
-        return addon.SettingsReset.SerializeSelection(selection)
+    if addon.SettingsIntentRegistry and type(addon.SettingsIntentRegistry.SerializeSelection) == "function" then
+        return addon.SettingsIntentRegistry.SerializeSelection(selection)
     end
     if type(selection) ~= "table" then
         return ""
@@ -653,17 +656,17 @@ function addon.RegisterPageReset(category, pageKey, spec)
     if not category or type(pageKey) ~= "string" or pageKey == "" then return end
     local pageSpec = spec
 
-    if addon.SettingsReset and pageKey then
+    if addon.SettingsIntentRegistry and pageKey then
         if pageSpec then
             if not pageSpec.category then
                 pageSpec.category = category
             end
-            addon.SettingsReset:RegisterPageSpec(pageKey, pageSpec)
-        elseif not addon.SettingsReset.pageSpecs[pageKey] then
-            addon.SettingsReset:RegisterPageSpec(pageKey, { category = category })
+            addon.SettingsIntentRegistry:RegisterPageSpec(pageKey, pageSpec)
+        elseif not addon.SettingsIntentRegistry.pageSpecs[pageKey] then
+            addon.SettingsIntentRegistry:RegisterPageSpec(pageKey, { category = category })
         else
-            addon.SettingsReset.pageSpecs[pageKey].category = category
-            addon.SettingsReset.pageKeyByCategoryId[category:GetID()] = pageKey
+            addon.SettingsIntentRegistry.pageSpecs[pageKey].category = category
+            addon.SettingsIntentRegistry.pageKeyByCategoryId[category:GetID()] = pageKey
         end
     end
 
@@ -675,8 +678,13 @@ function addon.RegisterPageReset(category, pageKey, spec)
             "Reset Trigger", 0,
             function() return 1 end,
             function(v)
-                if v == 0 and addon.SettingsReset and pageKey then
-                    addon.SettingsReset:ResetPage(pageKey, { source = "category_default" })
+                if v == 0 and addon.ExecuteSettingsIntent and pageKey then
+                    addon:ExecuteSettingsIntent({
+                        operation = "reset",
+                        pageKey = pageKey,
+                        reason = "category_default",
+                        source = "category_default",
+                    })
                 end
             end
         )

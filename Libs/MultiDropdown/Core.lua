@@ -280,10 +280,18 @@ end
 
 
 function TinyChaton_MultiDropdownMixin:ApplyDefaultSelection()
-    if addon.SettingsReset and addon.SettingsReset.ResetBySetting then
+    if addon.SettingsIntentRegistry and addon.SettingsIntentRegistry.GetPageKeyForSetting then
         local setting = self:GetSetting()
-        addon.SettingsReset:ResetBySetting(setting, { source = "setting_defaulted" })
-        return
+        local pageKey = addon.SettingsIntentRegistry:GetPageKeyForSetting(setting)
+        if pageKey then
+            addon:ExecuteSettingsIntent({
+                operation = "reset",
+                pageKey = pageKey,
+                reason = "setting_defaulted",
+                source = "setting_defaulted",
+            })
+            return
+        end
     end
 end
 
@@ -300,8 +308,16 @@ function TinyChaton_MultiDropdownMixin:EnsureDefaultCallbacks()
     EventRegistry:RegisterCallback("Settings.CategoryDefaulted", function(_, category)
         if not self.categoryID or not category or not category.GetID then return end
         if category:GetID() == self.categoryID then
-            if addon.SettingsReset and addon.SettingsReset.ResetCategory then
-                addon.SettingsReset:ResetCategory(category, { source = "category_defaulted" })
+            if addon.SettingsIntentRegistry and addon.SettingsIntentRegistry.GetPageKeyForCategory then
+                local pageKey = addon.SettingsIntentRegistry:GetPageKeyForCategory(category)
+                if pageKey then
+                    addon:ExecuteSettingsIntent({
+                        operation = "reset",
+                        pageKey = pageKey,
+                        reason = "category_defaulted",
+                        source = "category_defaulted",
+                    })
+                end
             end
         end
     end, self)

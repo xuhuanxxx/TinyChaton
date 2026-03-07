@@ -281,11 +281,11 @@ function addon:InitAutoWelcome()
         plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
         onEnable = function()
             state.featureEnabled = true
-            addon:CommitSettings("feature_auto_welcome_enable", "automation")
+            addon:ExecuteSettingsIntent("feature_auto_welcome_enable", "automation")
         end,
         onDisable = function()
             state.featureEnabled = false
-            addon:CommitSettings("feature_auto_welcome_disable", "automation")
+            addon:ExecuteSettingsIntent("feature_auto_welcome_disable", "automation")
         end,
     })
 end

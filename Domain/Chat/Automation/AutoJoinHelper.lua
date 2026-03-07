@@ -80,8 +80,8 @@ function addon:SetAutoJoinDynamicChannelSelection(selection, opts)
             end
         end
     end
-    if not (opts and opts.skipApply) and addon.CommitSettings then
-        addon:CommitSettings("auto_join_selection", "automation")
+    if not (opts and opts.skipApply) and addon.ExecuteSettingsIntent then
+        addon:ExecuteSettingsIntent("auto_join_selection", "automation")
     end
 end
 
@@ -140,7 +140,7 @@ function addon:InitAutoJoinHelper()
     })
 
     local function EnableAutoJoin()
-        addon:CommitSettings("feature_auto_join_enable", "automation")
+        addon:ExecuteSettingsIntent("feature_auto_join_enable", "automation")
     end
 
     local function DisableAutoJoin()

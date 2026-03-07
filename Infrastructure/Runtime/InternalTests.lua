@@ -663,8 +663,10 @@ function addon.Tests.TestSettingsOrchestratorFailureTrace()
     end
 
     local ok, err = pcall(function()
-        addon.SettingsOrchestrator:Run({
+        addon.SettingsOrchestrator:Execute({
+            operation = "commit",
             reason = "unit_test",
+            source = "unit_test",
             scope = "chat",
             timestamp = 0,
             profileName = "TestProfile",
@@ -677,8 +679,9 @@ function addon.Tests.TestSettingsOrchestratorFailureTrace()
     addon.Tests.Assert(ok == false, "Orchestrator should fail-fast on subscriber error")
     addon.Tests.Assert(type(err) == "string" and err:find("trace=trace%-123"), "Error should include trace id")
     addon.Tests.Assert(type(err) == "string" and err:find("key=__test.settings.failing_subscriber"), "Error should include subscriber key")
-    addon.Tests.AssertEqual(events[1], "SETTINGS_COMMITTING", "First emitted event should be SETTINGS_COMMITTING")
-    addon.Tests.AssertEqual(events[2], "SETTINGS_PHASE_COMMITTING", "Second emitted event should be phase committing")
+    addon.Tests.Assert(type(err) == "string" and err:find("operation=commit"), "Error should include operation")
+    addon.Tests.AssertEqual(events[1], "SETTINGS_INTENT_STARTED", "First emitted event should be SETTINGS_INTENT_STARTED")
+    addon.Tests.AssertEqual(events[2], "SETTINGS_MUTATION_APPLYING", "Second emitted event should be SETTINGS_MUTATION_APPLYING")
 end
 
 function addon.Tests.TestResolveTemplatePath()
@@ -742,9 +745,9 @@ function addon.Tests.TestRegistryOnChangeHook()
     local changed
     local changedCount = 0
 
-    local oldApply = addon.CommitSettings
+    local oldApply = addon.ExecuteSettingsIntent
     local applyCount = 0
-    addon.CommitSettings = function()
+    addon.ExecuteSettingsIntent = function()
         applyCount = applyCount + 1
     end
 
@@ -754,7 +757,7 @@ function addon.Tests.TestRegistryOnChangeHook()
             changed = v
             changedCount = changedCount + 1
         end,
-        commitSettings = false,
+        intentReason = "unit_test",
     }
 
     local setter = internals.BuildRegistrySetter(reg, function(v) written = v end)
@@ -763,13 +766,13 @@ function addon.Tests.TestRegistryOnChangeHook()
     addon.Tests.AssertEqual(written, 6, "normalizeSet should transform value before write")
     addon.Tests.AssertEqual(changed, 6, "onChange should receive normalized value")
     addon.Tests.AssertEqual(changedCount, 1, "onChange should fire once")
-    addon.Tests.AssertEqual(applyCount, 0, "commitSettings=false should skip CommitSettings")
+    addon.Tests.AssertEqual(applyCount, 1, "Registry setter should dispatch settings intent")
 
     local setter2 = internals.BuildRegistrySetter({}, function() end)
     setter2(1)
-    addon.Tests.AssertEqual(applyCount, 1, "Default setter should call CommitSettings")
+    addon.Tests.AssertEqual(applyCount, 2, "Default setter should dispatch settings intent")
 
-    addon.CommitSettings = oldApply
+    addon.ExecuteSettingsIntent = oldApply
 end
 
 function addon.Tests.TestRegistryDefaultIsRuntimeResolved()
@@ -2752,8 +2755,8 @@ function addon.Tests.TestPerformanceBudgetUsesStreamDispatcherKeys()
 end
 
 function addon.Tests.TestGlobalResetAppliesAutoJoinDefaultsFromRegistry()
-    addon.Tests.Assert(type(addon.SettingsReset) == "table", "SettingsReset missing")
-    addon.Tests.Assert(type(addon.SettingsReset.ResetAllProfile) == "function", "ResetAllProfile missing")
+    addon.Tests.Assert(type(addon.SettingsIntentRegistry) == "table", "SettingsIntentRegistry missing")
+    addon.Tests.Assert(type(addon.ExecuteSettingsIntent) == "function", "ExecuteSettingsIntent missing")
     addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS missing")
 
     if not addon.db or not addon.db.profile then
@@ -2767,7 +2770,13 @@ function addon.Tests.TestGlobalResetAppliesAutoJoinDefaultsFromRegistry()
         trade = true,
     }
 
-    addon.SettingsReset:ResetAllProfile()
+    addon:ExecuteSettingsIntent({
+        operation = "reset",
+        reason = "unit_test_reset_all",
+        source = "unit_test",
+        scope = "all",
+        refreshUI = false,
+    })
 
     local after = addon.db.profile.automation.autoJoinDynamicChannels
     addon.Tests.Assert(type(after) == "table", "autoJoinDynamicChannels should remain a table after reset")
@@ -2776,28 +2785,39 @@ function addon.Tests.TestGlobalResetAppliesAutoJoinDefaultsFromRegistry()
     end
 end
 
-function addon.Tests.TestResetPageVsResetAll_AutomationAutoJoinConsistency()
-    addon.Tests.Assert(type(addon.SettingsReset) == "table", "SettingsReset missing")
-    addon.Tests.Assert(type(addon.SettingsReset.ResetPage) == "function", "ResetPage missing")
-    addon.Tests.Assert(type(addon.SettingsReset.ResetAllProfile) == "function", "ResetAllProfile missing")
+function addon.Tests.TestSettingsIntentAutomationResetConsistency()
+    addon.Tests.Assert(type(addon.SettingsIntentRegistry) == "table", "SettingsIntentRegistry missing")
+    addon.Tests.Assert(type(addon.ExecuteSettingsIntent) == "function", "ExecuteSettingsIntent missing")
     addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS missing")
 
-    local oldSpecs = addon.SettingsReset.pageSpecs
-    local oldCategoryMap = addon.SettingsReset.pageKeyByCategoryId
-    local oldVariableMap = addon.SettingsReset.pageKeyByVariable
-    addon.SettingsReset.pageSpecs = {}
-    addon.SettingsReset.pageKeyByCategoryId = {}
-    addon.SettingsReset.pageKeyByVariable = {}
-    addon.SettingsReset:RegisterPageSpec("__test_automation", {
+    local oldSpecs = addon.SettingsIntentRegistry.pageSpecs
+    local oldCategoryMap = addon.SettingsIntentRegistry.pageKeyByCategoryId
+    local oldVariableMap = addon.SettingsIntentRegistry.pageKeyByVariable
+    addon.SettingsIntentRegistry.pageSpecs = {}
+    addon.SettingsIntentRegistry.pageKeyByCategoryId = {}
+    addon.SettingsIntentRegistry.pageKeyByVariable = {}
+    addon.SettingsIntentRegistry:RegisterPageSpec("__test_automation", {
         writeDefaults = { "automation" },
     })
 
     addon.db.profile.automation.autoJoinDynamicChannels = { general = false, trade = false, world = false }
-    addon.SettingsReset:ResetPage("__test_automation")
+    addon:ExecuteSettingsIntent({
+        operation = "reset",
+        pageKey = "__test_automation",
+        reason = "unit_test_page_reset",
+        source = "unit_test",
+        refreshUI = false,
+    })
     local byPage = addon.Utils.DeepCopy(addon.db.profile.automation.autoJoinDynamicChannels)
 
     addon.db.profile.automation.autoJoinDynamicChannels = { general = false }
-    addon.SettingsReset:ResetAllProfile()
+    addon:ExecuteSettingsIntent({
+        operation = "reset",
+        reason = "unit_test_reset_all",
+        source = "unit_test",
+        scope = "all",
+        refreshUI = false,
+    })
     local byAll = addon.db.profile.automation.autoJoinDynamicChannels
 
     local expected = addon.DEFAULTS.profile.automation.autoJoinDynamicChannels
@@ -2806,33 +2826,44 @@ function addon.Tests.TestResetPageVsResetAll_AutomationAutoJoinConsistency()
         addon.Tests.AssertEqual(byAll[key], enabled, "Global reset auto-join default mismatch: " .. tostring(key))
     end
 
-    addon.SettingsReset.pageSpecs = oldSpecs
-    addon.SettingsReset.pageKeyByCategoryId = oldCategoryMap
-    addon.SettingsReset.pageKeyByVariable = oldVariableMap
+    addon.SettingsIntentRegistry.pageSpecs = oldSpecs
+    addon.SettingsIntentRegistry.pageKeyByCategoryId = oldCategoryMap
+    addon.SettingsIntentRegistry.pageKeyByVariable = oldVariableMap
 end
 
-function addon.Tests.TestResetPageVsResetAll_ChatSnapshotConsistency()
-    addon.Tests.Assert(type(addon.SettingsReset) == "table", "SettingsReset missing")
-    addon.Tests.Assert(type(addon.SettingsReset.ResetPage) == "function", "ResetPage missing")
-    addon.Tests.Assert(type(addon.SettingsReset.ResetAllProfile) == "function", "ResetAllProfile missing")
+function addon.Tests.TestSettingsIntentChatResetConsistency()
+    addon.Tests.Assert(type(addon.SettingsIntentRegistry) == "table", "SettingsIntentRegistry missing")
+    addon.Tests.Assert(type(addon.ExecuteSettingsIntent) == "function", "ExecuteSettingsIntent missing")
     addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS missing")
 
-    local oldSpecs = addon.SettingsReset.pageSpecs
-    local oldCategoryMap = addon.SettingsReset.pageKeyByCategoryId
-    local oldVariableMap = addon.SettingsReset.pageKeyByVariable
-    addon.SettingsReset.pageSpecs = {}
-    addon.SettingsReset.pageKeyByCategoryId = {}
-    addon.SettingsReset.pageKeyByVariable = {}
-    addon.SettingsReset:RegisterPageSpec("__test_chat", {
+    local oldSpecs = addon.SettingsIntentRegistry.pageSpecs
+    local oldCategoryMap = addon.SettingsIntentRegistry.pageKeyByCategoryId
+    local oldVariableMap = addon.SettingsIntentRegistry.pageKeyByVariable
+    addon.SettingsIntentRegistry.pageSpecs = {}
+    addon.SettingsIntentRegistry.pageKeyByCategoryId = {}
+    addon.SettingsIntentRegistry.pageKeyByVariable = {}
+    addon.SettingsIntentRegistry:RegisterPageSpec("__test_chat", {
         writeDefaults = { "chat.content.snapshotStreams" },
     })
 
     addon.db.profile.chat.content.snapshotStreams = { say = false, whisper = false, general = false }
-    addon.SettingsReset:ResetPage("__test_chat")
+    addon:ExecuteSettingsIntent({
+        operation = "reset",
+        pageKey = "__test_chat",
+        reason = "unit_test_page_reset",
+        source = "unit_test",
+        refreshUI = false,
+    })
     local byPage = addon.Utils.DeepCopy(addon.db.profile.chat.content.snapshotStreams)
 
     addon.db.profile.chat.content.snapshotStreams = { say = false }
-    addon.SettingsReset:ResetAllProfile()
+    addon:ExecuteSettingsIntent({
+        operation = "reset",
+        reason = "unit_test_reset_all",
+        source = "unit_test",
+        scope = "all",
+        refreshUI = false,
+    })
     local byAll = addon.db.profile.chat.content.snapshotStreams
 
     local expected = addon.DEFAULTS.profile.chat.content.snapshotStreams
@@ -2841,9 +2872,9 @@ function addon.Tests.TestResetPageVsResetAll_ChatSnapshotConsistency()
         addon.Tests.AssertEqual(byAll[key], enabled, "Global reset snapshot default mismatch: " .. tostring(key))
     end
 
-    addon.SettingsReset.pageSpecs = oldSpecs
-    addon.SettingsReset.pageKeyByCategoryId = oldCategoryMap
-    addon.SettingsReset.pageKeyByVariable = oldVariableMap
+    addon.SettingsIntentRegistry.pageSpecs = oldSpecs
+    addon.SettingsIntentRegistry.pageKeyByCategoryId = oldCategoryMap
+    addon.SettingsIntentRegistry.pageKeyByVariable = oldVariableMap
 end
 
 function addon.Tests.TestMultiDropdownSilentRefreshDoesNotWriteBack()
@@ -2874,24 +2905,48 @@ function addon.Tests.TestMultiDropdownSilentRefreshDoesNotWriteBack()
     addon.RefreshSettingValue = oldRefreshSettingValue
 end
 
-function addon.Tests.TestResetEngineSingleApplyInvocation()
-    addon.Tests.Assert(type(addon.SettingsReset) == "table", "SettingsReset missing")
-    addon.Tests.Assert(type(addon.SettingsReset.RunReset) == "function", "RunReset missing")
+function addon.Tests.TestSettingsIntentPageResetUsesOrchestrator()
+    addon.Tests.Assert(type(addon.ExecuteSettingsIntent) == "function", "ExecuteSettingsIntent missing")
+    addon.Tests.Assert(type(addon.SettingsIntentRegistry) == "table", "SettingsIntentRegistry missing")
 
-    local applyCount = 0
-    local oldApply = addon.CommitSettings
-    addon.CommitSettings = function()
-        applyCount = applyCount + 1
-    end
-
-    addon.SettingsReset:RunReset({
-        writeDefaults = {},
-        refreshControls = {},
-        postRefresh = function() end,
+    local oldSpecs = addon.SettingsIntentRegistry.pageSpecs
+    local oldCategoryMap = addon.SettingsIntentRegistry.pageKeyByCategoryId
+    local oldVariableMap = addon.SettingsIntentRegistry.pageKeyByVariable
+    addon.SettingsIntentRegistry.pageSpecs = {}
+    addon.SettingsIntentRegistry.pageKeyByCategoryId = {}
+    addon.SettingsIntentRegistry.pageKeyByVariable = {}
+    addon.SettingsIntentRegistry:RegisterPageSpec("__test_general", {
+        writeRootDefaults = { "enabled" },
+        writeDefaults = { "automation" },
+        clearRuleCaches = true,
     })
 
-    addon.Tests.AssertEqual(applyCount, 1, "RunReset should call CommitSettings once")
-    addon.CommitSettings = oldApply
+    local oldClear = addon.StreamRuleEngine and addon.StreamRuleEngine.ClearAllCaches
+    local clearReason = nil
+    addon.StreamRuleEngine = addon.StreamRuleEngine or {}
+    addon.StreamRuleEngine.ClearAllCaches = function(_, reason)
+        clearReason = reason
+    end
+
+    addon.db.enabled = false
+    addon.db.profile.automation.welcome.enabled = true
+    addon:ExecuteSettingsIntent({
+        operation = "reset",
+        pageKey = "__test_general",
+        reason = "unit_test_page_reset",
+        source = "unit_test",
+        refreshUI = false,
+    })
+
+    addon.Tests.AssertEqual(addon.db.enabled, addon.DEFAULTS.enabled, "Page reset should restore root defaults")
+    addon.Tests.AssertEqual(addon.db.profile.automation.welcome.enabled, addon.DEFAULTS.profile.automation.welcome.enabled,
+        "Page reset should restore profile defaults")
+    addon.Tests.AssertEqual(clearReason, "unit_test_page_reset", "Page reset should clear rule caches via orchestrator")
+
+    addon.SettingsIntentRegistry.pageSpecs = oldSpecs
+    addon.SettingsIntentRegistry.pageKeyByCategoryId = oldCategoryMap
+    addon.SettingsIntentRegistry.pageKeyByVariable = oldVariableMap
+    addon.StreamRuleEngine.ClearAllCaches = oldClear
 end
 
 function addon.Tests.TestStreamRegistryDefaultSchemaValidation()

@@ -23,7 +23,7 @@ local function CreateSettingFromRegistry(subCat, key)
                 local cr, cg, cb = ColorPickerFrame:GetColorRGB()
                 local ca = ColorPickerFrame:GetColorAlpha()
                 setter(addon.Utils.FormatColorHex(cr,cg,cb,ca))
-                addon:CommitSettings("settings_ui_change", "all")
+                addon:ExecuteSettingsIntent("settings_ui_change", "all")
             end
         })
     end)
@@ -71,7 +71,7 @@ CategoryBuilders.chat = function(rootCat)
         function(v)
             local db = GetChatFontDB()
             if db then db.font = (v ~= "STANDARD") and v or nil end
-            addon:CommitSettings("chat_font_change", "chat")
+            addon:ExecuteSettingsIntent("chat_font_change", "chat")
         end, nil)
 
     CreateSettingFromRegistry(subCat, "fontSize")
@@ -91,7 +91,7 @@ CategoryBuilders.chat = function(rootCat)
         function(v)
             local db = GetChatContentDB()
             if db then db.repeatFilter = v end
-            addon:CommitSettings("settings_ui_change", "all")
+            addon:ExecuteSettingsIntent("settings_ui_change", "all")
         end,
         L["LABEL_REPEAT_FILTER_DESC"])
     CreateSettingFromRegistry(subCat, "snapshotEnabled")
@@ -158,8 +158,9 @@ CategoryBuilders.chat = function(rootCat)
     CreateSettingFromRegistry(subCat, "sticky")
     CreateSettingFromRegistry(subCat, "tabCycle")
 
-    addon.SettingsReset:RegisterPageSpec("chat", {
+    addon.SettingsIntentRegistry:RegisterPageSpec("chat", {
         category = subCat,
+        scope = "chat",
         writeDefaults = {
             "chat.content.snapshotStreams",
             "chat.interaction.copyStreams",

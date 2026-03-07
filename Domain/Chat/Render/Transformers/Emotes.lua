@@ -215,7 +215,7 @@ function addon:InitDisplayEmotesRender()
     })
 
     if addon.RegisterCallback then
-        addon:RegisterCallback("SETTINGS_COMMITTED", ReconcileEmoteTickerState, "EmotesRender")
+        addon:RegisterCallback("SETTINGS_INTENT_COMPLETED", ReconcileEmoteTickerState, "EmotesRender")
         addon:RegisterCallback("CHAT_RUNTIME_MODE_CHANGED", ReconcileEmoteTickerState, "EmotesRender")
     end
 end

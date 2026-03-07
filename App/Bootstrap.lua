@@ -105,6 +105,10 @@ local function EnsureDisplayConfig(profile)
     profile.chat.visual.channelNameFormat = nil
 end
 
+function addon:EnsureDisplayConfig()
+    EnsureDisplayConfig(addon.db and addon.db.profile)
+end
+
 local function EnsureChannelCandidatesRegistry()
     addon.ChannelCandidatesValid = true
     addon.ChannelCandidatesErrors = nil
@@ -147,6 +151,10 @@ local function UpdateProfileCache()
     currentProfileCache = TinyChatonDB.profiles[profileName]
 end
 
+function addon:UpdateCurrentProfileCache()
+    UpdateProfileCache()
+end
+
 local function InitDBProxy()
     addon.db = setmetatable({}, {
         __index = function(_, k)
@@ -184,17 +192,13 @@ function addon:SetProfile(profileName)
         return false
     end
 
-    local charKey = self:GetCharacterKey()
-    TinyChatonDB.profileKeys[charKey] = profileName
-
-    UpdateProfileCache()
-    if addon.StreamRuleEngine and addon.StreamRuleEngine.ClearAllCaches then
-        addon.StreamRuleEngine:ClearAllCaches("profile_switch")
-    end
-    addon:FireEvent("PROFILE_CHANGED", profileName)
-    self:CommitSettings("profile_switch", "all")
-    self:RefreshAllSettings()
-
+    self:ExecuteSettingsIntent({
+        operation = "profile_switch",
+        profileName = profileName,
+        reason = "profile_switch",
+        scope = "all",
+        source = "profile_dropdown",
+    })
     return true
 end
 
@@ -318,7 +322,12 @@ function addon:CopyFromProfile(sourceProfileName)
     currentProfile.profile = addon.Utils.DeepCopy(sourceProfile.profile)
 
     self:LoadProfile(currentProfileName)
-    self:CommitSettings("profile_copy", "all")
+    self:ExecuteSettingsIntent({
+        operation = "commit",
+        reason = "profile_copy",
+        scope = "all",
+        source = "profile_copy",
+    })
     addon:FireEvent("PROFILE_UPDATED", currentProfileName)
 
     return true

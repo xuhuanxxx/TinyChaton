@@ -66,7 +66,7 @@ CategoryBuilders.filters = function(rootCat)
             if not db[currentMode] then db[currentMode] = {} end
             db[currentMode][key] = value
         end
-        addon:CommitSettings()
+        addon:ExecuteSettingsIntent()
     end
 
     -- Filter Mode Dropdown (blacklist/whitelist/disabled)
@@ -122,7 +122,7 @@ CategoryBuilders.filters = function(rootCat)
         function(v)
             local db = GetHighlightDB()
             if db then db.enabled = v end
-            addon:CommitSettings()
+            addon:ExecuteSettingsIntent()
         end,
         nil)
 
@@ -145,13 +145,14 @@ CategoryBuilders.filters = function(rootCat)
                 local cr, cg, cb = ColorPickerFrame:GetColorRGB()
                 local ca = ColorPickerFrame:GetColorAlpha()
                 db.color = addon.Utils.FormatColorHex(cr,cg,cb,ca)
-                addon:CommitSettings()
+                addon:ExecuteSettingsIntent()
             end
         })
     end, nil)
 
-    addon.SettingsReset:RegisterPageSpec("filters", {
+    addon.SettingsIntentRegistry:RegisterPageSpec("filters", {
         category = cat,
+        scope = "all",
         writeDefaults = {
             "filter",
         },
@@ -159,14 +160,7 @@ CategoryBuilders.filters = function(rootCat)
             { type = "setting", variable = P .. "mode", valueFromPath = "filter.mode" },
             { type = "setting", variable = P .. "highlight_enabled", valueFromPath = "filter.highlight.enabled" },
         },
-        postRefresh = function()
-            local db = GetFilterDB()
-            currentMode = (db and db.mode == "whitelist") and "whitelist" or "blacklist"
-            if addon.StreamRuleEngine and addon.StreamRuleEngine.ClearAllCaches then
-                addon.StreamRuleEngine:ClearAllCaches("filters_reset")
-            end
-            print(L["MSG_FILTERS_RESET"])
-        end,
+        clearRuleCaches = true,
     })
     addon.RegisterPageReset(cat, "filters")
 

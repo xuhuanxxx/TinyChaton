@@ -91,7 +91,13 @@ function addon:OnInitialize()
         else
             print("|cFF00FF00" .. L["LABEL_ADDON_NAME"] .. "|r" .. L["MSG_LOADED"])
         end
-        RequireMethod(addon, "CommitSettings")(addon, "bootstrap_init", "all")
+        RequireMethod(addon, "ExecuteSettingsIntent")(addon, {
+            operation = "bootstrap_sync",
+            reason = "bootstrap_init",
+            scope = "all",
+            source = "bootstrap",
+            refreshUI = false,
+        })
 
         if addon.MemoryDiagnostics and addon.MemoryDiagnostics.StartSession then
             addon.MemoryDiagnostics:StartSession()

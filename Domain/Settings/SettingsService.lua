@@ -127,8 +127,8 @@ function addon:SetSetting(key, value, opts)
 
     if reg.apply then
         reg.apply(value, oldValue)
-    elseif not (opts and opts.skipApply) and addon.CommitSettings then
-        addon:CommitSettings()
+    elseif not (opts and opts.skipApply) and addon.ExecuteSettingsIntent then
+        addon:ExecuteSettingsIntent()
     end
 
     return true
@@ -162,25 +162,6 @@ function addon:ValidateAllSettings()
         ok = #errors == 0,
         errors = errors,
     }
-end
-
-function addon:ResetSettings(scopeOrPage)
-    for key, reg in pairs(addon:GetAllSettings()) do
-        local isMatch = not scopeOrPage
-            or reg.scope == scopeOrPage
-            or (reg.ui and reg.ui.page == scopeOrPage)
-        if isMatch then
-            local def = ResolveDefault(reg)
-            local _, validator = EnsureSchemaCore()
-            local accessor = validator.ResolveAccessor(reg)
-            if accessor and accessor.set then
-                accessor.set(def)
-            end
-        end
-    end
-    if addon.CommitSettings then
-        addon:CommitSettings()
-    end
 end
 
 SLASH_TINYCHATON_OPTIONS1 = "/tinychat"

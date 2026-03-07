@@ -71,7 +71,7 @@ local function SavePosition()
     db.anchor = "custom"
 
     if SettingsPanel and SettingsPanel:IsShown() then
-        addon:CommitSettings("shelf_position_drag", "shelf")
+        addon:ExecuteSettingsIntent("shelf_position_drag", "shelf")
     end
 end
 

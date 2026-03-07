@@ -194,8 +194,11 @@ function Dispatcher:OnStreamEvent(frame, event, ...)
     self:RunMiddlewares("TRANSFORM", streamContext)
 
     local shouldHide = false
-    if addon.StreamVisibilityService and addon.StreamVisibilityService.IsVisibleRealtime then
-        local ok, visible = pcall(addon.StreamVisibilityService.IsVisibleRealtime, addon.StreamVisibilityService, streamContext)
+    if addon.StreamVisibilityService
+        and addon.StreamVisibilityService.BuildRealtimeEnvelope
+        and addon.StreamVisibilityService.Evaluate then
+        local envelope = addon.StreamVisibilityService:BuildRealtimeEnvelope(streamContext)
+        local ok, visible = pcall(addon.StreamVisibilityService.Evaluate, addon.StreamVisibilityService, envelope)
         if ok and visible == false then
             shouldHide = true
         end

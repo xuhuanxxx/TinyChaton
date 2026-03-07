@@ -67,25 +67,17 @@ function RuleEngine:ResolveKind(context)
     return nil
 end
 
-function RuleEngine:Evaluate(context, methodName)
+function RuleEngine:Evaluate(context)
     local kind = self:ResolveKind(context)
     local strategy = kind and self.kindStrategies[kind] or nil
 
     local decision
-    if strategy and type(strategy[methodName]) == "function" then
-        local ok, result = pcall(strategy[methodName], strategy, context)
+    if strategy and type(strategy.Evaluate) == "function" then
+        local ok, result = pcall(strategy.Evaluate, strategy, context)
         decision = ok and result or nil
     end
 
     local normalized = NormalizeDecision(decision)
     ApplyMetadataPatch(context, normalized.metadataPatch)
     return normalized
-end
-
-function RuleEngine:EvaluateRealtime(context)
-    return self:Evaluate(context, "EvaluateRealtime")
-end
-
-function RuleEngine:EvaluateSnapshot(context)
-    return self:Evaluate(context, "EvaluateSnapshot")
 end

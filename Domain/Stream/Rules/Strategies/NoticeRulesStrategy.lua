@@ -3,17 +3,7 @@ local addonName, addon = ...
 addon.NoticeRulesStrategy = addon.NoticeRulesStrategy or {}
 local Strategy = addon.NoticeRulesStrategy
 
-function Strategy:EvaluateRealtime(streamContext)
-    return {
-        blocked = false,
-        reasons = {},
-        metadataPatch = {
-            noticeRulesSkipped = true,
-        },
-    }
-end
-
-function Strategy:EvaluateSnapshot(lineContext)
+function Strategy:Evaluate()
     return {
         blocked = false,
         reasons = {},

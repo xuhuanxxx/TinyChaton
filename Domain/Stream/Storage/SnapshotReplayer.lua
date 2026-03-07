@@ -333,8 +333,11 @@ function addon:InitSnapshotManager()
             if not frame then return end
 
             local visible = true
-            if addon.StreamVisibilityService and addon.StreamVisibilityService.IsVisibleSnapshotLine then
-                local ok, result = pcall(addon.StreamVisibilityService.IsVisibleSnapshotLine, addon.StreamVisibilityService, line, frame)
+            if addon.StreamVisibilityService
+                and addon.StreamVisibilityService.BuildSnapshotEnvelope
+                and addon.StreamVisibilityService.Evaluate then
+                local envelope = addon.StreamVisibilityService:BuildSnapshotEnvelope(line, frame)
+                local ok, result = pcall(addon.StreamVisibilityService.Evaluate, addon.StreamVisibilityService, envelope)
                 if ok and result == false then
                     visible = false
                 end

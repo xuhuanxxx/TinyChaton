@@ -42,12 +42,8 @@ function Engine:RegisterKindStrategy(kind, strategy)
     return EnsureCore(self):RegisterKindStrategy(kind, strategy)
 end
 
-function Engine:EvaluateRealtime(streamContext)
-    return EnsureCore(self):EvaluateRealtime(streamContext)
-end
-
-function Engine:EvaluateSnapshot(lineContext)
-    return EnsureCore(self):EvaluateSnapshot(lineContext)
+function Engine:Evaluate(context)
+    return EnsureCore(self):Evaluate(context)
 end
 
 function Engine:ClearAllCaches(reason)

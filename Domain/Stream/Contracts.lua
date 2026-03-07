@@ -17,6 +17,21 @@ addon.StreamContracts.VisibilityDecision = {
     reason = "string|nil",
 }
 
+addon.StreamContracts.VisibilityEnvelope = {
+    sourceMode = "string",
+    streamKey = "string|nil",
+    streamKind = "string|nil",
+    streamGroup = "string|nil",
+    text = "string",
+    textLower = "string",
+    author = "string",
+    name = "string",
+    authorLower = "string",
+    metadata = "table",
+    frame = "table|nil",
+    raw = "table",
+}
+
 addon.StreamContracts.SnapshotRecord = {
     text = "string",
     author = "string|nil",

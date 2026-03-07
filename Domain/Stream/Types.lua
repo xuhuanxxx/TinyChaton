@@ -3,6 +3,7 @@ local addonName, addon = ...
 addon.StreamTypes = addon.StreamTypes or {
     EVENT_CONTEXT = "EventContext",
     VISIBILITY_DECISION = "VisibilityDecision",
+    VISIBILITY_ENVELOPE = "VisibilityEnvelope",
     SNAPSHOT_RECORD = "SnapshotRecord",
     DISPLAY_ENVELOPE = "DisplayEnvelope",
     DISPLAY_AUGMENT_CONTEXT = "DisplayAugmentContext",

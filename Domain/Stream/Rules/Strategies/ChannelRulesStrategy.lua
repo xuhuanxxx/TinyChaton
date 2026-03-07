@@ -119,6 +119,7 @@ local function MatchDuplicate(streamContext)
     if not addon.db or not addon.db.enabled then return false end
     local chatContent = addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.content
     if not chatContent or not chatContent.repeatFilter then return false end
+    if streamContext.sourceMode ~= "realtime" then return false end
 
     local author = streamContext.author
     local msg = streamContext.text
@@ -145,7 +146,7 @@ local function MatchDuplicate(streamContext)
     return false
 end
 
-function Strategy:EvaluateRealtime(streamContext)
+function Strategy:Evaluate(streamContext)
     if type(streamContext) ~= "table" then
         return { blocked = false }
     end
@@ -166,27 +167,6 @@ function Strategy:EvaluateRealtime(streamContext)
             blacklistMatched = blacklistMatched,
             whitelistBlocked = whitelistBlocked,
             duplicateBlocked = duplicateBlocked,
-        },
-    }
-end
-
-function Strategy:EvaluateSnapshot(lineContext)
-    if type(lineContext) ~= "table" then
-        return { blocked = false }
-    end
-
-    local blacklistMatched = MatchBlacklist(lineContext)
-    local whitelistBlocked = MatchWhitelistBlocked(lineContext)
-    local reasons = {}
-    if blacklistMatched then reasons[#reasons + 1] = "channel.blacklist" end
-    if whitelistBlocked then reasons[#reasons + 1] = "channel.whitelist" end
-
-    return {
-        blocked = (#reasons > 0),
-        reasons = reasons,
-        metadataPatch = {
-            blacklistMatched = blacklistMatched,
-            whitelistBlocked = whitelistBlocked,
         },
     }
 end

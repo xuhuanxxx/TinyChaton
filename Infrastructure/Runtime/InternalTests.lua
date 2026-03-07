@@ -1706,7 +1706,7 @@ end
 
 function addon.Tests.TestStreamRuleEngineBlacklistWhitelistApplyToChannelOnly()
     addon.Tests.Assert(type(addon.StreamRuleEngine) == "table", "StreamRuleEngine missing")
-    addon.Tests.Assert(type(addon.StreamRuleEngine.EvaluateRealtime) == "function", "StreamRuleEngine.EvaluateRealtime missing")
+    addon.Tests.Assert(type(addon.StreamRuleEngine.Evaluate) == "function", "StreamRuleEngine.Evaluate missing")
 
     local db = addon.db
     addon.Tests.Assert(type(db) == "table" and type(db.profile) == "table", "DB profile missing")
@@ -1718,7 +1718,8 @@ function addon.Tests.TestStreamRuleEngineBlacklistWhitelistApplyToChannelOnly()
     db.profile.filter.whitelist = { names = {}, keywords = { "allow" } }
 
     db.profile.filter.mode = "blacklist"
-    local blackNotice = addon.StreamRuleEngine:EvaluateRealtime({
+    local blackNotice = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         text = "danger",
         textLower = "danger",
         author = "npc",
@@ -1728,7 +1729,8 @@ function addon.Tests.TestStreamRuleEngineBlacklistWhitelistApplyToChannelOnly()
         streamKind = "notice",
         metadata = {},
     })
-    local blackChannel = addon.StreamRuleEngine:EvaluateRealtime({
+    local blackChannel = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         text = "danger",
         textLower = "danger",
         author = "player",
@@ -1742,7 +1744,8 @@ function addon.Tests.TestStreamRuleEngineBlacklistWhitelistApplyToChannelOnly()
     addon.Tests.AssertEqual(blackChannel.blocked, true, "Blacklist should still apply to channel stream")
 
     db.profile.filter.mode = "whitelist"
-    local whiteNotice = addon.StreamRuleEngine:EvaluateRealtime({
+    local whiteNotice = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         text = "blocked text",
         textLower = "blocked text",
         author = "npc",
@@ -1752,7 +1755,8 @@ function addon.Tests.TestStreamRuleEngineBlacklistWhitelistApplyToChannelOnly()
         streamKind = "notice",
         metadata = {},
     })
-    local whiteChannel = addon.StreamRuleEngine:EvaluateRealtime({
+    local whiteChannel = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         text = "blocked text",
         textLower = "blocked text",
         author = "player",
@@ -1771,7 +1775,7 @@ end
 
 function addon.Tests.TestStreamRuleEngineDuplicateAppliesToChannelOnly()
     addon.Tests.Assert(type(addon.StreamRuleEngine) == "table", "StreamRuleEngine missing")
-    addon.Tests.Assert(type(addon.StreamRuleEngine.EvaluateRealtime) == "function", "StreamRuleEngine.EvaluateRealtime missing")
+    addon.Tests.Assert(type(addon.StreamRuleEngine.Evaluate) == "function", "StreamRuleEngine.Evaluate missing")
     addon.Tests.Assert(type(addon.db) == "table" and type(addon.db.profile) == "table", "DB profile missing")
 
     local oldEnabled = addon.db.enabled
@@ -1782,7 +1786,8 @@ function addon.Tests.TestStreamRuleEngineDuplicateAppliesToChannelOnly()
     addon.db.profile.chat.content = addon.db.profile.chat.content or {}
     addon.db.profile.chat.content.repeatFilter = true
 
-    local noticeFirst = addon.StreamRuleEngine:EvaluateRealtime({
+    local noticeFirst = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         author = "__dup_notice_author",
         text = "__dup_notice_text",
         textLower = "__dup_notice_text",
@@ -1790,7 +1795,8 @@ function addon.Tests.TestStreamRuleEngineDuplicateAppliesToChannelOnly()
         streamKind = "notice",
         metadata = {},
     })
-    local noticeSecond = addon.StreamRuleEngine:EvaluateRealtime({
+    local noticeSecond = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         author = "__dup_notice_author",
         text = "__dup_notice_text",
         textLower = "__dup_notice_text",
@@ -1801,7 +1807,8 @@ function addon.Tests.TestStreamRuleEngineDuplicateAppliesToChannelOnly()
     addon.Tests.AssertEqual(noticeFirst.blocked, false, "Duplicate should ignore first notice message")
     addon.Tests.AssertEqual(noticeSecond.blocked, false, "Duplicate should ignore notice stream")
 
-    local channelFirst = addon.StreamRuleEngine:EvaluateRealtime({
+    local channelFirst = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         author = "__dup_channel_author",
         text = "__dup_channel_text",
         textLower = "__dup_channel_text",
@@ -1809,7 +1816,8 @@ function addon.Tests.TestStreamRuleEngineDuplicateAppliesToChannelOnly()
         streamKind = "channel",
         metadata = {},
     })
-    local channelSecond = addon.StreamRuleEngine:EvaluateRealtime({
+    local channelSecond = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         author = "__dup_channel_author",
         text = "__dup_channel_text",
         textLower = "__dup_channel_text",
@@ -1820,6 +1828,17 @@ function addon.Tests.TestStreamRuleEngineDuplicateAppliesToChannelOnly()
     addon.Tests.AssertEqual(channelFirst.blocked, false, "First channel message should pass duplicate filter")
     addon.Tests.AssertEqual(channelSecond.blocked, true, "Second identical channel message should be blocked by duplicate filter")
 
+    local snapshotDuplicate = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "snapshot",
+        author = "__dup_channel_author",
+        text = "__dup_channel_text",
+        textLower = "__dup_channel_text",
+        streamKey = "say",
+        streamKind = "channel",
+        metadata = {},
+    })
+    addon.Tests.AssertEqual(snapshotDuplicate.blocked, false, "Snapshot should ignore duplicate filter")
+
     addon.db.enabled = oldEnabled
     addon.db.profile.chat.content = oldContent
 end
@@ -1827,11 +1846,11 @@ end
 function addon.Tests.TestStreamRuleEngineKindStrategyExtensionPoint()
     addon.Tests.Assert(type(addon.StreamRuleEngine) == "table", "StreamRuleEngine missing")
     addon.Tests.Assert(type(addon.StreamRuleEngine.RegisterKindStrategy) == "function", "RegisterKindStrategy missing")
-    addon.Tests.Assert(type(addon.StreamRuleEngine.EvaluateRealtime) == "function", "EvaluateRealtime missing")
+    addon.Tests.Assert(type(addon.StreamRuleEngine.Evaluate) == "function", "Evaluate missing")
 
     local marker = "__test_notice_strategy__"
     local strategy = {
-        EvaluateRealtime = function()
+        Evaluate = function()
             return {
                 blocked = true,
                 reasons = { "test.block" },
@@ -1843,7 +1862,8 @@ function addon.Tests.TestStreamRuleEngineKindStrategyExtensionPoint()
     local registered = addon.StreamRuleEngine:RegisterKindStrategy(marker, strategy)
     addon.Tests.AssertEqual(registered, true, "RegisterKindStrategy should return true for valid strategy")
 
-    local decision = addon.StreamRuleEngine:EvaluateRealtime({
+    local decision = addon.StreamRuleEngine:Evaluate({
+        sourceMode = "realtime",
         streamKind = marker,
         metadata = {},
     })
@@ -1912,14 +1932,16 @@ end
 function addon.Tests.TestStreamVisibilityServiceUsesStreamBlocked()
     addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
     addon.Tests.Assert(type(addon.StreamVisibilityService.SetStreamBlocked) == "function", "SetStreamBlocked missing")
-    addon.Tests.Assert(type(addon.StreamVisibilityService.IsVisibleRealtime) == "function", "IsVisibleRealtime missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.BuildRealtimeEnvelope) == "function", "BuildRealtimeEnvelope missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.BuildSnapshotEnvelope) == "function", "BuildSnapshotEnvelope missing")
+    addon.Tests.Assert(type(addon.StreamVisibilityService.Evaluate) == "function", "Evaluate missing")
 
     local policy = addon.StreamVisibilityService
     local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
     addon.db.profile.filter = addon.db.profile.filter or {}
     addon.db.profile.filter.streamBlocked = {}
 
-    local visibleBefore = policy:IsVisibleRealtime({
+    local visibleBefore = policy:Evaluate(policy:BuildRealtimeEnvelope({
         event = "CHAT_MSG_SYSTEM",
         text = "boss warns",
         textLower = "boss warns",
@@ -1927,11 +1949,11 @@ function addon.Tests.TestStreamVisibilityServiceUsesStreamBlocked()
         authorLower = "npc",
         streamKey = "system",
         metadata = {},
-    })
+    }))
     addon.Tests.AssertEqual(visibleBefore, true, "Notice should be visible by default")
 
     policy:SetStreamBlocked("system", true)
-    local visibleAfter = policy:IsVisibleRealtime({
+    local visibleAfter = policy:Evaluate(policy:BuildRealtimeEnvelope({
         event = "CHAT_MSG_SYSTEM",
         text = "boss warns",
         textLower = "boss warns",
@@ -1939,10 +1961,10 @@ function addon.Tests.TestStreamVisibilityServiceUsesStreamBlocked()
         authorLower = "npc",
         streamKey = "system",
         metadata = {},
-    })
+    }))
     addon.Tests.AssertEqual(visibleAfter, false, "Blocked notice stream should be hidden")
 
-    local channelVisibleBefore = policy:IsVisibleRealtime({
+    local channelVisibleBefore = policy:Evaluate(policy:BuildRealtimeEnvelope({
         event = "CHAT_MSG_SAY",
         text = "hello",
         textLower = "hello",
@@ -1951,11 +1973,107 @@ function addon.Tests.TestStreamVisibilityServiceUsesStreamBlocked()
         name = "tester",
         streamKey = "say",
         metadata = {},
-    })
+    }))
     addon.Tests.AssertEqual(channelVisibleBefore, true, "Channel should be visible by default")
 
     policy:SetStreamBlocked("say", true)
-    local channelVisibleAfter = policy:IsVisibleRealtime({
+    local channelVisibleAfter = policy:Evaluate(policy:BuildRealtimeEnvelope({
+        event = "CHAT_MSG_SAY",
+        text = "hello",
+        textLower = "hello",
+        author = "tester",
+        authorLower = "tester",
+        name = "tester",
+        streamKey = "say",
+        metadata = {},
+    }))
+    addon.Tests.AssertEqual(channelVisibleAfter, false, "Blocked channel stream should be hidden")
+
+    local snapshotVisibleAfter = policy:Evaluate(policy:BuildSnapshotEnvelope({
+        text = "hello",
+        author = "tester",
+        streamKey = "say",
+    }, nil))
+    addon.Tests.AssertEqual(snapshotVisibleAfter, false, "Blocked stream should also hide snapshot line")
+
+    addon.db.profile.filter = oldFilter
+end
+
+function addon.Tests.TestVisibilityEnvelopeBuildersUseUnifiedShape()
+    addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
+    local policy = addon.StreamVisibilityService
+
+    local realtimeContext = {
+        frame = { id = "frameA" },
+        event = "CHAT_MSG_SAY",
+        text = "Hello World",
+        author = "Tester-Realm",
+        name = "Tester",
+        authorLower = "tester",
+        textLower = "hello world",
+        streamKey = "say",
+        streamKind = "channel",
+        streamGroup = "personal",
+        metadata = {},
+    }
+    local realtimeEnvelope = policy:BuildRealtimeEnvelope(realtimeContext)
+    addon.Tests.Assert(type(realtimeEnvelope) == "table", "Realtime envelope should be built")
+    addon.Tests.AssertEqual(realtimeEnvelope.sourceMode, "realtime", "Realtime envelope mode mismatch")
+    addon.Tests.Assert(realtimeEnvelope.raw == realtimeContext, "Realtime envelope should keep raw context")
+    addon.Tests.Assert(realtimeEnvelope.metadata == realtimeContext.metadata, "Realtime envelope should reuse metadata")
+    addon.Tests.AssertEqual(realtimeEnvelope.name, "Tester", "Realtime envelope name mismatch")
+
+    local snapshotLine = {
+        text = "Snapshot Hello",
+        author = "Replay-Realm",
+        streamKey = "say",
+        streamKind = "channel",
+        streamGroup = "personal",
+    }
+    local frame = { id = "frameB" }
+    local snapshotEnvelope = policy:BuildSnapshotEnvelope(snapshotLine, frame)
+    addon.Tests.Assert(type(snapshotEnvelope) == "table", "Snapshot envelope should be built")
+    addon.Tests.AssertEqual(snapshotEnvelope.sourceMode, "snapshot", "Snapshot envelope mode mismatch")
+    addon.Tests.Assert(snapshotEnvelope.raw == snapshotLine, "Snapshot envelope should keep raw line")
+    addon.Tests.Assert(snapshotEnvelope.frame == frame, "Snapshot envelope should keep frame")
+    addon.Tests.AssertEqual(snapshotEnvelope.name, "Replay", "Snapshot envelope name mismatch")
+end
+
+function addon.Tests.TestVisibilityEvaluateWritesStableMetadata()
+    addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
+    local policy = addon.StreamVisibilityService
+    local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
+    local oldEnabled = addon.db.enabled
+
+    addon.db.enabled = true
+    addon.db.profile.filter = addon.db.profile.filter or {}
+    addon.db.profile.filter.mode = "blacklist"
+    addon.db.profile.filter.blacklist = { names = {}, keywords = { "danger" } }
+    addon.db.profile.filter.whitelist = { names = {}, keywords = {} }
+    addon.db.profile.filter.streamBlocked = {}
+
+    local envelope = policy:BuildRealtimeEnvelope({
+        event = "CHAT_MSG_SAY",
+        text = "danger",
+        textLower = "danger",
+        author = "tester",
+        authorLower = "tester",
+        name = "tester",
+        streamKey = "say",
+        metadata = {},
+    })
+    local visible = policy:Evaluate(envelope)
+    addon.Tests.AssertEqual(visible, false, "Blacklist should hide matching realtime message")
+    addon.Tests.AssertEqual(envelope.metadata.visibilitySourceMode, "realtime", "Visibility source mode should be stable")
+    addon.Tests.AssertEqual(envelope.metadata.visibilityReason, "rule_blocked:channel.blacklist",
+        "Visibility reason should be stable")
+    addon.Tests.Assert(type(envelope.metadata.visibilityRuleReasons) == "table", "Visibility rule reasons missing")
+    addon.Tests.AssertEqual(envelope.metadata.visibilityRuleReasons[1], "channel.blacklist",
+        "Visibility rule reasons should include the matched rule")
+    addon.Tests.AssertEqual(envelope.metadata.visibilityRuleMatched, true, "Visibility rule match flag should be stable")
+    addon.Tests.AssertEqual(envelope.metadata.visibilityBlockedBy, "rules", "Rule-blocked reason should be explicit")
+
+    local mutedEnvelope = policy:BuildRealtimeEnvelope({
         event = "CHAT_MSG_SAY",
         text = "hello",
         textLower = "hello",
@@ -1965,9 +2083,27 @@ function addon.Tests.TestStreamVisibilityServiceUsesStreamBlocked()
         streamKey = "say",
         metadata = {},
     })
-    addon.Tests.AssertEqual(channelVisibleAfter, false, "Blocked channel stream should be hidden")
+    policy:SetStreamBlocked("say", true)
+    local mutedVisible = policy:Evaluate(mutedEnvelope)
+    addon.Tests.AssertEqual(mutedVisible, false, "Muted stream should be hidden")
+    addon.Tests.AssertEqual(mutedEnvelope.metadata.visibilityReason, "stream_blocked",
+        "Stream-blocked reason should be stable")
+    addon.Tests.AssertEqual(mutedEnvelope.metadata.visibilityRuleMatched, false,
+        "Stream-blocked path should not be marked as rule matched")
+    addon.Tests.AssertEqual(mutedEnvelope.metadata.visibilityBlockedBy, "stream_blocked",
+        "Stream-blocked reason should be explicit")
 
+    addon.db.enabled = oldEnabled
     addon.db.profile.filter = oldFilter
+end
+
+function addon.Tests.TestVisibilityUnifiedApiRemovesLegacyEntryPoints()
+    addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
+    addon.Tests.Assert(addon.StreamVisibilityService.IsVisibleRealtime == nil, "Legacy realtime visibility entrypoint should be removed")
+    addon.Tests.Assert(addon.StreamVisibilityService.IsVisibleSnapshotLine == nil, "Legacy snapshot visibility entrypoint should be removed")
+    addon.Tests.Assert(type(addon.StreamRuleEngine) == "table", "StreamRuleEngine missing")
+    addon.Tests.Assert(addon.StreamRuleEngine.EvaluateRealtime == nil, "Legacy realtime rule engine entrypoint should be removed")
+    addon.Tests.Assert(addon.StreamRuleEngine.EvaluateSnapshot == nil, "Legacy snapshot rule engine entrypoint should be removed")
 end
 
 function addon.Tests.TestStreamBlockedToggleUsesUnifiedStorage()
@@ -2072,7 +2208,14 @@ function addon.Tests.TestStreamEventDispatcherReturnSemantics()
 
     -- Case 2: shouldHide=true should still short-circuit to true.
     addon.StreamVisibilityService = {
-        IsVisibleRealtime = function()
+        BuildRealtimeEnvelope = function(_, streamContext)
+            return {
+                sourceMode = "realtime",
+                metadata = streamContext.metadata or {},
+                raw = streamContext,
+            }
+        end,
+        Evaluate = function()
             return false
         end,
     }

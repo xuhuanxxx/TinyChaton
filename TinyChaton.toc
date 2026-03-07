@@ -58,6 +58,8 @@ Infrastructure\Runtime\StreamRegistryCompiler.lua
 Infrastructure\Runtime\ChannelSemanticResolver.lua
 Domain\Chat\ChannelCandidatesRegistry.lua
 Domain\Stream\Actions\StreamActionRegistry.lua
+Domain\Stream\Actions\ActionIntentOrchestrator.lua
+Domain\Stream\Actions\ActionAdapters.lua
 Domain\Shelf\ShelfAnchorRegistry.lua
 Domain\Shelf\ShelfColorRegistry.lua
 Domain\Shelf\ShelfKitRegistry.lua

@@ -556,31 +556,28 @@ local SLASH_COMMANDS = {
     ["EMOTE"] = "e",
 }
 
-function addon:ActionSend(wowChatType, streamKey, channelName)
-    -- User-triggered channel switch from Shelf remains available in all modes.
-    -- This action opens chat input for joined channels.
-    if wowChatType == "CHANNEL" then
-        local id = nil
-        local semantic = addon.ChannelSemanticResolver
-        if semantic and type(semantic.ResolveDynamic) == "function" and type(streamKey) == "string" and streamKey ~= "" then
-            local resolved = semantic.ResolveDynamic({
-                streamKey = streamKey,
-                channelName = channelName,
-            })
-            id = resolved and tonumber(resolved.channelId) or nil
-        end
-        if id and id > 0 then
-            OpenChat("/" .. id .. " ")
-        else
-            return
-        end
-    else
-        local cmd
-        if wowChatType == "WHISPER" or wowChatType == "BN_WHISPER" then
-            cmd = "w"
-        else
-            cmd = SLASH_COMMANDS[wowChatType] or string.lower(wowChatType)
-        end
-        OpenChat("/" .. cmd .. " ")
+function addon:OpenChatForActionSend(payload)
+    local data = type(payload) == "table" and payload or {}
+    local wowChatType = data.wowChatType
+    if type(wowChatType) ~= "string" or wowChatType == "" then
+        return false, "payload_invalid"
     end
+
+    if wowChatType == "CHANNEL" then
+        local id = tonumber(data.channelId) or nil
+        if not id or id <= 0 then
+            return false, "target_unresolved"
+        end
+        OpenChat("/" .. id .. " ")
+        return true
+    end
+
+    local cmd
+    if wowChatType == "WHISPER" or wowChatType == "BN_WHISPER" then
+        cmd = "w"
+    else
+        cmd = SLASH_COMMANDS[wowChatType] or string.lower(wowChatType)
+    end
+    OpenChat("/" .. cmd .. " ")
+    return true
 end

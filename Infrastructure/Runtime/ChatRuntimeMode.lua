@@ -66,20 +66,6 @@ function addon:GetChatRuntimeReason()
     return state.reason
 end
 
-function addon:CanExecuteAction(actionKey)
-    if not actionKey then
-        return false, "missing_action"
-    end
-    local action = self.ACTION_REGISTRY and self.ACTION_REGISTRY[actionKey]
-    if not action then
-        return false, "missing_action"
-    end
-    if self:IsPlaneAllowed(action.actionPlane, action.enabledWhenBypass) then
-        return true
-    end
-    return false, "bypass_blocked"
-end
-
 function addon:InitChatRuntimeMode()
     if not state.mode then
         state.mode = addon.CHAT_RUNTIME_MODE.ACTIVE

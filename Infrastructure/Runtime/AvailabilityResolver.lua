@@ -59,14 +59,19 @@ local function ResolveDefaultReady()
     }
 end
 
-local function ResolveKitAvailability(_, context)
-    if context and context.forAction and context.actionKey and addon.CanExecuteAction then
-        local allowed, reason = addon:CanExecuteAction(context.actionKey)
-        if not allowed then
+local function ResolveKitAvailability(entityKey, context)
+    if context and context.forAction and context.actionKey and addon.ActionIntentOrchestrator then
+        local result = addon.ActionIntentOrchestrator:Preview({
+            actionKey = context.actionKey,
+            targetKind = "kit",
+            targetKey = context.targetKey or entityKey,
+            source = "direct_user_action",
+        })
+        if type(result) == "table" and result.ok == false then
             return {
                 available = false,
                 state = "blocked",
-                reason = reason or "blocked",
+                reason = result.reason or "blocked",
             }
         end
     end

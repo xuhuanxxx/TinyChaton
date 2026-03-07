@@ -79,11 +79,21 @@ function Passes.BuildRegistry(actionDefinitions, ctx)
             label = label,
             tooltip = actionDef.getTooltip and actionDef.getTooltip(stream.key) or nil,
             streamKey = stream.key,
+            targetKind = actionDef.targetKind or "stream",
+            targetKey = stream.key,
+            appliesTo = actionDef.appliesTo,
             category = actionDef.category,
             actionPlane = actionDef.actionPlane or "UI_ONLY",
-            execute = function(...)
-                actionDef.execute(stream.key, ...)
-            end,
+            enabledWhenBypass = actionDef.enabledWhenBypass,
+            requiredCapabilities = actionDef.requiredCapabilities,
+            normalizePayload = actionDef.normalizePayload,
+            execute = actionDef.execute,
+            getLabel = actionDef.getLabel and function(targetKey)
+                return actionDef.getLabel(targetKey or stream.key)
+            end or nil,
+            getTooltip = actionDef.getTooltip and function(targetKey)
+                return actionDef.getTooltip(targetKey or stream.key)
+            end or nil,
         }
     end
 
@@ -114,9 +124,21 @@ function Passes.BuildRegistry(actionDefinitions, ctx)
                         label = label,
                         tooltip = actionDef.getTooltip and actionDef.getTooltip(kitKey) or nil,
                         kitKey = kitKey,
+                        targetKind = actionDef.targetKind or "kit",
+                        targetKey = kitKey,
+                        appliesTo = actionDef.appliesTo,
                         category = "kit",
                         actionPlane = actionDef.actionPlane or "UI_ONLY",
+                        enabledWhenBypass = actionDef.enabledWhenBypass,
+                        requiredCapabilities = actionDef.requiredCapabilities,
+                        normalizePayload = actionDef.normalizePayload,
                         execute = actionDef.execute,
+                        getLabel = actionDef.getLabel and function(targetKey)
+                            return actionDef.getLabel(targetKey or kitKey)
+                        end or nil,
+                        getTooltip = actionDef.getTooltip and function(targetKey)
+                            return actionDef.getTooltip(targetKey or kitKey)
+                        end or nil,
                     }
                 end
             end

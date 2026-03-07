@@ -1441,6 +1441,256 @@ function addon.Tests.TestActionRegistrySupportsScopeOnlyRegistration()
     addon.ACTION_DEFINITIONS = oldDefs
 end
 
+function addon.Tests.TestActionIntentSendFromShelfUsesOrchestrator()
+    addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
+    addon.Tests.Assert(type(addon.Shelf.ExecuteAction) == "function", "Shelf.ExecuteAction missing")
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local oldExecute = addon.ActionIntentOrchestrator.Execute
+    local captured = nil
+    addon.ActionIntentOrchestrator.Execute = function(_, intent)
+        captured = intent
+        return { ok = true }
+    end
+
+    local button = { key = "button" }
+    addon.Shelf:ExecuteAction("send_say", button, { type = "channel", key = "say" })
+
+    addon.Tests.Assert(type(captured) == "table", "Shelf adapter should forward intent")
+    addon.Tests.AssertEqual(captured.actionKey, "send_say", "Shelf adapter actionKey mismatch")
+    addon.Tests.AssertEqual(captured.targetKind, "stream", "Shelf adapter targetKind mismatch")
+    addon.Tests.AssertEqual(captured.targetKey, "say", "Shelf adapter targetKey mismatch")
+    addon.Tests.AssertEqual(captured.source, "shelf_button", "Shelf adapter source mismatch")
+    addon.Tests.Assert(captured.context.buttonFrame == button, "Shelf adapter should forward button frame")
+
+    addon.ActionIntentOrchestrator.Execute = oldExecute
+end
+
+function addon.Tests.TestActionIntentSendFromChatLinkUsesOrchestrator()
+    addon.Tests.Assert(type(addon.ChatLinkAdapter) == "table", "ChatLinkAdapter missing")
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local oldExecute = addon.ActionIntentOrchestrator.Execute
+    local captured = nil
+    addon.ActionIntentOrchestrator.Execute = function(_, intent)
+        captured = intent
+        return { ok = true }
+    end
+
+    addon.ChatLinkAdapter:Execute("send", "say", { link = "tinychat:send:say" })
+
+    addon.Tests.Assert(type(captured) == "table", "Chat link adapter should forward intent")
+    addon.Tests.AssertEqual(captured.actionKey, "send_say", "Chat link actionKey mismatch")
+    addon.Tests.AssertEqual(captured.targetKind, "stream", "Chat link targetKind mismatch")
+    addon.Tests.AssertEqual(captured.targetKey, "say", "Chat link targetKey mismatch")
+    addon.Tests.AssertEqual(captured.source, "chat_link", "Chat link source mismatch")
+
+    addon.ActionIntentOrchestrator.Execute = oldExecute
+end
+
+function addon.Tests.TestActionIntentMuteToggleFromShelfUsesOrchestrator()
+    addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local oldExecute = addon.ActionIntentOrchestrator.Execute
+    local captured = nil
+    addon.ActionIntentOrchestrator.Execute = function(_, intent)
+        captured = intent
+        return { ok = true }
+    end
+
+    addon.Shelf:ExecuteAction("mute_toggle_say", { key = "button" }, { type = "channel", key = "say" })
+
+    addon.Tests.Assert(type(captured) == "table", "Shelf mute should forward intent")
+    addon.Tests.AssertEqual(captured.actionKey, "mute_toggle_say", "Mute actionKey mismatch")
+    addon.Tests.AssertEqual(captured.targetKey, "say", "Mute targetKey mismatch")
+
+    addon.ActionIntentOrchestrator.Execute = oldExecute
+end
+
+function addon.Tests.TestActionIntentKitActionFromDirectUserAction()
+    addon.Tests.Assert(type(addon.DirectUserActionAdapter) == "table", "DirectUserActionAdapter missing")
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local oldExecute = addon.ActionIntentOrchestrator.Execute
+    local captured = nil
+    local button = { key = "button" }
+    addon.ActionIntentOrchestrator.Execute = function(_, intent)
+        captured = intent
+        return { ok = true }
+    end
+
+    addon:ExecuteUserAction({
+        actionKey = "kit_emotePanel_emote_panel",
+        context = {
+            buttonFrame = button,
+        },
+    })
+
+    addon.Tests.Assert(type(captured) == "table", "Direct adapter should forward intent")
+    addon.Tests.AssertEqual(captured.actionKey, "kit_emotePanel_emote_panel", "Direct actionKey mismatch")
+    addon.Tests.AssertEqual(captured.targetKind, "kit", "Direct targetKind mismatch")
+    addon.Tests.AssertEqual(captured.targetKey, "emotePanel", "Direct targetKey mismatch")
+    addon.Tests.AssertEqual(captured.source, "direct_user_action", "Direct source mismatch")
+    addon.Tests.Assert(captured.context.buttonFrame == button, "Direct adapter should keep context")
+
+    addon.ActionIntentOrchestrator.Execute = oldExecute
+end
+
+function addon.Tests.TestActionIntentRuntimePlaneDeniedWithReason()
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local oldMode = addon.GetChatRuntimeMode and addon:GetChatRuntimeMode() or "ACTIVE"
+    local oldReason = addon.GetChatRuntimeReason and addon:GetChatRuntimeReason() or "normal"
+    addon:SetChatRuntimeMode(addon.CHAT_RUNTIME_MODE.BYPASS, "test")
+
+    local result = addon.ActionIntentOrchestrator:Execute({
+        actionKey = "mute_toggle_say",
+        source = "direct_user_action",
+    })
+
+    addon.Tests.Assert(type(result) == "table", "Runtime plane result missing")
+    addon.Tests.AssertEqual(result.ok, false, "mute_toggle should be denied in bypass")
+    addon.Tests.AssertEqual(result.reason, "plane_denied", "Runtime plane denial reason mismatch")
+
+    addon:SetChatRuntimeMode(oldMode, oldReason)
+end
+
+function addon.Tests.TestActionIntentCapabilityDeniedWithReason()
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local oldRegistry = addon.ACTION_REGISTRY
+    local oldCan = addon.Can
+    addon.ACTION_REGISTRY = addon.Utils.DeepCopy(addon.ACTION_REGISTRY or {})
+    addon.ACTION_REGISTRY.test_capability_reload = {
+        key = "test_capability_reload",
+        category = "kit",
+        targetKind = "kit",
+        targetKey = "reload",
+        appliesTo = { kits = { "reload" } },
+        actionPlane = "UI_ONLY",
+        requiredCapabilities = { addon.CAPABILITIES.EMIT_CHAT_ACTION },
+        execute = function()
+            return true
+        end,
+    }
+    addon.Can = function(_, capability)
+        return capability ~= addon.CAPABILITIES.EMIT_CHAT_ACTION
+    end
+
+    local result = addon.ActionIntentOrchestrator:Execute({
+        actionKey = "test_capability_reload",
+        source = "direct_user_action",
+    })
+
+    addon.Tests.AssertEqual(result.ok, false, "Capability-limited action should fail")
+    addon.Tests.AssertEqual(result.reason, "capability_denied", "Capability denial reason mismatch")
+
+    addon.ACTION_REGISTRY = oldRegistry
+    addon.Can = oldCan
+end
+
+function addon.Tests.TestActionIntentDynamicChannelSendResolvesActiveName()
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local oldResolveDynamicName = addon.ResolveDynamicActiveName
+    local oldSemantic = addon.ChannelSemanticResolver and addon.ChannelSemanticResolver.ResolveDynamic
+    local oldOpenChat = addon.OpenChatForActionSend
+    local capturedPayload = nil
+    local capturedResolve = nil
+
+    addon.ResolveDynamicActiveName = function()
+        return { activeName = "General" }
+    end
+    addon.ChannelSemanticResolver.ResolveDynamic = function(context)
+        capturedResolve = context
+        return { channelId = 7 }
+    end
+    addon.OpenChatForActionSend = function(_, payload)
+        capturedPayload = payload
+        return true
+    end
+
+    local result = addon.ActionIntentOrchestrator:Execute({
+        actionKey = "send_general",
+        source = "direct_user_action",
+    })
+
+    addon.Tests.AssertEqual(result.ok, true, "Dynamic send should succeed")
+    addon.Tests.Assert(type(capturedResolve) == "table", "Dynamic resolver should be called")
+    addon.Tests.AssertEqual(capturedResolve.streamKey, "general", "Dynamic resolver streamKey mismatch")
+    addon.Tests.AssertEqual(capturedResolve.channelName, "General", "Dynamic resolver channelName mismatch")
+    addon.Tests.Assert(type(capturedPayload) == "table", "Send payload should be forwarded")
+    addon.Tests.AssertEqual(capturedPayload.channelId, 7, "Dynamic send channelId mismatch")
+    addon.Tests.AssertEqual(capturedPayload.channelName, "General", "Dynamic send channelName mismatch")
+
+    addon.ResolveDynamicActiveName = oldResolveDynamicName
+    addon.ChannelSemanticResolver.ResolveDynamic = oldSemantic
+    addon.OpenChatForActionSend = oldOpenChat
+end
+
+function addon.Tests.TestActionIntentInvalidTargetReturnsReason()
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local result = addon.ActionIntentOrchestrator:Execute({
+        actionKey = "send_say",
+        targetKind = "stream",
+        targetKey = "missing_stream",
+        source = "direct_user_action",
+    })
+
+    addon.Tests.AssertEqual(result.ok, false, "Missing target should fail")
+    addon.Tests.AssertEqual(result.reason, "invalid_target", "Missing target reason mismatch")
+end
+
+function addon.Tests.TestActionIntentEmotePanelReceivesButtonContext()
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+
+    local oldToggle = addon.ToggleEmotePanel
+    local capturedAnchor = nil
+    local button = { key = "button" }
+    addon.ToggleEmotePanel = function(_, anchorFrame)
+        capturedAnchor = anchorFrame
+    end
+
+    local result = addon:ExecuteUserAction({
+        actionKey = "kit_emotePanel_emote_panel",
+        context = {
+            buttonFrame = button,
+        },
+    })
+
+    addon.Tests.AssertEqual(result.ok, true, "Emote panel action should succeed")
+    addon.Tests.Assert(capturedAnchor == button, "Emote panel should receive button context")
+
+    addon.ToggleEmotePanel = oldToggle
+end
+
+function addon.Tests.TestActionIntentAdaptersDoNotCarryBusinessLogic()
+    addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
+    addon.Tests.Assert(type(addon.ChatLinkAdapter) == "table", "ChatLinkAdapter missing")
+    addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
+
+    local oldExecute = addon.ActionIntentOrchestrator.Execute
+    local oldOpenChat = addon.OpenChatForActionSend
+    local executeCount = 0
+    addon.ActionIntentOrchestrator.Execute = function(_, intent)
+        executeCount = executeCount + 1
+        return { ok = true, actionKey = intent.actionKey }
+    end
+    addon.OpenChatForActionSend = function()
+        error("Adapters must not invoke send helper directly")
+    end
+
+    addon.ChatLinkAdapter:Execute("send", "say", {})
+    addon.Shelf:ExecuteAction("send_say", { key = "button" }, { type = "channel", key = "say" })
+
+    addon.Tests.AssertEqual(executeCount, 2, "Adapters should delegate to orchestrator")
+
+    addon.ActionIntentOrchestrator.Execute = oldExecute
+    addon.OpenChatForActionSend = oldOpenChat
+end
+
 function addon.Tests.TestStreamEventContextNewSetsStreamKey()
     addon.Tests.Assert(type(addon.StreamEventContext) == "table", "StreamEventContext missing")
     addon.Tests.Assert(type(addon.StreamEventContext.New) == "function", "StreamEventContext.New missing")

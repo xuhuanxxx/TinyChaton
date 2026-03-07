@@ -315,26 +315,17 @@ function addon.Shelf:InitActionRegistry()
 end
 
 function addon.Shelf:ExecuteAction(actionKey, ...)
-    if not actionKey then return end
-    local action = addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey]
-    if not action or not action.execute then
+    if not actionKey or not addon.ShelfButtonAdapter or not addon.ActionIntentOrchestrator then
         return
     end
 
-    if addon.CanExecuteAction then
-        local allowed, reason = addon:CanExecuteAction(actionKey)
-        if not allowed then
-            if reason == "bypass_blocked" then
-                local now = GetTime()
-                if (now - lastActionBlockedAt) >= 1 then
-                    lastActionBlockedAt = now
-                    local prefix = (L and L["LABEL_ADDON_NAME"]) or "TinyChaton"
-                    print("|cff00ff00" .. prefix .. "|r: Action unavailable in instance bypass mode.")
-                end
-            end
-            return
+    local result = addon.ShelfButtonAdapter:Execute(actionKey, ...)
+    if type(result) == "table" and result.ok == false and result.reason == "plane_denied" then
+        local now = GetTime()
+        if (now - lastActionBlockedAt) >= 1 then
+            lastActionBlockedAt = now
+            local prefix = (L and L["LABEL_ADDON_NAME"]) or "TinyChaton"
+            print("|cff00ff00" .. prefix .. "|r: Action unavailable in instance bypass mode.")
         end
     end
-
-    action.execute(...)
 end

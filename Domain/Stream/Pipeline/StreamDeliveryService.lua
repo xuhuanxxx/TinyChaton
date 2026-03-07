@@ -42,8 +42,8 @@ function Service:DeliverReplay(line, options)
         return false
     end
 
-    local rendered = addon.DisplayAugmentPipeline and addon.DisplayAugmentPipeline.Render
-        and addon.DisplayAugmentPipeline:Render(frame, envelope)
+    local rendered = addon.DisplayRenderOrchestrator and addon.DisplayRenderOrchestrator.RenderEnvelope
+        and addon.DisplayRenderOrchestrator:RenderEnvelope(frame, envelope)
         or nil
     if type(rendered) ~= "table" or type(rendered.displayText) ~= "string" then
         return false

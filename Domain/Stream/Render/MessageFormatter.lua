@@ -66,17 +66,6 @@ local function ResolveColorChatType(line)
     return line.wowChatType
 end
 
-local function IsClickToCopyEnabledForLine(line, options)
-    if type(options) == "table" and options.enableCopyLink == false then
-        return false
-    end
-    local policy = addon.DisplayPolicyService
-    if policy and type(policy.CanInjectCopy) == "function" then
-        return policy:CanInjectCopy(line and line.streamKey or nil)
-    end
-    return false
-end
-
 function Formatter.RegisterKindFormatter(kind, formatterFn)
     return EnsureKindPlugins():RegisterFormatter(kind, formatterFn)
 end
@@ -127,7 +116,7 @@ function Formatter.GetLineColor(line)
     return 1, 1, 1
 end
 
-function Formatter.GetStreamTag(line, options)
+function Formatter.GetStreamTag(line)
     if type(line) ~= "table" then
         return ""
     end
@@ -141,41 +130,7 @@ function Formatter.GetStreamTag(line, options)
         return ""
     end
 
-    local streamMeta = type(line.streamMeta) == "table" and line.streamMeta or nil
-    local normalizedName = streamMeta and streamMeta.channelBaseNameNormalized or nil
-    if (not normalizedName or normalizedName == "") and streamMeta and streamMeta.channelBaseName and addon.Utils and addon.Utils.NormalizeChannelBaseName then
-        normalizedName = addon.Utils.NormalizeChannelBaseName(streamMeta.channelBaseName)
-    end
-
-    local displayText = nil
-    if type(options) == "table" and type(options.channelPrefixHint) == "string" and options.channelPrefixHint ~= "" then
-        displayText = "[" .. options.channelPrefixHint .. "] "
-    else
-        displayText = addon.Utils.ResolveChannelDisplay({
-            wowChatType = line.wowChatType,
-            streamMeta = {
-                channelId = streamMeta and streamMeta.channelId or nil,
-                channelBaseName = normalizedName,
-            },
-            streamKey = streamKey,
-        })
-    end
-
-    local streamTag = displayText
-    local chatTypeForColor = ResolveColorChatType(line)
-    if ChatTypeInfo and chatTypeForColor and ChatTypeInfo[chatTypeForColor] then
-        local info = ChatTypeInfo[chatTypeForColor]
-        streamTag = string.format("|cff%02x%02x%02x%s|r", (info.r or 1) * 255, (info.g or 1) * 255, (info.b or 1) * 255, displayText)
-    end
-
-    local sendEnabled = type(options) == "table" and options.enableSendLink == true
-    if sendEnabled then
-        local caps = addon.GetStreamCapabilities and addon:GetStreamCapabilities(streamKey) or nil
-        if type(caps) == "table" and caps.outbound == true then
-            return string.format("|Htinychat:send:%s|h%s|h", streamKey, streamTag)
-        end
-    end
-    return streamTag
+    return addon.DisplayAugmentPipeline and addon.DisplayAugmentPipeline.PREFIX_TOKEN or "<<TC_PREFIX>>"
 end
 
 function Formatter.GetAuthorTag(line)
@@ -190,67 +145,6 @@ function Formatter.GetAuthorTag(line)
     return string.format("|Hplayer:%s|h[%s]|h%s", line.author, authorName, addon.L["CHAT_MESSAGE_SEPARATOR"] or ":")
 end
 
-function Formatter.BuildRealtimeLineFromContext(streamContext)
-    if type(streamContext) ~= "table" or type(streamContext.text) ~= "string" then
-        return nil, "invalid_stream_context"
-    end
-
-    local args = streamContext.args
-    local event = streamContext.event
-    local wowChatType = streamContext.wowChatType
-    if type(wowChatType) ~= "string" or wowChatType == "" then
-        wowChatType = addon:GetWowChatTypeByEvent(event)
-    end
-    if type(wowChatType) ~= "string" then
-        return nil, "unmapped_event:" .. tostring(event)
-    end
-
-    local streamKey = streamContext.streamKey
-    if (type(streamKey) ~= "string" or streamKey == "") and addon.ResolveStreamKey and type(args) == "table" and addon.Utils and addon.Utils.UnpackArgs then
-        streamKey = addon:ResolveStreamKey(event, addon.Utils.UnpackArgs(args))
-    end
-
-    local streamMeta = nil
-    if wowChatType == "CHANNEL" then
-        local resolver = addon.ChannelSemanticResolver
-        local channelBaseName = (resolver and type(resolver.ResolveEventChannelName) == "function")
-            and resolver.ResolveEventChannelName(streamContext.channelName, streamContext.channelString, streamContext.channelNumber)
-            or streamContext.channelName
-        local normalized = channelBaseName
-        if normalized and addon.Utils and addon.Utils.NormalizeChannelBaseName then
-            normalized = addon.Utils.NormalizeChannelBaseName(normalized)
-        end
-        streamMeta = {
-            channelId = streamContext.channelNumber,
-            channelBaseName = channelBaseName,
-            channelBaseNameNormalized = normalized,
-        }
-    end
-
-    local classFilename
-    if type(args) == "table" then
-        local guid = args[12]
-        if guid then
-            _, classFilename = GetPlayerInfoByGUID(guid)
-        end
-    end
-
-    local kind = (type(streamKey) == "string" and addon.GetStreamKind) and addon:GetStreamKind(streamKey) or nil
-    local group = (type(streamKey) == "string" and addon.GetStreamGroup) and addon:GetStreamGroup(streamKey) or nil
-
-    return {
-        text = streamContext.text,
-        author = streamContext.author,
-        wowChatType = wowChatType,
-        streamKey = streamKey,
-        kind = kind,
-        group = group,
-        streamMeta = streamMeta,
-        time = time(),
-        classFilename = classFilename,
-    }, nil
-end
-
 function Formatter.BuildDisplayLine(line, options)
     return EnsureRenderEngine():BuildDisplayLine(line, options, {
         getLineColor = Formatter.GetLineColor,
@@ -259,52 +153,5 @@ function Formatter.BuildDisplayLine(line, options)
         resolveTimestampColor = Formatter.ResolveTimestampColor,
         getStreamTag = Formatter.GetStreamTag,
         getAuthorTag = Formatter.GetAuthorTag,
-        isClickToCopyEnabledForLine = IsClickToCopyEnabledForLine,
     })
-end
-
-function addon:RenderChatLine(line, frame, options)
-    local displayLine, r, g, b = Formatter.BuildDisplayLine(line, options)
-    if type(displayLine) ~= "string" then
-        return nil, 1, 1, 1, addon.Utils.PackArgs(1, 1, 1)
-    end
-
-    local targetFrame = frame or ChatFrame1
-    local streamKey = type(line) == "table" and line.streamKey or nil
-    local extraArgs = addon.Utils.PackArgs(r, g, b)
-    if type(streamKey) == "string" and streamKey ~= "" then
-        extraArgs.streamKey = streamKey
-    end
-    if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
-        displayLine, r, g, b, extraArgs = addon.Gateway.Display:Transform(targetFrame, displayLine, r, g, b, extraArgs)
-    end
-
-    if type(extraArgs) ~= "table" then
-        extraArgs = addon.Utils.PackArgs(r, g, b)
-    elseif extraArgs.n == nil then
-        extraArgs.n = #extraArgs
-    end
-
-    extraArgs[1], extraArgs[2], extraArgs[3] = r, g, b
-    if type(streamKey) == "string" and streamKey ~= "" and (type(extraArgs.streamKey) ~= "string" or extraArgs.streamKey == "") then
-        extraArgs.streamKey = streamKey
-    end
-
-    return displayLine, r, g, b, extraArgs
-end
-
-function addon:EmitRenderedChatLine(line, frame, options)
-    local targetFrame = frame or ChatFrame1
-    if not targetFrame or type(targetFrame.AddMessage) ~= "function" then
-        return false
-    end
-
-    local displayLine, _, _, _, extraArgs = self:RenderChatLine(line, targetFrame, options)
-    if type(displayLine) ~= "string" then
-        return false
-    end
-
-    local addMessageFn = targetFrame._TinyChatonOrigAddMessage or targetFrame.AddMessage
-    addMessageFn(targetFrame, displayLine, addon.Utils.UnpackArgs(extraArgs))
-    return true
 end

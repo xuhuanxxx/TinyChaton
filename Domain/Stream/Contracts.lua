@@ -42,6 +42,28 @@ addon.StreamContracts.DisplayEnvelope = {
     classFilename = "string|nil",
 }
 
+addon.StreamContracts.DisplayAugmentContext = {
+    frame = "table|nil",
+    envelope = "table",
+    line = "table",
+    renderOptions = "table",
+    displayText = "string|nil",
+    r = "number|nil",
+    g = "number|nil",
+    b = "number|nil",
+    extraArgs = "table|nil",
+}
+
+addon.StreamContracts.DisplayRenderResult = {
+    displayText = "string",
+    r = "number",
+    g = "number",
+    b = "number",
+    extraArgs = "table",
+    line = "table",
+    debug = "table",
+}
+
 local function IsDebugValidationEnabled()
     return addon.runtime and addon.runtime.debug == true
 end

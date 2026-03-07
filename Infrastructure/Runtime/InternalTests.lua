@@ -985,6 +985,24 @@ function addon.Tests.TestDisplayEnvelopeContractSchema()
     addon.Tests.AssertEqual(addon.StreamContracts.DisplayEnvelope.rawText, "string", "DisplayEnvelope.rawText contract mismatch")
 end
 
+function addon.Tests.TestDisplayAugmentContextContractSchema()
+    addon.Tests.Assert(type(addon.StreamContracts) == "table", "StreamContracts missing")
+    addon.Tests.Assert(type(addon.StreamContracts.DisplayAugmentContext) == "table",
+        "DisplayAugmentContext contract missing")
+    addon.Tests.AssertEqual(addon.StreamContracts.DisplayAugmentContext.renderOptions, "table",
+        "DisplayAugmentContext.renderOptions contract mismatch")
+end
+
+function addon.Tests.TestDisplayRenderResultContractSchema()
+    addon.Tests.Assert(type(addon.StreamContracts) == "table", "StreamContracts missing")
+    addon.Tests.Assert(type(addon.StreamContracts.DisplayRenderResult) == "table",
+        "DisplayRenderResult contract missing")
+    addon.Tests.AssertEqual(addon.StreamContracts.DisplayRenderResult.displayText, "string",
+        "DisplayRenderResult.displayText contract mismatch")
+    addon.Tests.AssertEqual(addon.StreamContracts.DisplayRenderResult.debug, "table",
+        "DisplayRenderResult.debug contract mismatch")
+end
+
 function addon.Tests.TestDisplayEnvelopeRealtimeResolvesClassFilenameFromGuid()
     addon.Tests.Assert(type(addon.DisplayEnvelope) == "table", "DisplayEnvelope missing")
     addon.Tests.Assert(type(addon.DisplayEnvelope.FromRealtime) == "function", "DisplayEnvelope.FromRealtime missing")
@@ -1223,7 +1241,7 @@ function addon.Tests.TestShelfVisibleItemsDynamicChannelHideWhenUnjoinedAndModeH
     addon.db.profile.buttons = oldButtons
 end
 
-function addon.Tests.TestMessageFormatterStreamTagLinkPolicy()
+function addon.Tests.TestMessageFormatterStreamTagUsesPrefixToken()
     addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
     addon.Tests.Assert(type(addon.MessageFormatter.GetStreamTag) == "function", "MessageFormatter.GetStreamTag missing")
 
@@ -1237,7 +1255,7 @@ function addon.Tests.TestMessageFormatterStreamTagLinkPolicy()
         },
     })
     addon.Tests.Assert(type(dynamic) == "string", "Dynamic stream tag should be string")
-    addon.Tests.Assert(dynamic:find("|Htinychat:send:world|h", 1, true) ~= nil, "Dynamic outbound stream should link tinychat send action")
+    addon.Tests.AssertEqual(dynamic, addon.DisplayAugmentPipeline.PREFIX_TOKEN, "Dynamic stream tag should use prefix token")
 
     local say = addon.MessageFormatter.GetStreamTag({
         wowChatType = "SAY",
@@ -1245,7 +1263,7 @@ function addon.Tests.TestMessageFormatterStreamTagLinkPolicy()
         kind = "channel",
     })
     addon.Tests.Assert(type(say) == "string", "SAY stream tag should be string")
-    addon.Tests.Assert(say:find("|Htinychat:send:say|h", 1, true) ~= nil, "SAY should link tinychat send action")
+    addon.Tests.AssertEqual(say, addon.DisplayAugmentPipeline.PREFIX_TOKEN, "SAY should use prefix token")
 
     local notice = addon.MessageFormatter.GetStreamTag({
         wowChatType = "SYSTEM",
@@ -1284,24 +1302,92 @@ function addon.Tests.TestMessageFormatterKindFormatterRouting()
     addon.Tests.AssertEqual(noticeLine, noticeText, "Notice formatted line should passthrough raw text")
 end
 
-function addon.Tests.TestMessageFormatterRealtimeLineCarriesWowChatType()
-    addon.Tests.Assert(type(addon.MessageFormatter) == "table", "MessageFormatter missing")
-    addon.Tests.Assert(type(addon.MessageFormatter.BuildRealtimeLineFromContext) == "function",
-        "BuildRealtimeLineFromContext missing")
+function addon.Tests.TestDisplayRenderOrchestratorValidEnvelopeReturnsResult()
+    addon.Tests.Assert(type(addon.DisplayRenderOrchestrator) == "table", "DisplayRenderOrchestrator missing")
+    addon.Tests.Assert(type(addon.DisplayRenderOrchestrator.RenderEnvelope) == "function",
+        "DisplayRenderOrchestrator.RenderEnvelope missing")
 
-    local line, err = addon.MessageFormatter.BuildRealtimeLineFromContext({
+    local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
+    _G.C_CVar = _G.C_CVar or {}
+    _G.C_CVar.GetCVar = function(name)
+        if name == "showTimestamps" then
+            return "none"
+        end
+        if oldCVarApi then
+            return oldCVarApi(name)
+        end
+        return nil
+    end
+
+    local rendered, err = addon.DisplayRenderOrchestrator:RenderEnvelope({
+        AddMessage = function() end,
+        IsEventRegistered = function() return true end,
+    }, {
+        mode = "replay",
         event = "CHAT_MSG_SAY",
-        text = "hello",
-        author = "tester",
-        args = {},
         streamKey = "say",
-        channelName = nil,
-        channelString = nil,
-        channelNumber = nil,
+        streamKind = "channel",
+        streamGroup = "personal",
+        wowChatType = "SAY",
+        author = "tester",
+        channelMeta = {},
+        timestamp = time(),
+        rawText = "hello",
+        classFilename = nil,
     })
-    addon.Tests.Assert(err == nil, "BuildRealtimeLineFromContext should not return error for CHAT_MSG_SAY")
-    addon.Tests.Assert(type(line) == "table", "BuildRealtimeLineFromContext should return table line")
-    addon.Tests.AssertEqual(line.wowChatType, "SAY", "Realtime line should include wowChatType")
+    addon.Tests.Assert(err == nil, "RenderEnvelope should not error for valid envelope")
+    addon.Tests.Assert(type(rendered) == "table", "RenderEnvelope should return result")
+    addon.Tests.AssertEqual(rendered.debug.sourceMode, "replay", "Render result should record source mode")
+
+    _G.C_CVar.GetCVar = oldCVarApi
+end
+
+function addon.Tests.TestDisplayRenderOrchestratorInvalidEnvelopeFails()
+    addon.Tests.Assert(type(addon.DisplayRenderOrchestrator) == "table", "DisplayRenderOrchestrator missing")
+    local rendered, err = addon.DisplayRenderOrchestrator:RenderEnvelope(nil, nil)
+    addon.Tests.Assert(rendered == nil, "Invalid envelope should not render")
+    addon.Tests.AssertEqual(err, "invalid_envelope", "Invalid envelope should return contract error")
+end
+
+function addon.Tests.TestRenderEnvelopeRealtimeVsReplaySameSemanticOutput()
+    addon.Tests.Assert(type(addon.DisplayRenderOrchestrator) == "table", "DisplayRenderOrchestrator missing")
+
+    local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
+    _G.C_CVar = _G.C_CVar or {}
+    _G.C_CVar.GetCVar = function(name)
+        if name == "showTimestamps" then
+            return "none"
+        end
+        if oldCVarApi then
+            return oldCVarApi(name)
+        end
+        return nil
+    end
+
+    local frame = {
+        AddMessage = function() end,
+        IsEventRegistered = function() return true end,
+    }
+    local base = {
+        event = "CHAT_MSG_SAY",
+        streamKey = "say",
+        streamKind = "channel",
+        streamGroup = "personal",
+        wowChatType = "SAY",
+        author = "tester",
+        channelMeta = {},
+        timestamp = time(),
+        rawText = "semantic hello",
+        classFilename = "MAGE",
+    }
+
+    local realtime = addon.DisplayRenderOrchestrator:RenderEnvelope(frame, addon.Utils.MergeTables({ mode = "realtime" }, addon.Utils.DeepCopy(base)))
+    local replay = addon.DisplayRenderOrchestrator:RenderEnvelope(frame, addon.Utils.MergeTables({ mode = "replay" }, addon.Utils.DeepCopy(base)))
+
+    addon.Tests.Assert(type(realtime) == "table" and type(replay) == "table", "Realtime and replay should both render")
+    addon.Tests.AssertEqual(realtime.displayText, replay.displayText, "Realtime and replay should produce same semantic output")
+
+    _G.C_CVar.GetCVar = oldCVarApi
 end
 
 function addon.Tests.TestMessageFormatterKindFormatterExtensionPoint()
@@ -2213,6 +2299,17 @@ function addon.Tests.TestFrameHookDoesNotMutateUnmatchedMessages()
     addon.Tests.AssertEqual(captured, "plain message", "Unmatched message should passthrough unchanged")
 end
 
+function addon.Tests.TestRealtimeDisplayCoordinatorStatsReport()
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator) == "table", "RealtimeDisplayCoordinator missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayCoordinator.GetStats) == "function", "GetStats missing")
+
+    local stats = addon.RealtimeDisplayCoordinator:GetStats()
+    addon.Tests.Assert(type(stats) == "table", "Coordinator stats should be table")
+    addon.Tests.Assert(type(stats.pushed) == "number", "Coordinator stats should expose pushed")
+    addon.Tests.Assert(type(stats.missed) == "number", "Coordinator stats should expose missed")
+    addon.Tests.Assert(type(stats.pruned) == "number", "Coordinator stats should expose pruned")
+end
+
 function addon.Tests.TestDisplayAugmentHighlightUsesEnvelopeStreamKey()
     addon.Tests.Assert(type(addon.DisplayAugmentPipeline) == "table", "DisplayAugmentPipeline missing")
     addon.Tests.Assert(type(addon.DisplayAugmentPipeline.Render) == "function", "DisplayAugmentPipeline.Render missing")
@@ -2245,12 +2342,15 @@ function addon.Tests.TestDisplayAugmentHighlightUsesEnvelopeStreamKey()
         end,
     }
 
-    local rendered = addon.DisplayAugmentPipeline:Render(frame, {
+    local rendered = addon.DisplayRenderOrchestrator:RenderEnvelope(frame, {
         mode = "replay",
+        event = "CHAT_MSG_SAY",
         streamKey = "say",
         streamKind = "channel",
+        streamGroup = "personal",
         wowChatType = "SAY",
         author = "tester",
+        channelMeta = {},
         rawText = "danger here",
         timestamp = time(),
     })
@@ -2277,7 +2377,7 @@ function addon.Tests.TestDisplayAugmentPipelineStageRegistryExtensionPoint()
     local hasPatchPrefix = false
     local hasHighlight = false
     for _, stage in ipairs(stages) do
-        if stage.name == "patch_prefix" and stage.phase == "pre_render" then
+        if stage.name == "patch_prefix" and stage.phase == "post_render" then
             hasPatchPrefix = true
         end
         if stage.name == "apply_highlight" and stage.phase == "post_render" then
@@ -2310,15 +2410,18 @@ function addon.Tests.TestDisplayAugmentPipelineStageRegistryExtensionPoint()
         return nil
     end
 
-    local rendered = pipeline:Render({
+    local rendered = addon.DisplayRenderOrchestrator:RenderEnvelope({
         AddMessage = function() end,
         IsEventRegistered = function() return true end,
     }, {
         mode = "replay",
+        event = "CHAT_MSG_SAY",
         streamKey = "say",
         streamKind = "channel",
+        streamGroup = "personal",
         wowChatType = "SAY",
         author = "tester",
+        channelMeta = {},
         rawText = "hello",
         timestamp = time(),
     })

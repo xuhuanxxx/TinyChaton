@@ -204,8 +204,8 @@ function Coordinator:EnsureHook(frame)
 
         local lineId = ResolveLineId(...)
         local envelope = ConsumeEnvelope(Coordinator, targetFrame, msg, lineId)
-        if type(envelope) == "table" and addon.DisplayAugmentPipeline and addon.DisplayAugmentPipeline.Render then
-            local rendered = addon.DisplayAugmentPipeline:Render(targetFrame, envelope)
+        if type(envelope) == "table" and addon.DisplayRenderOrchestrator and addon.DisplayRenderOrchestrator.RenderEnvelope then
+            local rendered = addon.DisplayRenderOrchestrator:RenderEnvelope(targetFrame, envelope)
             if type(rendered) == "table" and type(rendered.displayText) == "string" then
                 finalMsg = rendered.displayText
             end

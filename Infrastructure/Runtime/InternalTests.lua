@@ -985,6 +985,36 @@ function addon.Tests.TestDisplayEnvelopeContractSchema()
     addon.Tests.AssertEqual(addon.StreamContracts.DisplayEnvelope.rawText, "string", "DisplayEnvelope.rawText contract mismatch")
 end
 
+function addon.Tests.TestDisplayEnvelopeRealtimeResolvesClassFilenameFromGuid()
+    addon.Tests.Assert(type(addon.DisplayEnvelope) == "table", "DisplayEnvelope missing")
+    addon.Tests.Assert(type(addon.DisplayEnvelope.FromRealtime) == "function", "DisplayEnvelope.FromRealtime missing")
+
+    local oldGetPlayerInfoByGUID = _G.GetPlayerInfoByGUID
+    _G.GetPlayerInfoByGUID = function(guid)
+        if guid == "Player-1-TESTGUID" then
+            return "Tester", "MAGE"
+        end
+        return nil, nil
+    end
+
+    local envelope = addon.DisplayEnvelope.FromRealtime({
+        GetName = function()
+            return "TinyChatonEnvelopeTestFrame"
+        end,
+    }, "CHAT_MSG_SAY", {
+        text = "hello",
+        author = "tester",
+        wowChatType = "SAY",
+        streamKey = "say",
+        args = addon.Utils.PackArgs("hello", "tester", nil, nil, nil, nil, nil, nil, nil, nil, 1001, "Player-1-TESTGUID"),
+    })
+
+    addon.Tests.Assert(type(envelope) == "table", "Realtime envelope should be created")
+    addon.Tests.AssertEqual(envelope.classFilename, "MAGE", "Realtime envelope should resolve class filename from GUID")
+
+    _G.GetPlayerInfoByGUID = oldGetPlayerInfoByGUID
+end
+
 function addon.Tests.TestValidateChatEventDerivationRequiresNonChannelStreamMapping()
     addon.Tests.Assert(type(addon.ValidateChatEventDerivation) == "function", "ValidateChatEventDerivation missing")
     local ok = pcall(function()

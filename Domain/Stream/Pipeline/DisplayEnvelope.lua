@@ -52,10 +52,17 @@ function Envelope.FromRealtime(frame, event, streamContext)
     end
 
     local lineId = nil
+    local classFilename = nil
     if args then
         lineId = args[11]
         if lineId == nil and args.n and args.n >= 12 then
             lineId = args[12]
+        end
+
+        local guid = args[12]
+        if guid then
+            local _, resolvedClass = GetPlayerInfoByGUID(guid)
+            classFilename = resolvedClass
         end
     end
 
@@ -75,7 +82,7 @@ function Envelope.FromRealtime(frame, event, streamContext)
         timestamp = time(),
         lineId = lineId,
         rawText = type(streamContext.text) == "string" and streamContext.text or "",
-        classFilename = nil,
+        classFilename = classFilename,
     })
 end
 

@@ -128,7 +128,8 @@ Domain\Shelf\DynamicChannelResolver.lua
 Domain\Shelf\ThemeProvider.lua
 Domain\Shelf\ShelfService.lua
 Domain\Shelf\ShelfThemeRegistry.lua
-Domain\Shelf\ShelfVisualSpecResolver.lua
+Domain\Shelf\ShelfRenderSpecResolver.lua
+Domain\Shelf\TinyReactorShelfAdapter.lua
 Domain\Shelf\ShelfRender.lua
 Domain\Shelf\SelectionDialog.lua
 

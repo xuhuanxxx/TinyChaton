@@ -1115,35 +1115,44 @@ function addon.Tests.TestShelfDefaultOrderUsesCompiledStreams()
     addon.db.profile.buttons.buttonOrder = oldOrder
 end
 
-function addon.Tests.TestShelfVisibleItemsSystemChannelShowsMutedWhenStreamBlocked()
+function addon.Tests.TestShelfDescriptorBuilderBuildsChannelAndKitDescriptors()
     addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
-    addon.Tests.Assert(type(addon.Shelf.GetVisibleItems) == "function", "Shelf.GetVisibleItems missing")
+    addon.Tests.Assert(type(addon.Shelf.BuildItemDescriptors) == "function", "Shelf.BuildItemDescriptors missing")
     addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
+
+    local kitKey = addon.KIT_REGISTRY and addon.KIT_REGISTRY[1] and addon.KIT_REGISTRY[1].key
+    addon.Tests.Assert(type(kitKey) == "string" and kitKey ~= "", "Missing kit registry item for test")
 
     local oldButtons = addon.Utils.DeepCopy(addon.db.profile.buttons)
     local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
     addon.db.profile.buttons = addon.db.profile.buttons or {}
     addon.db.profile.filter = addon.db.profile.filter or {}
     addon.db.profile.filter.streamBlocked = {}
-    addon.db.profile.buttons.buttonOrder = { "say" }
+    addon.db.profile.buttons.buttonOrder = { "say", kitKey }
     addon.db.profile.buttons.channelPins = addon.db.profile.buttons.channelPins or {}
+    addon.db.profile.buttons.kitPins = addon.db.profile.buttons.kitPins or {}
     addon.db.profile.buttons.channelPins.say = true
+    addon.db.profile.buttons.kitPins[kitKey] = true
 
     addon.StreamVisibilityService:SetStreamBlocked("say", true)
-    local items = addon.Shelf:GetVisibleItems()
-    addon.Tests.Assert(type(items) == "table", "Visible items should be table")
-    addon.Tests.AssertEqual(#items, 1, "System stream should remain visible when muted")
-    addon.Tests.AssertEqual(items[1].itemKey, "say", "Expected say stream item")
-    addon.Tests.AssertEqual(items[1].channelState, "muted", "System stream should expose muted state")
-    addon.Tests.AssertEqual(items[1].isMuted, true, "System stream should mark isMuted=true")
+    local descriptors = addon.Shelf:BuildItemDescriptors()
+    addon.Tests.Assert(type(descriptors) == "table", "Descriptors should be table")
+    addon.Tests.AssertEqual(#descriptors, 2, "Expected one channel and one kit descriptor")
+    addon.Tests.AssertEqual(descriptors[1].itemKey, "say", "Expected say stream descriptor")
+    addon.Tests.AssertEqual(descriptors[1].channelState, "muted", "System stream should expose muted state")
+    addon.Tests.Assert(type(descriptors[1].displayText) == "string", "Channel descriptor should include display text")
+    addon.Tests.Assert(type(descriptors[1].leftActionKey) == "string", "Channel descriptor should include left action")
+    addon.Tests.Assert(type(descriptors[2].itemKey) == "string", "Kit descriptor should include item key")
+    addon.Tests.AssertEqual(descriptors[2].itemType, "kit", "Expected kit descriptor")
+    addon.Tests.Assert(type(descriptors[2].displayText) == "string", "Kit descriptor should include display text")
 
     addon.db.profile.buttons = oldButtons
     addon.db.profile.filter = oldFilter
 end
 
-function addon.Tests.TestShelfVisibleItemsDynamicChannelShowsMutedWhenJoinedAndBlocked()
+function addon.Tests.TestShelfDescriptorBuilderDynamicChannelShowsMutedWhenJoinedAndBlocked()
     addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
-    addon.Tests.Assert(type(addon.Shelf.GetVisibleItems) == "function", "Shelf.GetVisibleItems missing")
+    addon.Tests.Assert(type(addon.Shelf.BuildItemDescriptors) == "function", "Shelf.BuildItemDescriptors missing")
     addon.Tests.Assert(type(addon.StreamVisibilityService) == "table", "StreamVisibilityService missing")
 
     local dynamicKey = nil
@@ -1183,12 +1192,12 @@ function addon.Tests.TestShelfVisibleItemsDynamicChannelShowsMutedWhenJoinedAndB
     end
 
     addon.StreamVisibilityService:SetStreamBlocked(dynamicKey, true)
-    local items = addon.Shelf:GetVisibleItems()
-    addon.Tests.Assert(type(items) == "table", "Visible items should be table")
-    addon.Tests.AssertEqual(#items, 1, "Joined dynamic stream should remain visible when muted")
-    addon.Tests.AssertEqual(items[1].itemKey, dynamicKey, "Expected dynamic stream item")
-    addon.Tests.AssertEqual(items[1].channelState, "muted", "Joined blocked dynamic stream should expose muted state")
-    addon.Tests.AssertEqual(items[1].isMuted, true, "Joined blocked dynamic stream should mark isMuted=true")
+    local descriptors = addon.Shelf:BuildItemDescriptors()
+    addon.Tests.Assert(type(descriptors) == "table", "Descriptors should be table")
+    addon.Tests.AssertEqual(#descriptors, 1, "Joined dynamic stream should remain visible when muted")
+    addon.Tests.AssertEqual(descriptors[1].itemKey, dynamicKey, "Expected dynamic stream descriptor")
+    addon.Tests.AssertEqual(descriptors[1].channelState, "muted", "Joined blocked dynamic stream should expose muted state")
+    addon.Tests.AssertEqual(descriptors[1].channelNumber, 9, "Joined dynamic stream should expose channel number")
 
     if addon.AvailabilityResolver then
         addon.AvailabilityResolver.Resolve = oldResolve
@@ -1197,9 +1206,9 @@ function addon.Tests.TestShelfVisibleItemsDynamicChannelShowsMutedWhenJoinedAndB
     addon.db.profile.filter = oldFilter
 end
 
-function addon.Tests.TestShelfVisibleItemsDynamicChannelHideWhenUnjoinedAndModeHide()
+function addon.Tests.TestShelfDescriptorBuilderDynamicChannelHideWhenUnjoinedAndModeHide()
     addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
-    addon.Tests.Assert(type(addon.Shelf.GetVisibleItems) == "function", "Shelf.GetVisibleItems missing")
+    addon.Tests.Assert(type(addon.Shelf.BuildItemDescriptors) == "function", "Shelf.BuildItemDescriptors missing")
 
     local dynamicKey = nil
     for _, stream in addon:IterateCompiledStreams() do
@@ -1234,9 +1243,9 @@ function addon.Tests.TestShelfVisibleItemsDynamicChannelHideWhenUnjoinedAndModeH
         }
     end
 
-    local items = addon.Shelf:GetVisibleItems()
-    addon.Tests.Assert(type(items) == "table", "Visible items should be table")
-    addon.Tests.AssertEqual(#items, 0, "Unjoined dynamic stream should be hidden when dynamicMode=hide")
+    local descriptors = addon.Shelf:BuildItemDescriptors()
+    addon.Tests.Assert(type(descriptors) == "table", "Descriptors should be table")
+    addon.Tests.AssertEqual(#descriptors, 0, "Unjoined dynamic stream should be hidden when dynamicMode=hide")
 
     if addon.AvailabilityResolver then
         addon.AvailabilityResolver.Resolve = oldResolve
@@ -2830,19 +2839,180 @@ function addon.Tests.TestDisplayAugmentPipelineStageRegistryExtensionPoint()
     _G.C_CVar.GetCVar = oldCVarApi
 end
 
-function addon.Tests.TestThemeColorOrthogonalResolution()
-    addon.Tests.Assert(type(addon.ShelfVisualSpecResolver) == "table", "ShelfVisualSpecResolver missing")
+function addon.Tests.TestShelfRenderSpecResolverContainsThemeColorSizeAndTooltipMetadata()
+    addon.Tests.Assert(type(addon.ShelfRenderSpecResolver) == "table", "ShelfRenderSpecResolver missing")
 
-    local spec = addon.ShelfVisualSpecResolver:ResolveButtonVisualSpec({
-        key = "say",
-        type = "channel",
+    local renderSpec = addon.ShelfRenderSpecResolver:Build({
+        {
+            key = "say",
+            itemKey = "say",
+            itemType = "channel",
+            displayText = "S",
+            fullLabel = "Say",
+            channelState = "ready",
+            leftActionKey = "send_say",
+            leftActionLabel = "Send",
+            rightActionKey = "mute_toggle_say",
+            rightActionLabel = "Mute",
+            tooltipMode = "bindings",
+            intentItem = { key = "say", type = "channel" },
+        },
     }, {})
 
-    addon.Tests.Assert(type(spec) == "table", "Visual spec should be table")
-    addon.Tests.Assert(type(spec.themeProps) == "table", "themeProps should be table")
-    addon.Tests.Assert(type(spec.textColor) == "table", "textColor should be table")
-    addon.Tests.Assert(type(spec.alpha) == "number", "alpha should be number")
-    addon.Tests.Assert(type(spec.scale) == "number", "scale should be number")
+    addon.Tests.Assert(type(renderSpec) == "table", "Render spec should be table")
+    addon.Tests.Assert(type(renderSpec.fontSpec) == "table", "Render spec should include font spec")
+    addon.Tests.Assert(type(renderSpec.items) == "table" and #renderSpec.items == 1, "Render spec should include one item")
+    addon.Tests.Assert(type(renderSpec.items[1].visual) == "table", "Item visual should be table")
+    addon.Tests.Assert(type(renderSpec.items[1].visual.textColor) == "table", "Item visual should include text color")
+    addon.Tests.Assert(type(renderSpec.items[1].size) == "table", "Item should include measured size")
+    addon.Tests.Assert(type(renderSpec.items[1].tooltip) == "table", "Item should include tooltip metadata")
+    addon.Tests.AssertEqual(#(renderSpec.items[1].tooltip.bindings or {}), 2, "Tooltip should include action bindings")
+    addon.Tests.Assert(type(renderSpec.alpha) == "number", "Render spec should include alpha")
+    addon.Tests.Assert(type(renderSpec.scale) == "number", "Render spec should include scale")
+end
+
+function addon.Tests.TestShelfRenderSpecResolverMapsMutedAndUnjoinedIndicators()
+    addon.Tests.Assert(type(addon.ShelfRenderSpecResolver) == "table", "ShelfRenderSpecResolver missing")
+
+    local renderSpec = addon.ShelfRenderSpecResolver:Build({
+        {
+            key = "muted",
+            itemKey = "say",
+            itemType = "channel",
+            displayText = "S",
+            fullLabel = "Say",
+            channelState = "muted",
+            tooltipMode = "label_only",
+            intentItem = { key = "say", type = "channel" },
+        },
+        {
+            key = "unjoined",
+            itemKey = "world",
+            itemType = "channel",
+            displayText = "9",
+            fullLabel = "World",
+            channelState = "unjoined",
+            tooltipMode = "label_only",
+            intentItem = { key = "world", type = "channel" },
+        },
+    }, {})
+
+    addon.Tests.AssertEqual(renderSpec.items[1].statusIndicator.kind, "muted", "Muted state should map to muted indicator")
+    addon.Tests.AssertEqual(renderSpec.items[1].statusIndicator.textAlpha, 0.75, "Muted state should dim text to 0.75")
+    addon.Tests.AssertEqual(renderSpec.items[2].statusIndicator.kind, "unjoined", "Unjoined state should map to unjoined indicator")
+    addon.Tests.AssertEqual(renderSpec.items[2].statusIndicator.textAlpha, 0.5, "Unjoined state should dim text to 0.5")
+end
+
+function addon.Tests.TestTinyReactorShelfAdapterRendersFromRenderSpecOnly()
+    addon.Tests.Assert(type(addon.TinyReactorShelfAdapter) == "table", "TinyReactorShelfAdapter missing")
+
+    local frame = CreateFrame("Frame", nil, UIParent)
+    frame:SetSize(200, 40)
+
+    local oldGetButtonColor = addon.GetButtonColor
+    local oldGetShelfThemeProperties = addon.GetShelfThemeProperties
+    local oldActionRegistry = addon.ACTION_REGISTRY
+
+    addon.GetButtonColor = function()
+        error("Adapter should not resolve button color")
+    end
+    addon.GetShelfThemeProperties = function()
+        error("Adapter should not resolve theme properties")
+    end
+    addon.ACTION_REGISTRY = nil
+
+    local ok, result = pcall(function()
+        return addon.TinyReactorShelfAdapter:Render(frame, {
+            direction = "horizontal",
+            spacing = 2,
+            alpha = 1,
+            scale = 1,
+            buttonBaseSize = 30,
+            items = {
+                {
+                    key = "say",
+                    text = "S",
+                    size = { 30, 30 },
+                    visual = {
+                        textColor = { 1, 1, 1, 1 },
+                        template = nil,
+                        backdrop = nil,
+                        bgColor = nil,
+                        borderColor = nil,
+                        hoverBorderColor = nil,
+                        fontPath = STANDARD_TEXT_FONT,
+                        fontSize = 14,
+                    },
+                    statusIndicator = {
+                        kind = "none",
+                        alpha = 0,
+                        textAlpha = 1,
+                    },
+                    actions = {},
+                    tooltip = {
+                        header = "Say",
+                        bindings = {},
+                    },
+                    intentItem = {
+                        key = "say",
+                        type = "channel",
+                    },
+                },
+            },
+        }, {})
+    end)
+
+    addon.GetButtonColor = oldGetButtonColor
+    addon.GetShelfThemeProperties = oldGetShelfThemeProperties
+    addon.ACTION_REGISTRY = oldActionRegistry
+
+    addon.Tests.Assert(ok, "Adapter should render from spec without consulting registry or theme sources")
+    addon.Tests.Assert(type(result) == "table", "Adapter should return render result")
+end
+
+function addon.Tests.TestShelfRenderToContainerUsesUnifiedPipeline()
+    addon.Tests.Assert(type(addon.Shelf) == "table", "Shelf missing")
+    addon.Tests.Assert(type(addon.Shelf.RenderToContainer) == "function", "Shelf.RenderToContainer missing")
+    addon.Tests.Assert(type(addon.TinyReactorShelfAdapter) == "table", "TinyReactorShelfAdapter missing")
+
+    local frame = CreateFrame("Frame", nil, UIParent)
+    local oldBuildRenderSpec = addon.Shelf.BuildRenderSpec
+    local oldAdapterRender = addon.TinyReactorShelfAdapter.Render
+    local buildCalled = false
+    local adapterCalled = false
+
+    addon.Shelf.BuildRenderSpec = function(self, context)
+        buildCalled = context and context.testKey == "pipeline"
+        return {
+            direction = "horizontal",
+            spacing = 0,
+            alpha = 1,
+            scale = 1,
+            buttonBaseSize = 30,
+            items = {},
+        }
+    end
+
+    addon.TinyReactorShelfAdapter.Render = function(self, containerFrame, renderSpec, options)
+        adapterCalled = containerFrame == frame
+            and type(renderSpec) == "table"
+            and options
+            and options.centerContents == true
+        return { ok = true }
+    end
+
+    local result = addon.Shelf:RenderToContainer(frame, {
+        centerContents = true,
+    }, {
+        testKey = "pipeline",
+    })
+
+    addon.Shelf.BuildRenderSpec = oldBuildRenderSpec
+    addon.TinyReactorShelfAdapter.Render = oldAdapterRender
+
+    addon.Tests.Assert(buildCalled, "RenderToContainer should build a render spec")
+    addon.Tests.Assert(adapterCalled, "RenderToContainer should delegate to TinyReactorShelfAdapter")
+    addon.Tests.Assert(type(result) == "table" and result.ok == true, "RenderToContainer should return adapter result")
 end
 
 function addon.Tests.TestPerformanceBudgetWarningThrottle()

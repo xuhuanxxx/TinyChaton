@@ -14,14 +14,53 @@ local tostring = tostring
 
 local lastActionBlockedAt = 0
 
+local function ResolveActionLabel(actionKey, itemKey)
+    if not actionKey or not addon.ACTION_REGISTRY then
+        return nil
+    end
+
+    local action = addon.ACTION_REGISTRY[actionKey]
+    if not action then
+        return nil
+    end
+
+    if type(action.getLabel) == "function" then
+        return action.getLabel(itemKey)
+    end
+    return action.label
+end
+
+local function ResolveStreamFullLabel(streamKey, channelNumber, fallbackLabel)
+    local stream = addon:GetStreamByKey(streamKey)
+    local identity = stream and addon.ResolveDisplayIdentity and addon:ResolveDisplayIdentity(stream, "channel", {
+        streamMeta = { channelId = channelNumber },
+    }) or nil
+    if identity and identity.fullName then
+        return identity.fullName
+    end
+    if identity and identity.label then
+        return identity.label
+    end
+    return fallbackLabel or streamKey
+end
+
+local function ResolveKitFullLabel(item, fallbackLabel)
+    local identity = item and addon.ResolveDisplayIdentity and addon:ResolveDisplayIdentity(item, "kit", {}) or nil
+    if identity and identity.fullName then
+        return identity.fullName
+    end
+    if identity and identity.label then
+        return identity.label
+    end
+    return fallbackLabel or (item and item.key) or nil
+end
+
 function addon:GetShelfThemeProperties(themeKey)
     if addon.ThemeProvider and addon.ThemeProvider.GetShelfThemeProperties then
         return addon.ThemeProvider:GetShelfThemeProperties(themeKey)
     end
     return {}
 end
-
--- Configuration Generation
 
 function addon.Shelf:GetThemeProperty(prop)
     if addon.ThemeProvider and addon.ThemeProvider.GetThemeProperty then
@@ -83,25 +122,18 @@ function addon.Shelf:GetItemConfig(key)
     local bindings = (addon.db and addon.db.profile and addon.db.profile.buttons and addon.db.profile.buttons.bindings) or {}
     local customBind = bindings[key]
 
-    -- Try to find Stream first (new architecture)
     local stream = addon:GetStreamByKey(key)
     if stream and addon:IsChannelStream(key) then
         local defBindings = stream.defaultBindings or {}
 
-        -- Resolve Actions
-        local leftAction, rightAction
-
-        -- Helper to map shorthand to full action key
         local function MapAction(actionKey, itemKey)
             if not actionKey then return nil end
-            if actionKey == false then return false end -- Explicit Unbind
+            if actionKey == false then return false end
 
-            -- Check if it's already a full key (from custom binding)
             if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
                 return actionKey
             end
 
-            -- Map short key to full ACTION key
             if actionKey == "send" then
                 return "send_" .. itemKey
             elseif actionKey == "mute_toggle" then
@@ -110,6 +142,9 @@ function addon.Shelf:GetItemConfig(key)
                 return "channel_" .. itemKey .. "_" .. actionKey
             end
         end
+
+        local leftAction
+        local rightAction
 
         if customBind and customBind.left ~= nil then
             leftAction = customBind.left
@@ -139,22 +174,23 @@ function addon.Shelf:GetItemConfig(key)
         }
     end
 
-    -- Check KIT_REGISTRY
     for _, reg in ipairs(addon.KIT_REGISTRY) do
         if reg.key == key then
             local defBindings = reg.defaultBindings or {}
-            local leftAction, rightAction
 
-             local function MapKitAction(actionKey, itemKey)
+            local function MapKitAction(actionKey, itemKey)
                 if not actionKey then return nil end
-                 if actionKey == false then return false end
+                if actionKey == false then return false end
 
-                 if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
+                if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
                     return actionKey
                 end
 
                 return "kit_" .. itemKey .. "_" .. actionKey
             end
+
+            local leftAction
+            local rightAction
 
             if customBind and customBind.left ~= nil then
                 leftAction = customBind.left
@@ -186,25 +222,25 @@ function addon.Shelf:GetItemConfig(key)
     return nil
 end
 
-function addon.Shelf:GetVisibleItems()
-    local visibleItems = {}
+function addon.Shelf:BuildItemDescriptors()
+    local descriptors = {}
 
-    if not addon.db or not addon.db.profile.buttons then return visibleItems end
+    if not addon.db or not addon.db.profile.buttons then
+        return descriptors
+    end
 
     local buttonOrder = self:GetOrder()
     local channelPins = addon.db.profile.buttons.channelPins or {}
     local kitPins = addon.db.profile.buttons.kitPins or {}
-    -- dynamicMode only controls unjoined dynamic channels.
     local dynamicMode = addon.db.profile.buttons.dynamicMode or "hide"
 
-    -- Iterate by buttonOrder
     for _, key in ipairs(buttonOrder) do
         local item = self:GetItemConfig(key)
         if item then
             local isChannel = item.type == "channel"
             local isKit = item.type == "kit"
-
             local isEnabled = false
+
             if isChannel then
                 isEnabled = channelPins[key] ~= false
             elseif isKit then
@@ -226,7 +262,6 @@ function addon.Shelf:GetVisibleItems()
                     isBlocked = addon.StreamVisibilityService:IsStreamBlocked(item.key)
                 end
 
-                -- Availability detection remains scoped to dynamic channels only.
                 if isChannel and item.isDynamic then
                     local availability = addon.AvailabilityResolver and addon.AvailabilityResolver.Resolve
                         and addon.AvailabilityResolver.Resolve(item.key, "channel", {}) or nil
@@ -234,7 +269,6 @@ function addon.Shelf:GetVisibleItems()
                     isJoined = availability and availability.available == true or false
                     channelState = (availability and availability.state) or "unjoined"
 
-                    -- streamBlocked is authoritative for muted state after availability resolved.
                     if isJoined and isBlocked then
                         channelState = "muted"
                     end
@@ -249,11 +283,17 @@ function addon.Shelf:GetVisibleItems()
                 if shouldShow then
                     local btnKey = channelNumber and tostring(channelNumber) or item.key
                     local displayText
+                    local fullLabel
+                    local tooltipMode = "label_only"
+                    local sourceItem = item
+
                     if isChannel then
                         local displayStream = addon:GetStreamByKey(item.key)
-                        displayText = addon:FormatDisplayText(displayStream or item, "channel", "shelf", {
+                        sourceItem = displayStream or item
+                        displayText = addon:FormatDisplayText(sourceItem, "channel", "shelf", {
                             streamMeta = { channelId = channelNumber },
                         })
+                        fullLabel = ResolveStreamFullLabel(item.key, channelNumber, item.label)
                     else
                         local kitSpec = item
                         if item.key then
@@ -264,37 +304,56 @@ function addon.Shelf:GetVisibleItems()
                                 end
                             end
                         end
+                        sourceItem = kitSpec
                         displayText = addon:FormatDisplayText(kitSpec, "kit", "shelf", {})
+                        fullLabel = ResolveKitFullLabel(kitSpec, item.label)
                     end
 
-                    local isMuted = (channelState == "muted")
+                    local leftActionKey = item.leftClick
+                    local rightActionKey = item.rightClick
+                    local leftActionLabel = ResolveActionLabel(leftActionKey, item.key)
+                    local rightActionLabel = ResolveActionLabel(rightActionKey, item.key)
 
-                    table.insert(visibleItems, {
+                    if leftActionLabel or rightActionLabel then
+                        tooltipMode = "bindings"
+                    end
+
+                    table.insert(descriptors, {
                         key = btnKey,
                         itemKey = item.key,
-                        text = displayText,
-                        label = item.label,
-                        short = item.short,
-                        color = item.color,
-                        isDynamic = item.isDynamic,
-                        isChannel = isChannel,
-                        isKit = isKit,
-                        isMuted = isMuted,
+                        itemType = item.type,
+                        displayText = displayText,
+                        fullLabel = fullLabel,
                         channelState = channelState,
-                        item = item,
                         channelNumber = channelNumber,
+                        isDynamic = item.isDynamic == true,
+                        leftActionKey = leftActionKey,
+                        rightActionKey = rightActionKey,
+                        leftActionLabel = leftActionLabel,
+                        rightActionLabel = rightActionLabel,
+                        tooltipMode = tooltipMode,
+                        intentItem = {
+                            key = item.key,
+                            itemKey = item.key,
+                            type = item.type,
+                        },
+                        sourceItem = sourceItem,
                     })
                 end
             end
         end
     end
 
-    return visibleItems
+    return descriptors
 end
 
--- ============================================
--- Action Registry
--- ============================================
+function addon.Shelf:BuildRenderSpec(context)
+    local descriptors = self:BuildItemDescriptors(context)
+    if not addon.ShelfRenderSpecResolver or type(addon.ShelfRenderSpecResolver.Build) ~= "function" then
+        return nil
+    end
+    return addon.ShelfRenderSpecResolver:Build(descriptors, context)
+end
 
 function addon.Shelf:BuildActionRegistry()
     local actions = {}

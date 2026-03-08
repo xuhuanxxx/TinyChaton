@@ -30,6 +30,22 @@ local function ResolveActionLabel(actionKey, itemKey)
     return action.label
 end
 
+local function ResolveActionTooltip(actionKey, itemKey)
+    if not actionKey or not addon.ACTION_REGISTRY then
+        return nil
+    end
+
+    local action = addon.ACTION_REGISTRY[actionKey]
+    if not action then
+        return nil
+    end
+
+    if type(action.getTooltip) == "function" then
+        return action.getTooltip(itemKey)
+    end
+    return action.tooltip
+end
+
 local function ResolveStreamFullLabel(streamKey, channelNumber, fallbackLabel)
     local stream = addon:GetStreamByKey(streamKey)
     local identity = stream and addon.ResolveDisplayIdentity and addon:ResolveDisplayIdentity(stream, "channel", {
@@ -124,38 +140,19 @@ function addon.Shelf:GetItemConfig(key)
 
     local stream = addon:GetStreamByKey(key)
     if stream and addon:IsChannelStream(key) then
-        local defBindings = stream.defaultBindings or {}
-
-        local function MapAction(actionKey, itemKey)
-            if not actionKey then return nil end
-            if actionKey == false then return false end
-
-            if addon.ACTION_REGISTRY and addon.ACTION_REGISTRY[actionKey] then
-                return actionKey
-            end
-
-            if actionKey == "send" then
-                return "send_" .. itemKey
-            elseif actionKey == "mute_toggle" then
-                return "mute_toggle_" .. itemKey
-            else
-                return "channel_" .. itemKey .. "_" .. actionKey
-            end
-        end
-
         local leftAction
         local rightAction
 
         if customBind and customBind.left ~= nil then
             leftAction = customBind.left
         else
-            leftAction = MapAction(defBindings.left, key)
+            leftAction = addon.ResolveStreamBindingActionKey and addon.ResolveStreamBindingActionKey(key, "left") or nil
         end
 
         if customBind and customBind.right ~= nil then
             rightAction = customBind.right
         else
-            rightAction = MapAction(defBindings.right, key)
+            rightAction = addon.ResolveStreamBindingActionKey and addon.ResolveStreamBindingActionKey(key, "right") or nil
         end
 
         local isDynamic = addon:GetStreamGroup(key) == "dynamic"
@@ -313,6 +310,11 @@ function addon.Shelf:BuildItemDescriptors()
                     local rightActionKey = item.rightClick
                     local leftActionLabel = ResolveActionLabel(leftActionKey, item.key)
                     local rightActionLabel = ResolveActionLabel(rightActionKey, item.key)
+                    local primaryActionKey = leftActionKey or rightActionKey
+                    local tooltipDescription = item.tooltip
+                        or ResolveActionTooltip(primaryActionKey, item.key)
+                        or leftActionLabel
+                        or rightActionLabel
 
                     if leftActionLabel or rightActionLabel then
                         tooltipMode = "bindings"
@@ -332,6 +334,7 @@ function addon.Shelf:BuildItemDescriptors()
                         leftActionLabel = leftActionLabel,
                         rightActionLabel = rightActionLabel,
                         tooltipMode = tooltipMode,
+                        tooltipDescription = tooltipDescription,
                         intentItem = {
                             key = item.key,
                             itemKey = item.key,

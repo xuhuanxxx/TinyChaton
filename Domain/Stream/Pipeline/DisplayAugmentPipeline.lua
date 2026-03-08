@@ -96,20 +96,26 @@ local function EnsureDefaultStages(self)
             return
         end
 
-        if context.renderOptions.sendEnabled == true then
-            local streamKey = context.envelope and context.envelope.streamKey or nil
-            prefix = string.format("|Htinychat:send:%s|h%s|h", tostring(streamKey), prefix)
+        local prefixInteraction = context.renderOptions.prefixInteraction
+        if type(prefixInteraction) == "table"
+            and type(prefixInteraction.interactionId) == "string"
+            and prefixInteraction.interactionId ~= ""
+            and addon.ChatLinkAdapter
+            and type(addon.ChatLinkAdapter.BuildLink) == "function" then
+            prefix = addon.ChatLinkAdapter:BuildLink(prefixInteraction.interactionId, prefix)
         end
 
         context.displayText = context.displayText:gsub(EscapePattern(token), prefix, 1)
         context.renderOptions.prefixPatched = true
-        context.renderOptions.sendInjected = context.renderOptions.sendEnabled == true
+        context.renderOptions.sendInjected = type(prefixInteraction) == "table"
+            and type(prefixInteraction.leftActionKey) == "string"
+            and prefixInteraction.leftActionKey ~= ""
     end)
 
-    self:RegisterStage("inject_send_link", 20, "pre_render", function(_, context)
+    self:RegisterStage("resolve_prefix_interaction", 20, "pre_render", function(_, context)
         local policy = addon.DisplayPolicyService
-        local streamKey = context.envelope and context.envelope.streamKey or nil
-        context.renderOptions.sendEnabled = policy and policy.CanInjectSend and policy:CanInjectSend(streamKey) or false
+        local envelope = context.envelope
+        context.renderOptions.prefixInteraction = policy and policy.ResolvePrefixInteraction and policy:ResolvePrefixInteraction(context.frame, envelope) or nil
     end)
 
     self:RegisterStage("inject_copy_timestamp", 30, "post_render", function(_, context)

@@ -34,7 +34,7 @@ addon.KIT_REGISTRY = {
 
         priority = KIT_BASE + PRI_STEP * 1,
         defaultPinned = true,
-        defaultBindings = { left = "countdown_primary", right = "countdown_secondary", middle = "countdown_cancel" },
+        defaultBindings = { left = "countdown_primary", right = "countdown_secondary" },
 
         tooltip = L["KIT_COUNTDOWN_TOOLTIP"]
     },

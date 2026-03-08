@@ -21,6 +21,10 @@ local function BuildTooltipRenderer(tooltipSpec)
             tt:SetText(tooltipSpec.header, 1, 0.82, 0)
         end
 
+        if tooltipSpec.description and tooltipSpec.description ~= "" then
+            tt:AddLine(tooltipSpec.description, 1, 1, 1, 1, true)
+        end
+
         for _, binding in ipairs(tooltipSpec.bindings or {}) do
             local prefix
             if binding.button == "left" then

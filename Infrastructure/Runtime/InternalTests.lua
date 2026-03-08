@@ -1423,9 +1423,15 @@ function addon.Tests.TestShelfDescriptorBuilderBuildsChannelAndKitDescriptors()
     addon.Tests.AssertEqual(descriptors[1].channelState, "muted", "System stream should expose muted state")
     addon.Tests.Assert(type(descriptors[1].displayText) == "string", "Channel descriptor should include display text")
     addon.Tests.Assert(type(descriptors[1].leftActionKey) == "string", "Channel descriptor should include left action")
+    addon.Tests.Assert(type(descriptors[1].tooltipDescription) == "string" and descriptors[1].tooltipDescription ~= "",
+        "Channel descriptor should include tooltip description")
+    addon.Tests.Assert(descriptors[1].tooltipDescription:find("%%s", 1, true) == nil,
+        "Channel tooltip description should be fully formatted")
     addon.Tests.Assert(type(descriptors[2].itemKey) == "string", "Kit descriptor should include item key")
     addon.Tests.AssertEqual(descriptors[2].itemType, "kit", "Expected kit descriptor")
     addon.Tests.Assert(type(descriptors[2].displayText) == "string", "Kit descriptor should include display text")
+    addon.Tests.Assert(type(descriptors[2].tooltipDescription) == "string" and descriptors[2].tooltipDescription ~= "",
+        "Kit descriptor should include tooltip description")
 
     addon.db.profile.buttons = oldButtons
     addon.db.profile.filter = oldFilter
@@ -1759,26 +1765,130 @@ function addon.Tests.TestActionIntentSendFromShelfUsesOrchestrator()
     addon.ActionIntentOrchestrator.Execute = oldExecute
 end
 
-function addon.Tests.TestActionIntentSendFromChatLinkUsesOrchestrator()
+function addon.Tests.TestPrefixInteractionLeftClickUsesOrchestrator()
     addon.Tests.Assert(type(addon.ChatLinkAdapter) == "table", "ChatLinkAdapter missing")
     addon.Tests.Assert(type(addon.ActionIntentOrchestrator) == "table", "ActionIntentOrchestrator missing")
 
     local oldExecute = addon.ActionIntentOrchestrator.Execute
+    local oldCache = addon.prefixInteractionCache
     local captured = nil
     addon.ActionIntentOrchestrator.Execute = function(_, intent)
         captured = intent
         return { ok = true }
     end
 
-    addon.ChatLinkAdapter:Execute("send", "say", { link = "tinychat:send:say" })
+    addon.prefixInteractionCache = {
+        test_left = {
+            time = GetTime(),
+            spec = {
+                streamKey = "say",
+                leftActionKey = "send_say",
+                rightInteractionKind = "none",
+            },
+        },
+    }
+    addon.ChatLinkAdapter:Execute("test_left", { link = "tinychat:prefix:test_left" })
 
     addon.Tests.Assert(type(captured) == "table", "Chat link adapter should forward intent")
     addon.Tests.AssertEqual(captured.actionKey, "send_say", "Chat link actionKey mismatch")
     addon.Tests.AssertEqual(captured.targetKind, "stream", "Chat link targetKind mismatch")
     addon.Tests.AssertEqual(captured.targetKey, "say", "Chat link targetKey mismatch")
-    addon.Tests.AssertEqual(captured.source, "chat_link", "Chat link source mismatch")
+    addon.Tests.AssertEqual(captured.source, "prefix_interaction", "Chat link source mismatch")
 
     addon.ActionIntentOrchestrator.Execute = oldExecute
+    addon.prefixInteractionCache = oldCache
+end
+
+function addon.Tests.TestPrefixInteractionRightClickOpensNativeMenuWithoutSendFallback()
+    addon.Tests.Assert(type(addon.ChatLinkAdapter) == "table", "ChatLinkAdapter missing")
+
+    local oldExecute = addon.ActionIntentOrchestrator.Execute
+    local oldCache = addon.prefixInteractionCache
+    local oldChatFrameUtil = ChatFrameUtil
+    local executeCount = 0
+    local capturedMenu = nil
+
+    addon.ActionIntentOrchestrator.Execute = function()
+        executeCount = executeCount + 1
+        return { ok = true }
+    end
+    ChatFrameUtil = {
+        ShowChatChannelContextMenu = function(chatFrame, chatType, chatTarget, chatName)
+            capturedMenu = {
+                chatFrame = chatFrame,
+                chatType = chatType,
+                chatTarget = chatTarget,
+                chatName = chatName,
+            }
+        end,
+    }
+    addon.prefixInteractionCache = {
+        test_right = {
+            time = GetTime(),
+            spec = {
+                streamKey = "world",
+                leftActionKey = "send_world",
+                rightInteractionKind = "native_channel_menu",
+                nativeMenuContext = {
+                    chatType = "CHANNEL",
+                    chatTarget = 9,
+                    chatName = "World",
+                    chatFrame = { name = "StoredChatFrame" },
+                },
+            },
+        },
+    }
+
+    local clickedFrame = { name = "ClickedFrame" }
+    local result = addon.ChatLinkAdapter:Execute("test_right", {
+        button = "RightButton",
+        chatFrame = clickedFrame,
+    })
+
+    addon.Tests.Assert(type(result) == "table" and result.ok == true, "Right-click should succeed")
+    addon.Tests.AssertEqual(executeCount, 0, "Right-click must not fall back to send")
+    addon.Tests.Assert(type(capturedMenu) == "table", "Right-click should open native channel menu")
+    addon.Tests.AssertEqual(capturedMenu.chatFrame, clickedFrame, "Native menu should prefer clicked frame")
+    addon.Tests.AssertEqual(capturedMenu.chatType, "CHANNEL", "Native menu chatType mismatch")
+    addon.Tests.AssertEqual(capturedMenu.chatTarget, 9, "Native menu target mismatch")
+    addon.Tests.AssertEqual(capturedMenu.chatName, "World", "Native menu name mismatch")
+
+    addon.ActionIntentOrchestrator.Execute = oldExecute
+    addon.prefixInteractionCache = oldCache
+    ChatFrameUtil = oldChatFrameUtil
+end
+
+function addon.Tests.TestPrefixInteractionRenderSpecUsesSharedBindingsAndDynamicMenuContext()
+    addon.Tests.Assert(type(addon.ChatLinkAdapter) == "table", "ChatLinkAdapter missing")
+
+    local oldResolver = addon.ChannelSemanticResolver and addon.ChannelSemanticResolver.ResolveDynamic or nil
+    local oldCache = addon.prefixInteractionCache
+    addon.prefixInteractionCache = {}
+    addon.ChannelSemanticResolver.ResolveDynamic = function()
+        return {
+            streamKey = "world",
+            channelId = 7,
+            activeName = "World",
+        }
+    end
+
+    local spec = addon.ChatLinkAdapter:BuildRenderSpec({ name = "ChatFrame1" }, {
+        mode = "replay",
+        streamKey = "world",
+        wowChatType = "CHANNEL",
+        channelMeta = {
+            channelId = nil,
+            channelBaseName = "World",
+        },
+    })
+
+    addon.Tests.Assert(type(spec) == "table", "Prefix interaction spec should exist")
+    addon.Tests.AssertEqual(spec.leftActionKey, "send_world", "Prefix interaction should use shared left binding")
+    addon.Tests.AssertEqual(spec.rightInteractionKind, "native_channel_menu", "Dynamic channel should expose native menu")
+    addon.Tests.Assert(type(spec.interactionId) == "string" and spec.interactionId ~= "", "Interaction id missing")
+
+    addon.prefixInteractionCache = oldCache
+    addon.ChannelSemanticResolver.ResolveDynamic = oldResolver
 end
 
 function addon.Tests.TestActionIntentMuteToggleFromShelfUsesOrchestrator()
@@ -1966,6 +2076,7 @@ function addon.Tests.TestActionIntentAdaptersDoNotCarryBusinessLogic()
 
     local oldExecute = addon.ActionIntentOrchestrator.Execute
     local oldOpenChat = addon.OpenChatForActionSend
+    local oldCache = addon.prefixInteractionCache
     local executeCount = 0
     addon.ActionIntentOrchestrator.Execute = function(_, intent)
         executeCount = executeCount + 1
@@ -1974,14 +2085,25 @@ function addon.Tests.TestActionIntentAdaptersDoNotCarryBusinessLogic()
     addon.OpenChatForActionSend = function()
         error("Adapters must not invoke send helper directly")
     end
+    addon.prefixInteractionCache = {
+        test_logic = {
+            time = GetTime(),
+            spec = {
+                streamKey = "say",
+                leftActionKey = "send_say",
+                rightInteractionKind = "none",
+            },
+        },
+    }
 
-    addon.ChatLinkAdapter:Execute("send", "say", {})
+    addon.ChatLinkAdapter:Execute("test_logic", {})
     addon.Shelf:ExecuteAction("send_say", { key = "button" }, { type = "channel", key = "say" })
 
     addon.Tests.AssertEqual(executeCount, 2, "Adapters should delegate to orchestrator")
 
     addon.ActionIntentOrchestrator.Execute = oldExecute
     addon.OpenChatForActionSend = oldOpenChat
+    addon.prefixInteractionCache = oldCache
 end
 
 function addon.Tests.TestStreamEventContextNewSetsStreamKey()
@@ -2714,8 +2836,8 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
     frame:AddMessage("hello", 1, 1, 1, 0, 0, nil, 0, 1001)
     addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("[PIPE]", 1, true) ~= nil,
         "Realtime display should flow through unified display pipeline")
-    addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:send:say", 1, true) ~= nil,
-        "Realtime display should include stream send link")
+    addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:prefix:", 1, true) ~= nil,
+        "Realtime display should include prefix interaction link")
     addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:copy:", 1, true) ~= nil,
         "Realtime display should include clickable timestamp copy link")
 
@@ -2730,8 +2852,8 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
     }, { frame = replayFrame })
     addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("[PIPE]", 1, true) ~= nil,
         "Replay delivery should go through display transform")
-    addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:send:say", 1, true) ~= nil,
-        "Replay delivery should include stream send link")
+    addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:prefix:", 1, true) ~= nil,
+        "Replay delivery should include prefix interaction link")
     addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:copy:", 1, true) ~= nil,
         "Replay delivery should include clickable timestamp copy link")
 
@@ -2903,6 +3025,31 @@ function addon.Tests.TestDisplayPolicySendToggleRespectsCapabilities()
 
     addon.Tests.AssertEqual(addon.DisplayPolicyService:CanInjectSend("say"), true, "say should support outbound send")
     addon.Tests.AssertEqual(addon.DisplayPolicyService:CanInjectSend("system"), false, "system should not support outbound send")
+end
+
+function addon.Tests.TestDisplayPolicyResolvesPrefixInteractionSpec()
+    addon.Tests.Assert(type(addon.DisplayPolicyService) == "table", "DisplayPolicyService missing")
+    addon.Tests.Assert(type(addon.DisplayPolicyService.ResolvePrefixInteraction) == "function",
+        "ResolvePrefixInteraction missing")
+
+    local oldBuildRenderSpec = addon.ChatLinkAdapter.BuildRenderSpec
+    local capturedFrame = nil
+    local capturedEnvelope = nil
+    addon.ChatLinkAdapter.BuildRenderSpec = function(_, frame, envelope)
+        capturedFrame = frame
+        capturedEnvelope = envelope
+        return { interactionId = "abc" }
+    end
+
+    local frame = { name = "PolicyFrame" }
+    local envelope = { streamKey = "say" }
+    local result = addon.DisplayPolicyService:ResolvePrefixInteraction(frame, envelope)
+
+    addon.Tests.Assert(type(result) == "table" and result.interactionId == "abc", "Policy should return adapter spec")
+    addon.Tests.AssertEqual(capturedFrame, frame, "Policy should pass frame through")
+    addon.Tests.AssertEqual(capturedEnvelope, envelope, "Policy should pass envelope through")
+
+    addon.ChatLinkAdapter.BuildRenderSpec = oldBuildRenderSpec
 end
 
 function addon.Tests.TestRealtimeCoordinatorLineIdMatchAndFallback()
@@ -3131,6 +3278,7 @@ function addon.Tests.TestShelfRenderSpecResolverContainsThemeColorSizeAndTooltip
             displayText = "S",
             fullLabel = "Say",
             channelState = "ready",
+            tooltipDescription = "Send to Say",
             leftActionKey = "send_say",
             leftActionLabel = "Send",
             rightActionKey = "mute_toggle_say",
@@ -3147,6 +3295,7 @@ function addon.Tests.TestShelfRenderSpecResolverContainsThemeColorSizeAndTooltip
     addon.Tests.Assert(type(renderSpec.items[1].visual.textColor) == "table", "Item visual should include text color")
     addon.Tests.Assert(type(renderSpec.items[1].size) == "table", "Item should include measured size")
     addon.Tests.Assert(type(renderSpec.items[1].tooltip) == "table", "Item should include tooltip metadata")
+    addon.Tests.AssertEqual(renderSpec.items[1].tooltip.description, "Send to Say", "Tooltip should include description text")
     addon.Tests.AssertEqual(#(renderSpec.items[1].tooltip.bindings or {}), 2, "Tooltip should include action bindings")
     addon.Tests.Assert(type(renderSpec.alpha) == "number", "Render spec should include alpha")
     addon.Tests.Assert(type(renderSpec.scale) == "number", "Render spec should include scale")
@@ -3232,6 +3381,7 @@ function addon.Tests.TestTinyReactorShelfAdapterRendersFromRenderSpecOnly()
                     actions = {},
                     tooltip = {
                         header = "Say",
+                        description = "Send to Say",
                         bindings = {},
                     },
                     intentItem = {
@@ -3580,6 +3730,14 @@ function addon.Tests.TestStreamRegistryDefaultSchemaValidation()
     end)
     addon.Tests.Assert(okNoticeOutbound == false, "Registry validation should reject notice outbound=true")
     notice.capabilities.outbound = originalNoticeOutbound
+
+    local originalKitMiddle = addon.KIT_REGISTRY[2].defaultBindings.middle
+    addon.KIT_REGISTRY[2].defaultBindings.middle = "countdown_cancel"
+    local okMiddleBinding = pcall(function()
+        addon:ValidateRegistryDefinitions()
+    end)
+    addon.Tests.Assert(okMiddleBinding == false, "Registry validation should reject unsupported middle-click bindings")
+    addon.KIT_REGISTRY[2].defaultBindings.middle = originalKitMiddle
 
     local okFinal = pcall(function()
         addon:ValidateRegistryDefinitions()

@@ -29,6 +29,16 @@ function Service:CanInjectSend(streamKey)
     return type(caps) == "table" and caps.outbound == true
 end
 
+function Service:ResolvePrefixInteraction(frame, envelope)
+    if type(envelope) ~= "table" then
+        return nil
+    end
+    if not addon.ChatLinkAdapter or type(addon.ChatLinkAdapter.BuildRenderSpec) ~= "function" then
+        return nil
+    end
+    return addon.ChatLinkAdapter:BuildRenderSpec(frame, envelope)
+end
+
 function Service:ResolveChannelPrefix(streamKey, channelMeta)
     if type(streamKey) ~= "string" or streamKey == "" then
         return nil

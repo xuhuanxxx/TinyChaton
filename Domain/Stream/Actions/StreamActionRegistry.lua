@@ -75,8 +75,14 @@ addon.ACTION_DEFINITIONS = {
             local stream = addon:GetStreamByKey(streamKey)
             return ResolveStreamLabel(stream)
         end,
-        getTooltip = function()
-            return L["TOOLTIP_SEND_TO"]
+        getTooltip = function(streamKey)
+            local stream = addon:GetStreamByKey(streamKey)
+            local label = ResolveStreamLabel(stream)
+            local template = L["TOOLTIP_SEND_TO"]
+            if type(template) == "string" and template:find("%%s", 1, true) and label ~= "" then
+                return string.format(template, label)
+            end
+            return template
         end
     },
 

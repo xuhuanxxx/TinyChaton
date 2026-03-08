@@ -196,6 +196,7 @@ function Resolver:Build(descriptors, context)
             tooltip = {
                 mode = descriptor.tooltipMode,
                 header = descriptor.fullLabel or descriptor.displayText,
+                description = descriptor.tooltipDescription,
                 bindings = bindings,
             },
             intentItem = descriptor.intentItem,

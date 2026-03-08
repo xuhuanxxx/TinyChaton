@@ -69,9 +69,9 @@ function addon:EnableInteractionTimestamp()
         if not link or type(link) ~= "string" then return end
 
         local action, payload = link:match("^tinychat:([^:]+):(.+)$")
-        if action == "send" and type(payload) == "string" and payload ~= "" then
+        if action == "prefix" and type(payload) == "string" and payload ~= "" then
             if addon.ChatLinkAdapter then
-                addon.ChatLinkAdapter:Execute(action, payload, {
+                addon.ChatLinkAdapter:Execute(payload, {
                     link = link,
                     text = text,
                     button = button,

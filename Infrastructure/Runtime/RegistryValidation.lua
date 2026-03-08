@@ -75,6 +75,13 @@ local function ValidateBindings(bindings, resolveFn, itemKey, itemLabel, actionS
         error(string.format("%s.defaultBindings must be table", tostring(itemLabel)))
     end
     for clickType, bindingKey in pairs(bindings) do
+        if clickType ~= "left" and clickType ~= "right" then
+            error(string.format(
+                "%s.defaultBindings.%s is unsupported; shelf bindings only allow left/right",
+                tostring(itemLabel),
+                tostring(clickType)
+            ))
+        end
         if bindingKey ~= nil and bindingKey ~= false then
             AssertNonEmptyString(bindingKey, itemLabel .. ".defaultBindings." .. tostring(clickType))
             local resolvedKey = resolveFn(itemKey, bindingKey, actionSet)

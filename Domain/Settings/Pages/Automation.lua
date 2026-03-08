@@ -83,6 +83,8 @@ CategoryBuilders.automation = function(rootCat)
     -- 2. Auto Join Channels
     addon.AddSectionHeader(cat, L["SECTION_AUTO_JOIN_CHANNELS"])
 
+    addon.AddRegistrySetting(cat, "automationAutoJoinDelaySeconds")
+
     addon.AddProxyMultiDropdown(cat, P .. "autoJoinDynamic",
         L["LABEL_AUTO_JOIN_PRESET_CHANNELS"] or L["LABEL_AUTO_JOIN_CHANNELS"],
         function() return addon:GetAutoJoinDynamicChannelsItems() end,
@@ -145,6 +147,7 @@ CategoryBuilders.automation = function(rootCat)
             { type = "setting", variable = P .. "CurrentSocialTab", valueFromPath = "automation.currentSocialTab" },
             { type = "setting", variable = "TinyChaton_automationWelcomeEnabled" },
             { type = "setting", variable = "TinyChaton_automationWelcomeCooldownMinutes" },
+            { type = "setting", variable = "TinyChaton_automationAutoJoinDelaySeconds" },
             { type = "setting", variable = "TinyChaton_automationCountdownPrimarySeconds" },
             { type = "setting", variable = "TinyChaton_automationCountdownSecondarySeconds" },
             { type = "setting", variable = P .. "welcomeTab_enabled" },

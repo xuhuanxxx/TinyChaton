@@ -386,6 +386,7 @@ addon.DEFAULTS = {
             welcomeGuild  = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("guild") },
             welcomeParty  = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("party") },
             welcomeRaid   = { enabled = false, sendMode = "channel", templates = GetDefaultWelcomeTemplates("raid") },
+            autoJoinDelaySeconds = 3,
             autoJoinDynamicChannels = BuildAutoJoinDynamicChannels(),
             customAutoJoinChannels = {},
             countdown = { primarySeconds = 10, secondarySeconds = 5 },

@@ -948,6 +948,287 @@ function addon.Tests.TestDefaultAutoJoinDynamicChannelsEnabled()
     end
 end
 
+function addon.Tests.TestDefaultAutoJoinDelaySeconds()
+    addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS should exist")
+    local automation = addon.DEFAULTS.profile and addon.DEFAULTS.profile.automation
+    addon.Tests.Assert(type(automation) == "table", "DEFAULTS.profile.automation should exist")
+    addon.Tests.AssertEqual(automation.autoJoinDelaySeconds, 3, "Auto-join delay default mismatch")
+end
+
+function addon.Tests.TestAutoJoinCommitWaitsForLoginReady()
+    addon.Tests.Assert(type(addon.AutoJoinService) == "table", "AutoJoinService missing")
+    addon.Tests.Assert(type(addon.AutoJoinService.Commit) == "function", "AutoJoinService.Commit missing")
+
+    local service = addon.AutoJoinService
+    local oldTimer = _G.C_Timer
+    local oldJoinChannelByName = _G.JoinChannelByName
+    local oldGetChannelName = _G.GetChannelName
+    local oldDb = addon.db
+    local oldIterateCompiledStreams = addon.IterateCompiledStreams
+    local oldGetStreamKind = addon.GetStreamKind
+    local oldGetStreamGroup = addon.GetStreamGroup
+    local oldGetStreamCapabilities = addon.GetStreamCapabilities
+    local oldResolveDynamicActiveName = addon.ResolveDynamicActiveName
+    local oldIsChatBypassed = addon.IsChatBypassed
+    local oldCan = addon.Can
+
+    local joined = {}
+    _G.C_Timer = {
+        NewTimer = function(delay, callback)
+            return {
+                delay = delay,
+                callback = callback,
+                Cancel = function(self)
+                    self.cancelled = true
+                end,
+            }
+        end,
+    }
+    _G.JoinChannelByName = function(name)
+        joined[#joined + 1] = name
+    end
+    _G.GetChannelName = function()
+        return 0
+    end
+
+    addon.db = {
+        enabled = true,
+        profile = {
+            automation = {
+                autoJoinDelaySeconds = 3,
+                autoJoinDynamicChannels = { general = true },
+                customAutoJoinChannels = {},
+            },
+        },
+    }
+    addon.IterateCompiledStreams = function()
+        local emitted = false
+        return function()
+            if emitted then return nil end
+            emitted = true
+            return 1, { key = "general" }
+        end
+    end
+    addon.GetStreamKind = function() return "channel" end
+    addon.GetStreamGroup = function() return "dynamic" end
+    addon.GetStreamCapabilities = function() return { supportsAutoJoin = true } end
+    addon.ResolveDynamicActiveName = function()
+        return { activeName = "General" }
+    end
+    addon.IsChatBypassed = function() return false end
+    addon.Can = function() return true end
+
+    service:DebugResetState()
+    service:DebugSetFeatureEnabled(true)
+    service:DebugSetLoginReady(false)
+    service:Commit()
+
+    addon.Tests.AssertEqual(#joined, 0, "Auto-join should not run before login-ready")
+    addon.Tests.AssertEqual(service:DebugGetState().hasPendingTimer, false, "No timer should be scheduled before login-ready")
+
+    service:DebugResetState()
+    addon.db = oldDb
+    addon.IterateCompiledStreams = oldIterateCompiledStreams
+    addon.GetStreamKind = oldGetStreamKind
+    addon.GetStreamGroup = oldGetStreamGroup
+    addon.GetStreamCapabilities = oldGetStreamCapabilities
+    addon.ResolveDynamicActiveName = oldResolveDynamicActiveName
+    addon.IsChatBypassed = oldIsChatBypassed
+    addon.Can = oldCan
+    _G.C_Timer = oldTimer
+    _G.JoinChannelByName = oldJoinChannelByName
+    _G.GetChannelName = oldGetChannelName
+end
+
+function addon.Tests.TestAutoJoinCommitSchedulesAfterLoginReady()
+    addon.Tests.Assert(type(addon.AutoJoinService) == "table", "AutoJoinService missing")
+    local service = addon.AutoJoinService
+
+    local oldTimer = _G.C_Timer
+    local oldJoinChannelByName = _G.JoinChannelByName
+    local oldGetChannelName = _G.GetChannelName
+    local oldDb = addon.db
+    local oldIterateCompiledStreams = addon.IterateCompiledStreams
+    local oldGetStreamKind = addon.GetStreamKind
+    local oldGetStreamGroup = addon.GetStreamGroup
+    local oldGetStreamCapabilities = addon.GetStreamCapabilities
+    local oldResolveDynamicActiveName = addon.ResolveDynamicActiveName
+    local oldIsChatBypassed = addon.IsChatBypassed
+    local oldCan = addon.Can
+
+    local joinedByName = {}
+    local joinCalls = {}
+    _G.C_Timer = {
+        NewTimer = function(delay, callback)
+            return {
+                delay = delay,
+                callback = callback,
+                Cancel = function(self)
+                    self.cancelled = true
+                end,
+            }
+        end,
+    }
+    _G.JoinChannelByName = function(name)
+        joinCalls[#joinCalls + 1] = name
+        joinedByName[name] = 7
+    end
+    _G.GetChannelName = function(name)
+        return joinedByName[name] or 0
+    end
+
+    addon.db = {
+        enabled = true,
+        profile = {
+            automation = {
+                autoJoinDelaySeconds = 2,
+                autoJoinDynamicChannels = { general = true },
+                customAutoJoinChannels = {},
+            },
+        },
+    }
+    addon.IterateCompiledStreams = function()
+        local emitted = false
+        return function()
+            if emitted then return nil end
+            emitted = true
+            return 1, { key = "general" }
+        end
+    end
+    addon.GetStreamKind = function() return "channel" end
+    addon.GetStreamGroup = function() return "dynamic" end
+    addon.GetStreamCapabilities = function() return { supportsAutoJoin = true } end
+    addon.ResolveDynamicActiveName = function()
+        return { activeName = "General" }
+    end
+    addon.IsChatBypassed = function() return false end
+    addon.Can = function() return true end
+
+    service:DebugResetState()
+    service:DebugSetFeatureEnabled(true)
+    service:DebugSetLoginReady(true)
+    service:Commit()
+
+    local snapshot = service:DebugGetState()
+    addon.Tests.Assert(snapshot.hasPendingTimer == true, "Login-ready commit should schedule delayed auto-join")
+    addon.Tests.AssertEqual(#joinCalls, 0, "Auto-join should honor the configured delay")
+
+    local ran = service:DebugRunPendingTimer()
+    addon.Tests.Assert(ran == true, "Pending auto-join timer should be runnable in tests")
+    addon.Tests.AssertEqual(#joinCalls, 1, "Delayed auto-join should attempt the selected channel")
+    addon.Tests.AssertEqual(joinCalls[1], "General", "Delayed auto-join channel mismatch")
+    addon.Tests.AssertEqual(service:DebugGetState().hasPendingTimer, false, "Successful join should not leave retry timers behind")
+
+    service:DebugResetState()
+    addon.db = oldDb
+    addon.IterateCompiledStreams = oldIterateCompiledStreams
+    addon.GetStreamKind = oldGetStreamKind
+    addon.GetStreamGroup = oldGetStreamGroup
+    addon.GetStreamCapabilities = oldGetStreamCapabilities
+    addon.ResolveDynamicActiveName = oldResolveDynamicActiveName
+    addon.IsChatBypassed = oldIsChatBypassed
+    addon.Can = oldCan
+    _G.C_Timer = oldTimer
+    _G.JoinChannelByName = oldJoinChannelByName
+    _G.GetChannelName = oldGetChannelName
+end
+
+function addon.Tests.TestAutoJoinCommitUsesBoundedRetries()
+    addon.Tests.Assert(type(addon.AutoJoinService) == "table", "AutoJoinService missing")
+    local service = addon.AutoJoinService
+
+    local oldTimer = _G.C_Timer
+    local oldJoinChannelByName = _G.JoinChannelByName
+    local oldGetChannelName = _G.GetChannelName
+    local oldDb = addon.db
+    local oldIterateCompiledStreams = addon.IterateCompiledStreams
+    local oldGetStreamKind = addon.GetStreamKind
+    local oldGetStreamGroup = addon.GetStreamGroup
+    local oldGetStreamCapabilities = addon.GetStreamCapabilities
+    local oldResolveDynamicActiveName = addon.ResolveDynamicActiveName
+    local oldIsChatBypassed = addon.IsChatBypassed
+    local oldCan = addon.Can
+
+    local joinedByName = {}
+    local attemptsByName = {}
+    _G.C_Timer = {
+        NewTimer = function(delay, callback)
+            return {
+                delay = delay,
+                callback = callback,
+                Cancel = function(self)
+                    self.cancelled = true
+                end,
+            }
+        end,
+    }
+    _G.JoinChannelByName = function(name)
+        attemptsByName[name] = (attemptsByName[name] or 0) + 1
+        if attemptsByName[name] >= 3 then
+            joinedByName[name] = 9
+        end
+    end
+    _G.GetChannelName = function(name)
+        return joinedByName[name] or 0
+    end
+
+    addon.db = {
+        enabled = true,
+        profile = {
+            automation = {
+                autoJoinDelaySeconds = 0,
+                autoJoinDynamicChannels = { general = true },
+                customAutoJoinChannels = {},
+            },
+        },
+    }
+    addon.IterateCompiledStreams = function()
+        local emitted = false
+        return function()
+            if emitted then return nil end
+            emitted = true
+            return 1, { key = "general" }
+        end
+    end
+    addon.GetStreamKind = function() return "channel" end
+    addon.GetStreamGroup = function() return "dynamic" end
+    addon.GetStreamCapabilities = function() return { supportsAutoJoin = true } end
+    addon.ResolveDynamicActiveName = function()
+        return { activeName = "General" }
+    end
+    addon.IsChatBypassed = function() return false end
+    addon.Can = function() return true end
+
+    service:DebugResetState()
+    service:DebugSetFeatureEnabled(true)
+    service:DebugSetLoginReady(true)
+    service:Commit()
+
+    addon.Tests.AssertEqual(attemptsByName.General, 1, "Initial auto-join attempt should run immediately when delay is zero")
+    addon.Tests.Assert(service:DebugGetState().hasPendingTimer == true, "Failed first attempt should schedule retry")
+
+    addon.Tests.Assert(service:DebugRunPendingTimer() == true, "Second attempt should be scheduled")
+    addon.Tests.AssertEqual(attemptsByName.General, 2, "Second auto-join attempt mismatch")
+    addon.Tests.Assert(service:DebugGetState().hasPendingTimer == true, "Failed second attempt should schedule final retry")
+
+    addon.Tests.Assert(service:DebugRunPendingTimer() == true, "Final retry should be scheduled")
+    addon.Tests.AssertEqual(attemptsByName.General, 3, "Third auto-join attempt mismatch")
+    addon.Tests.Assert(service:DebugGetState().hasPendingTimer == false, "Successful final retry should clear pending timer")
+
+    service:DebugResetState()
+    addon.db = oldDb
+    addon.IterateCompiledStreams = oldIterateCompiledStreams
+    addon.GetStreamKind = oldGetStreamKind
+    addon.GetStreamGroup = oldGetStreamGroup
+    addon.GetStreamCapabilities = oldGetStreamCapabilities
+    addon.ResolveDynamicActiveName = oldResolveDynamicActiveName
+    addon.IsChatBypassed = oldIsChatBypassed
+    addon.Can = oldCan
+    _G.C_Timer = oldTimer
+    _G.JoinChannelByName = oldJoinChannelByName
+    _G.GetChannelName = oldGetChannelName
+end
+
 function addon.Tests.TestDefaultSnapshotChannelsFromRegistry()
     addon.Tests.Assert(type(addon.DEFAULTS) == "table", "DEFAULTS should exist")
     local content = addon.DEFAULTS.profile and addon.DEFAULTS.profile.chat and addon.DEFAULTS.profile.chat.content

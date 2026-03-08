@@ -634,6 +634,15 @@ addon.SETTING_REGISTRY = {
         commitSettings = false,
         ui = { type = "slider", page = "automation", section = "LABEL_AUTO_WELCOME", label = "LABEL_WELCOME_COOLDOWN", min = 0, max = 60, step = 5 },
     },
+    automationAutoJoinDelaySeconds = {
+        scope = "profile",
+        valueType = "number",
+        path = "profile.automation.autoJoinDelaySeconds",
+        default = 3,
+        ensureTablePath = true,
+        commitSettings = false,
+        ui = { type = "slider", page = "automation", section = "SECTION_AUTO_JOIN_CHANNELS", label = "LABEL_AUTO_JOIN_DELAY", tooltip = "LABEL_AUTO_JOIN_DELAY_DESC", min = 0, max = 30, step = 1 },
+    },
     automationCountdownPrimarySeconds = {
         scope = "profile",
         valueType = "number",

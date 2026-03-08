@@ -2940,6 +2940,79 @@ function addon.Tests.TestRealtimeAndReplayClickToCopyRespectsCopyStreams()
     _G.C_CVar.GetCVar = oldCVarApi
 end
 
+function addon.Tests.TestClickableTimestampCachesPlainTextForEditBox()
+    addon.Tests.Assert(type(addon.CreateClickableTimestamp) == "function", "CreateClickableTimestamp missing")
+
+    local interaction = addon.db and addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.interaction
+    addon.Tests.Assert(type(interaction) == "table", "interaction settings missing")
+
+    local oldClickToCopy = interaction.clickToCopy
+    interaction.clickToCopy = true
+
+    local linkified, id = addon:CreateClickableTimestamp(
+        "[12:34] ",
+        "[12:34] |Htinychat:prefix:test|h[PIPE]|h|Hplayer:tester|h[tester]|h: |cff00ff00hello|r |TInterface\\Icons\\INV_Misc_QuestionMark:0|t"
+    )
+
+    addon.Tests.Assert(type(linkified) == "string" and linkified:find("tinychat:copy:", 1, true) ~= nil,
+        "Timestamp should be linkified when click copy is enabled")
+    addon.Tests.Assert(type(id) == "string" and id ~= "", "Clickable timestamp should produce a cache id")
+    addon.Tests.Assert(type(addon.messageCache[id]) == "table", "Clickable timestamp should populate message cache")
+    addon.Tests.AssertEqual(addon.messageCache[id].msg, "[12:34] [PIPE][tester]: hello ",
+        "Timestamp copy cache should store plain text instead of rendered markup")
+
+    addon.messageCache[id] = nil
+    interaction.clickToCopy = oldClickToCopy
+end
+
+function addon.Tests.TestTimestampInteractionLinkActivatesEditBox()
+    addon.Tests.Assert(type(addon.HandleTimestampInteractionLink) == "function", "HandleTimestampInteractionLink missing")
+
+    local oldCan = addon.Can
+    local oldIsFeatureEnabled = addon.IsFeatureEnabled
+    local oldChooseBox = _G.ChatEdit_ChooseBoxForSend
+    local oldActivateChat = _G.ChatEdit_ActivateChat
+
+    local activated = false
+    local focused = false
+    local textSet = nil
+    local editBox = {
+        HasFocus = function()
+            return focused
+        end,
+        SetText = function(_, text)
+            textSet = text
+        end,
+    }
+
+    addon.Can = function()
+        return true
+    end
+    addon.IsFeatureEnabled = function(_, name)
+        return name == "InteractionTimestamp"
+    end
+    _G.ChatEdit_ChooseBoxForSend = function()
+        return editBox
+    end
+    _G.ChatEdit_ActivateChat = function(box)
+        activated = box == editBox
+        focused = true
+    end
+
+    addon.messageCache.test_click = { msg = "hello world", time = 1 }
+
+    local handled = addon:HandleTimestampInteractionLink("tinychat:copy:test_click", nil, "LeftButton", nil)
+    addon.Tests.AssertEqual(handled, true, "Timestamp interaction should handle copy links")
+    addon.Tests.AssertEqual(activated, true, "Timestamp interaction should activate the chat edit box")
+    addon.Tests.AssertEqual(textSet, "hello world", "Timestamp interaction should copy cached text into the edit box")
+
+    addon.messageCache.test_click = nil
+    addon.Can = oldCan
+    addon.IsFeatureEnabled = oldIsFeatureEnabled
+    _G.ChatEdit_ChooseBoxForSend = oldChooseBox
+    _G.ChatEdit_ActivateChat = oldActivateChat
+end
+
 function addon.Tests.TestRealtimeChannelPrefixPreservesCanonicalChannelString()
     addon.Tests.Assert(type(addon.StreamDeliveryService) == "table", "StreamDeliveryService missing")
     addon.Tests.Assert(type(addon.StreamDeliveryService.DeliverRealtime) == "function", "DeliverRealtime missing")

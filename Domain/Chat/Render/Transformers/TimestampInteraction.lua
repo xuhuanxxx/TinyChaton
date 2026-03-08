@@ -2,7 +2,22 @@ local addonName, addon = ...
 
 addon.messageCache = addon.messageCache or {}
 addon.InteractionTimestamp = addon.InteractionTimestamp or {}
-local itemRefHooked = false
+local hyperlinkHooked = false
+
+local function NormalizeCopyMessage(text)
+    if type(text) ~= "string" or text == "" then
+        return ""
+    end
+
+    -- Convert rendered chat markup back to the plain text users expect in the edit box.
+    text = text:gsub("|H[^|]+|h(.-)|h", "%1")
+    text = text:gsub("|T.-|t", "")
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", "")
+    text = text:gsub("|r", "")
+    text = text:gsub("||", "|")
+
+    return text
+end
 
 local function PruneCache()
     local now = GetTime()
@@ -35,6 +50,59 @@ local function PruneCache()
     end
 end
 
+function addon:HandleTimestampInteractionLink(link, text, button, chatFrame)
+    if type(link) ~= "string" or link == "" then
+        return false
+    end
+
+    local action, payload = link:match("^tinychat:([^:]+):(.+)$")
+    if action == "prefix" and type(payload) == "string" and payload ~= "" then
+        if addon.ChatLinkAdapter then
+            addon.ChatLinkAdapter:Execute(payload, {
+                link = link,
+                text = text,
+                button = button,
+                chatFrame = chatFrame,
+            })
+            return true
+        end
+        return false
+    end
+
+    if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then
+        return false
+    end
+    if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("InteractionTimestamp") then
+        return false
+    end
+
+    local id = nil
+    if action == "copy" and type(payload) == "string" and payload ~= "" then
+        id = payload
+    elseif link:sub(1, 10) == "tinychat:" then
+        id = link:sub(11)
+    end
+
+    if type(id) ~= "string" or id == "" then
+        return false
+    end
+
+    local entry = addon.messageCache[id]
+    if not (entry and entry.msg) then
+        return false
+    end
+
+    local editBox = ChatEdit_ChooseBoxForSend and ChatEdit_ChooseBoxForSend() or nil
+    if not editBox then
+        return false
+    end
+    if ChatEdit_ActivateChat and not editBox:HasFocus() then
+        ChatEdit_ActivateChat(editBox)
+    end
+    editBox:SetText(entry.msg)
+    return true
+end
+
 function addon:CreateClickableTimestamp(tsText, copyMsg, tsColor)
     local interaction = self.db and self.db.profile and self.db.profile.chat and self.db.profile.chat.interaction
     local clickEnabled = interaction and (interaction.clickToCopy ~= false) or false
@@ -53,57 +121,23 @@ function addon:CreateClickableTimestamp(tsText, copyMsg, tsColor)
     -- The |r at the end resets color so message keeps original color
     local linkified = string.format("|c%s|Htinychat:copy:%s|h%s|h|r ", color, id, tsText)
 
-    self.messageCache[id] = { msg = copyMsg or (tsText .. " "), time = GetTime() }
+    self.messageCache[id] = { msg = NormalizeCopyMessage(copyMsg or (tsText .. " ")), time = GetTime() }
 
     return linkified, id
 end
 
 function addon:EnableInteractionTimestamp()
-    if itemRefHooked then
-        return
+    if not hyperlinkHooked then
+        for i = 1, NUM_CHAT_WINDOWS do
+            local frame = _G["ChatFrame" .. i]
+            if frame then
+                frame:HookScript("OnHyperlinkClick", function(self, linkData, link, button)
+                    addon:HandleTimestampInteractionLink(linkData or link, link, button, self)
+                end)
+            end
+        end
+        hyperlinkHooked = true
     end
-    itemRefHooked = true
-
-    -- SetItemRef is not unhookable; keep a one-time hook and gate behavior by capability+feature.
-    hooksecurefunc("SetItemRef", function(link, text, button, chatFrame)
-        if not link or type(link) ~= "string" then return end
-
-        local action, payload = link:match("^tinychat:([^:]+):(.+)$")
-        if action == "prefix" and type(payload) == "string" and payload ~= "" then
-            if addon.ChatLinkAdapter then
-                addon.ChatLinkAdapter:Execute(payload, {
-                    link = link,
-                    text = text,
-                    button = button,
-                    chatFrame = chatFrame,
-                })
-            end
-            return
-        end
-
-        if addon.Can and not addon:Can(addon.CAPABILITIES.MUTATE_CHAT_DISPLAY) then
-            return
-        end
-        if addon.IsFeatureEnabled and not addon:IsFeatureEnabled("InteractionTimestamp") then
-            return
-        end
-
-        local id = nil
-        if action == "copy" and type(payload) == "string" and payload ~= "" then
-            id = payload
-        elseif link:sub(1, 10) == "tinychat:" then
-            id = link:sub(11)
-        end
-
-        if type(id) == "string" and id ~= "" then
-            local entry = addon.messageCache[id]
-            if entry and entry.msg then
-                local editBox = ChatEdit_ChooseBoxForSend()
-                if not editBox:HasFocus() then ChatEdit_ActivateChat(editBox) end
-                editBox:SetText(entry.msg)
-            end
-        end
-    end)
 end
 
 function addon:DisableInteractionTimestamp()

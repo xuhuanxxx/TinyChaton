@@ -409,7 +409,12 @@ function addon:Shutdown()
     if addon.StreamEventDispatcher and addon.StreamEventDispatcher.UnregisterFilters then
         addon.StreamEventDispatcher:UnregisterFilters()
     end
-    if addon.StopBubbleTicker then addon:StopBubbleTicker() end
+    if addon.ChatBubbleEmoteAdapter and addon.ChatBubbleEmoteAdapter.Disable then
+        addon.ChatBubbleEmoteAdapter:Disable()
+    end
+    if addon.ChatLineEmoteAdapter and addon.ChatLineEmoteAdapter.Disable then
+        addon.ChatLineEmoteAdapter:Disable()
+    end
     if addon.CancelPendingWelcomeTimers then addon:CancelPendingWelcomeTimers() end
     if addon.CancelTabCycleTimer then addon:CancelTabCycleTimer() end
 end

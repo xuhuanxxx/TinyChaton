@@ -3306,6 +3306,352 @@ function addon.Tests.TestStreamRegistryDefaultSchemaValidation()
     addon.Tests.Assert(okFinal == true, "Registry validation should pass after restoring schema")
 end
 
+function addon.Tests.TestEmoteParserParseNoMatchReturnsUnchangedResult()
+    addon.Tests.Assert(type(addon.EmoteParser) == "table", "EmoteParser missing")
+    addon.Tests.Assert(type(addon.EmoteParser.Parse) == "function", "EmoteParser.Parse missing")
+
+    local result = addon.EmoteParser:Parse("plain text")
+    addon.Tests.AssertEqual(result.sourceText, "plain text", "Source text mismatch")
+    addon.Tests.AssertEqual(result.renderedText, "plain text", "Rendered text should remain unchanged")
+    addon.Tests.AssertEqual(result.matched, false, "No-match parse should not be marked matched")
+    addon.Tests.AssertEqual(result.matchCount, 0, "No-match parse should have zero replacements")
+    addon.Tests.Assert(type(result.replacements) == "table" and #result.replacements == 0, "No-match replacements should be empty")
+end
+
+function addon.Tests.TestEmoteParserParseSingleMatchBuildsExpectedReplacement()
+    local result = addon.EmoteParser:Parse("hello {star} world")
+    addon.Tests.AssertEqual(result.matched, true, "Single token should match")
+    addon.Tests.AssertEqual(result.matchCount, 1, "Single token should produce one replacement")
+    addon.Tests.Assert(type(result.renderedText) == "string" and result.renderedText:find("|TInterface\\TargetingFrame\\UI%-RaidTargetingIcon_1:0|t", 1),
+        "Rendered text should contain the star texture markup")
+
+    local replacement = result.replacements[1]
+    addon.Tests.AssertEqual(replacement.token, "{star}", "Replacement token mismatch")
+    addon.Tests.AssertEqual(replacement.startIndex, 7, "Replacement start index mismatch")
+    addon.Tests.AssertEqual(replacement.endIndex, 12, "Replacement end index mismatch")
+    addon.Tests.AssertEqual(replacement.texturePath, "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1", "Texture path mismatch")
+end
+
+function addon.Tests.TestEmoteParserParseMultipleMatchesPreservesOrderAndIndices()
+    local result = addon.EmoteParser:Parse("{star} and {circle}")
+    addon.Tests.AssertEqual(result.matchCount, 2, "Multiple tokens should produce multiple replacements")
+    addon.Tests.AssertEqual(result.replacements[1].token, "{star}", "First replacement order mismatch")
+    addon.Tests.AssertEqual(result.replacements[1].startIndex, 1, "First replacement index mismatch")
+    addon.Tests.AssertEqual(result.replacements[2].token, "{circle}", "Second replacement order mismatch")
+    addon.Tests.AssertEqual(result.replacements[2].startIndex, 12, "Second replacement index mismatch")
+end
+
+function addon.Tests.TestEmoteParserGetCatalogContainsBuiltInAndCustomEmotes()
+    addon.Tests.Assert(type(addon.EmoteParser.GetCatalog) == "function", "EmoteParser.GetCatalog missing")
+    local catalog = addon.EmoteParser:GetCatalog()
+    addon.Tests.Assert(type(catalog) == "table" and #catalog > 8, "Catalog should include built-in and custom emotes")
+
+    local foundBuiltIn = false
+    local foundCustom = false
+    for _, entry in ipairs(catalog) do
+        if entry.key == "{star}" then
+            foundBuiltIn = true
+        elseif entry.key == "{angel}" then
+            foundCustom = true
+        end
+    end
+
+    addon.Tests.Assert(foundBuiltIn, "Catalog should include built-in star emote")
+    addon.Tests.Assert(foundCustom, "Catalog should include custom angel emote")
+end
+
+function addon.Tests.TestEmoteParserChatLineAndBubbleUseSameRenderedText()
+    local text = "same {star} output"
+    local parserResult = addon.EmoteParser:Parse(text)
+
+    local oldTransformers = addon.chatFrameTransformers
+    addon.chatFrameTransformers = {}
+    addon.ChatLineEmoteAdapter:Disable()
+    addon.ChatLineEmoteAdapter:Enable()
+    local transformer = addon.chatFrameTransformers[addon.ChatLineEmoteAdapter.transformerName]
+    local lineText = select(1, transformer(nil, text, 1, 1, 1, {}))
+
+    local oldParser = addon.EmoteParser
+    local oldCache = addon.ChatBubbleEmoteAdapter.bubbleCache
+    addon.ChatBubbleEmoteAdapter:ResetCache()
+    addon.EmoteParser = {
+        Parse = function(_, incoming)
+            return oldParser:Parse(incoming)
+        end,
+    }
+
+    local currentText = text
+    local bubbleOutput = nil
+    local fontString = {
+        GetObjectType = function() return "FontString" end,
+        GetText = function() return currentText end,
+        SetText = function(_, nextText)
+            currentText = nextText
+            bubbleOutput = nextText
+        end,
+    }
+    local bubble = {
+        IsForbidden = function() return false end,
+        GetNumRegions = function() return 1 end,
+        GetRegions = function() return fontString end,
+        GetNumChildren = function() return 0 end,
+        GetChildren = function() return nil end,
+    }
+
+    addon.ChatBubbleEmoteAdapter:ProcessBubble(bubble, 0)
+
+    addon.Tests.AssertEqual(lineText, parserResult.renderedText, "Chat line adapter should use parser rendered text")
+    addon.Tests.AssertEqual(bubbleOutput, parserResult.renderedText, "Bubble adapter should use parser rendered text")
+
+    addon.ChatLineEmoteAdapter:Disable()
+    addon.chatFrameTransformers = oldTransformers
+    addon.ChatBubbleEmoteAdapter.bubbleCache = oldCache
+    addon.EmoteParser = oldParser
+end
+
+function addon.Tests.TestChatLineEmoteAdapterAppliesRenderedTextFromParseResult()
+    local oldTransformers = addon.chatFrameTransformers
+    local oldParser = addon.EmoteParser
+    addon.chatFrameTransformers = {}
+
+    addon.EmoteParser = {
+        Parse = function(_, text)
+            return {
+                sourceText = text,
+                renderedText = "rendered:" .. text,
+                matched = true,
+                replacements = {},
+                matchCount = 1,
+            }
+        end,
+    }
+
+    addon.ChatLineEmoteAdapter:Disable()
+    addon.ChatLineEmoteAdapter:Enable()
+    local transformer = addon.chatFrameTransformers[addon.ChatLineEmoteAdapter.transformerName]
+    local nextText = select(1, transformer(nil, "hello", 1, 1, 1, {}))
+    addon.Tests.AssertEqual(nextText, "rendered:hello", "Chat line adapter should apply parser rendered text")
+
+    addon.ChatLineEmoteAdapter:Disable()
+    addon.EmoteParser = oldParser
+    addon.chatFrameTransformers = oldTransformers
+end
+
+function addon.Tests.TestChatLineEmoteAdapterNoMutationWhenDisabled()
+    local oldTransformers = addon.chatFrameTransformers
+    addon.chatFrameTransformers = {}
+
+    addon.ChatLineEmoteAdapter:Disable()
+    addon.Tests.Assert(addon.chatFrameTransformers[addon.ChatLineEmoteAdapter.transformerName] == nil,
+        "Disabled adapter should not leave transformer registered")
+
+    addon.chatFrameTransformers = oldTransformers
+end
+
+function addon.Tests.TestChatLineEmoteAdapterDoesNotOwnBubbleState()
+    addon.Tests.Assert(addon.ChatLineEmoteAdapter.bubbleCache == nil, "Chat line adapter should not own bubble cache")
+    addon.Tests.Assert(addon.ChatLineEmoteAdapter.ticker == nil, "Chat line adapter should not own bubble ticker")
+end
+
+function addon.Tests.TestChatBubbleEmoteAdapterUsesParserResultForBubbleText()
+    local oldParser = addon.EmoteParser
+    local oldCache = addon.ChatBubbleEmoteAdapter.bubbleCache
+    local parseCalls = 0
+    local currentText = "bubble {star}"
+    local writtenText = nil
+
+    addon.EmoteParser = {
+        Parse = function(_, text)
+            parseCalls = parseCalls + 1
+            return {
+                sourceText = text,
+                renderedText = "bubble-rendered",
+                matched = true,
+                replacements = {},
+                matchCount = 1,
+            }
+        end,
+    }
+    addon.ChatBubbleEmoteAdapter:ResetCache()
+
+    local fontString = {
+        GetObjectType = function() return "FontString" end,
+        GetText = function() return currentText end,
+        SetText = function(_, nextText)
+            writtenText = nextText
+            currentText = nextText
+        end,
+    }
+    local bubble = {
+        IsForbidden = function() return false end,
+        GetNumRegions = function() return 1 end,
+        GetRegions = function() return fontString end,
+        GetNumChildren = function() return 0 end,
+        GetChildren = function() return nil end,
+    }
+
+    addon.ChatBubbleEmoteAdapter:ProcessBubble(bubble, 0)
+    addon.ChatBubbleEmoteAdapter:ProcessBubble(bubble, 0)
+
+    addon.Tests.AssertEqual(writtenText, "bubble-rendered", "Bubble adapter should write parser rendered text")
+    addon.Tests.AssertEqual(parseCalls, 1, "Bubble adapter should not reparse unchanged bubble text")
+
+    addon.EmoteParser = oldParser
+    addon.ChatBubbleEmoteAdapter.bubbleCache = oldCache
+end
+
+function addon.Tests.TestChatBubbleEmoteAdapterManagesTickerLifecycle()
+    local oldC_Timer = C_Timer
+    local oldC_ChatBubbles = C_ChatBubbles
+    local cancelCalled = 0
+    local created = 0
+
+    C_ChatBubbles = {
+        GetAllChatBubbles = function()
+            return {}
+        end,
+    }
+    C_Timer = {
+        NewTicker = function(_, fn)
+            created = created + 1
+            return {
+                callback = fn,
+                Cancel = function()
+                    cancelCalled = cancelCalled + 1
+                end,
+            }
+        end,
+    }
+
+    addon.ChatBubbleEmoteAdapter:Disable()
+    addon.ChatBubbleEmoteAdapter:Enable()
+    addon.Tests.Assert(created == 1, "Enable should create one ticker")
+    addon.Tests.Assert(type(addon.ChatBubbleEmoteAdapter.ticker) == "table", "Ticker should be stored on adapter")
+
+    addon.ChatBubbleEmoteAdapter:Disable()
+    addon.Tests.AssertEqual(cancelCalled, 1, "Disable should cancel ticker")
+    addon.Tests.Assert(addon.ChatBubbleEmoteAdapter.ticker == nil, "Disable should clear ticker reference")
+
+    C_Timer = oldC_Timer
+    C_ChatBubbles = oldC_ChatBubbles
+end
+
+function addon.Tests.TestChatBubbleEmoteAdapterUsesWeakCachePerBubble()
+    addon.ChatBubbleEmoteAdapter:ResetCache()
+    addon.Tests.Assert(type(addon.ChatBubbleEmoteAdapter.bubbleCache) == "table", "Bubble cache missing")
+    local mt = getmetatable(addon.ChatBubbleEmoteAdapter.bubbleCache)
+    addon.Tests.Assert(type(mt) == "table" and mt.__mode == "k", "Bubble cache should be weak-keyed")
+end
+
+function addon.Tests.TestChatBubbleEmoteAdapterRetriesFontStringScanWithThrottle()
+    addon.ChatBubbleEmoteAdapter:ResetCache()
+    local bubble = {
+        IsForbidden = function() return false end,
+        GetNumRegions = function() return 0 end,
+        GetRegions = function() return nil end,
+        GetNumChildren = function() return 0 end,
+        GetChildren = function() return nil end,
+    }
+
+    addon.ChatBubbleEmoteAdapter:ProcessBubble(bubble, 1)
+    local state = addon.ChatBubbleEmoteAdapter.bubbleCache[bubble]
+    addon.Tests.Assert(type(state) == "table", "Bubble state should be cached after first scan")
+    addon.Tests.AssertEqual(state.lastScanAt, 1, "Initial scan timestamp mismatch")
+
+    addon.ChatBubbleEmoteAdapter:ProcessBubble(bubble, 2)
+    addon.Tests.AssertEqual(state.lastScanAt, 1, "Second scan should be throttled")
+
+    addon.ChatBubbleEmoteAdapter:ProcessBubble(bubble, 3)
+    addon.Tests.AssertEqual(state.lastScanAt, 3, "Scan should retry after throttle window")
+end
+
+function addon.Tests.TestEmotesFeatureReconcilesAdaptersFromSettingsAndRuntime()
+    addon.Tests.Assert(type(addon.EmotesFeature) == "table", "EmotesFeature missing")
+    addon.Tests.Assert(type(addon.EmotesFeature.Reconcile) == "function", "EmotesFeature.Reconcile missing")
+
+    local oldDb = addon.db
+    local oldGetConfig = addon.GetConfig
+    local oldIsFeatureEnabled = addon.IsFeatureEnabled
+    local oldCan = addon.Can
+    local oldLine = addon.ChatLineEmoteAdapter
+    local oldBubble = addon.ChatBubbleEmoteAdapter
+
+    local lineOps = {}
+    local bubbleOps = {}
+    addon.ChatLineEmoteAdapter = {
+        Enable = function()
+            lineOps[#lineOps + 1] = "enable"
+        end,
+        Disable = function()
+            lineOps[#lineOps + 1] = "disable"
+        end,
+    }
+    addon.ChatBubbleEmoteAdapter = {
+        Reconcile = function(_, shouldEnable)
+            bubbleOps[#bubbleOps + 1] = shouldEnable
+        end,
+    }
+    addon.db = { enabled = true }
+    addon.GetConfig = function(_, path, defaultValue)
+        if path == "profile.chat.content.emoteRender" then
+            return true
+        end
+        return defaultValue
+    end
+    addon.IsFeatureEnabled = function(_, name)
+        return name == "EmotesRender"
+    end
+    addon.Can = function()
+        return true
+    end
+
+    addon.EmotesFeature:Reconcile()
+    addon.Tests.AssertEqual(lineOps[1], "enable", "Feature reconcile should enable chat line adapter")
+    addon.Tests.AssertEqual(bubbleOps[1], true, "Feature reconcile should enable bubble adapter")
+
+    addon.db.enabled = false
+    addon.EmotesFeature:Reconcile()
+    addon.Tests.AssertEqual(lineOps[2], "disable", "Feature reconcile should disable chat line adapter when addon is off")
+    addon.Tests.AssertEqual(bubbleOps[2], false, "Feature reconcile should disable bubble adapter when addon is off")
+
+    addon.db = oldDb
+    addon.GetConfig = oldGetConfig
+    addon.IsFeatureEnabled = oldIsFeatureEnabled
+    addon.Can = oldCan
+    addon.ChatLineEmoteAdapter = oldLine
+    addon.ChatBubbleEmoteAdapter = oldBubble
+end
+
+function addon.Tests.TestEmotesFeatureDisableStopsBubbleTickerAndUnregistersTransformer()
+    addon.Tests.Assert(type(addon.FeatureRegistry) == "table", "FeatureRegistry missing")
+    local entry = addon.FeatureRegistry.entries and addon.FeatureRegistry.entries.EmotesRender
+    addon.Tests.Assert(type(entry) == "table" and type(entry.onDisable) == "function", "EmotesRender feature entry missing")
+
+    local oldLine = addon.ChatLineEmoteAdapter
+    local oldBubble = addon.ChatBubbleEmoteAdapter
+    local lineDisabled = 0
+    local bubbleDisabled = 0
+
+    addon.ChatLineEmoteAdapter = {
+        Disable = function()
+            lineDisabled = lineDisabled + 1
+        end,
+    }
+    addon.ChatBubbleEmoteAdapter = {
+        Disable = function()
+            bubbleDisabled = bubbleDisabled + 1
+        end,
+    }
+
+    entry.onDisable()
+
+    addon.Tests.AssertEqual(lineDisabled, 1, "Feature disable should unregister chat line adapter")
+    addon.Tests.AssertEqual(bubbleDisabled, 1, "Feature disable should stop bubble adapter")
+
+    addon.ChatLineEmoteAdapter = oldLine
+    addon.ChatBubbleEmoteAdapter = oldBubble
+end
+
 -- Slash Command
 SLASH_TINYCHATON_TEST1 = "/tctest"
 SlashCmdList["TINYCHATON_TEST"] = function()

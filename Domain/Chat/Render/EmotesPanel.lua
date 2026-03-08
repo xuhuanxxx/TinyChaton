@@ -34,8 +34,8 @@ end
 local function UpdateEmotePanel()
     if not panel then return end
 
-    if not addon.EmotesRender then return end
-    local emotes = addon.EmotesRender.GetEmotes and addon.EmotesRender.GetEmotes() or addon.EmotesRender.emotes
+    if not addon.EmoteParser or type(addon.EmoteParser.GetCatalog) ~= "function" then return end
+    local emotes = addon.EmoteParser:GetCatalog()
     if not emotes then return end
 
     local pageSize = GetPageSize()

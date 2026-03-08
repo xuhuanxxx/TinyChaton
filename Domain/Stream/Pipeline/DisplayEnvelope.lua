@@ -31,25 +31,16 @@ function Envelope.FromRealtime(frame, event, streamContext)
         return nil
     end
 
-    local streamKey = type(streamContext.streamKey) == "string" and streamContext.streamKey or ""
+    local normalized, err = addon.StreamNormalizeService and addon.StreamNormalizeService.NormalizeRealtime
+        and addon.StreamNormalizeService:NormalizeRealtime(frame, event, streamContext)
+        or nil, nil
+    if type(normalized) ~= "table" then
+        return nil, err or "normalize_realtime_failed"
+    end
+
+    local streamKey = normalized.streamKey
     local streamKind, streamGroup = ResolveKinds(streamKey)
     local args = type(streamContext.args) == "table" and streamContext.args or nil
-
-    local wowChatType = streamContext.wowChatType
-    if (type(wowChatType) ~= "string" or wowChatType == "") and type(event) == "string" and addon.GetWowChatTypeByEvent then
-        wowChatType = addon:GetWowChatTypeByEvent(event)
-    end
-
-    local channelBaseName = streamContext.channelName
-    if wowChatType == "CHANNEL"
-        and addon.ChannelSemanticResolver
-        and type(addon.ChannelSemanticResolver.ResolveEventChannelName) == "function" then
-        channelBaseName = addon.ChannelSemanticResolver.ResolveEventChannelName(
-            streamContext.channelName,
-            streamContext.channelString,
-            streamContext.channelNumber
-        )
-    end
 
     local lineId = nil
     local classFilename = nil
@@ -67,21 +58,21 @@ function Envelope.FromRealtime(frame, event, streamContext)
     end
 
     return Validate({
-        mode = "realtime",
-        frameName = ResolveFrameName(frame),
-        event = type(event) == "string" and event or "",
+        mode = normalized.mode or "realtime",
+        frameName = normalized.frameName or ResolveFrameName(frame),
+        event = normalized.event or (type(event) == "string" and event or ""),
         streamKey = streamKey,
         streamKind = streamKind,
         streamGroup = streamGroup,
-        wowChatType = type(wowChatType) == "string" and wowChatType or "",
-        author = type(streamContext.author) == "string" and streamContext.author or "",
+        wowChatType = normalized.wowChatType or "",
+        author = normalized.author or "",
         channelMeta = {
-            channelId = streamContext.channelNumber,
-            channelBaseName = channelBaseName,
+            channelId = normalized.channelId,
+            channelBaseName = normalized.channelBaseName,
         },
-        timestamp = time(),
+        timestamp = normalized.timestamp or time(),
         lineId = lineId,
-        rawText = type(streamContext.text) == "string" and streamContext.text or "",
+        rawText = normalized.text or "",
         classFilename = classFilename,
     })
 end
@@ -91,33 +82,33 @@ function Envelope.FromReplayLine(line, frame)
         return nil
     end
 
-    local streamKey = type(line.streamKey) == "string" and line.streamKey or ""
-    local streamKind, streamGroup = ResolveKinds(streamKey)
-    local streamMeta = type(line.streamMeta) == "table" and line.streamMeta or {}
-
-    local wowChatType = line.wowChatType
-    if (type(wowChatType) ~= "string" or wowChatType == "") and type(streamKey) == "string" and streamKey ~= "" then
-        local stream = addon.GetStreamByKey and addon:GetStreamByKey(streamKey) or nil
-        wowChatType = type(stream) == "table" and stream.wowChatType or ""
+    local normalized, err = addon.StreamNormalizeService and addon.StreamNormalizeService.NormalizeReplay
+        and addon.StreamNormalizeService:NormalizeReplay(line, frame)
+        or nil, nil
+    if type(normalized) ~= "table" then
+        return nil, err or "normalize_replay_failed"
     end
 
+    local streamKey = normalized.streamKey
+    local streamKind, streamGroup = ResolveKinds(streamKey)
+
     return Validate({
-        mode = "replay",
-        frameName = ResolveFrameName(frame) or (type(line.frameName) == "string" and line.frameName or nil),
-        event = type(line.event) == "string" and line.event or "",
+        mode = normalized.mode or "replay",
+        frameName = normalized.frameName or ResolveFrameName(frame) or (type(line.frameName) == "string" and line.frameName or nil),
+        event = normalized.event or (type(line.event) == "string" and line.event or ""),
         streamKey = streamKey,
         streamKind = streamKind,
         streamGroup = streamGroup,
-        wowChatType = type(wowChatType) == "string" and wowChatType or "",
-        author = type(line.author) == "string" and line.author or "",
+        wowChatType = normalized.wowChatType or "",
+        author = normalized.author or "",
         channelMeta = {
-            channelId = streamMeta.channelId,
-            channelBaseName = streamMeta.channelBaseName,
+            channelId = normalized.channelId,
+            channelBaseName = normalized.channelBaseName,
         },
-        timestamp = line.time or time(),
+        timestamp = normalized.timestamp or line.time or time(),
         lineId = nil,
-        rawText = type(line.text) == "string" and line.text or "",
-        classFilename = line.classFilename,
+        rawText = normalized.text or "",
+        classFilename = normalized.classFilename,
     })
 end
 

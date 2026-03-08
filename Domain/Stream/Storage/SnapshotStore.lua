@@ -319,11 +319,14 @@ local function OnSnapshotEvent(self, event, ...)
         addon.StreamEventContext:Release(streamContext)
         return
     end
+    local normalized = addon.StreamNormalizeService and addon.StreamNormalizeService.NormalizeRealtime
+        and addon.StreamNormalizeService:NormalizeRealtime(nil, event, streamContext)
+        or nil
     local streamMeta
     if event == "CHAT_MSG_CHANNEL" then
         streamMeta = {
             channelId = streamContext.channelNumber,
-            channelBaseName = streamContext.channelName,
+            channelBaseName = (type(normalized) == "table" and normalized.channelBaseName) or streamContext.channelName,
         }
     end
 

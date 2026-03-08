@@ -24,26 +24,14 @@ local function ResolveActionLabel(actionKey, itemKey)
         return nil
     end
 
+    if type(action.label) == "string" and action.label ~= "" then
+        return action.label
+    end
+
     if type(action.getLabel) == "function" then
         return action.getLabel(itemKey)
     end
     return action.label
-end
-
-local function ResolveActionTooltip(actionKey, itemKey)
-    if not actionKey or not addon.ACTION_REGISTRY then
-        return nil
-    end
-
-    local action = addon.ACTION_REGISTRY[actionKey]
-    if not action then
-        return nil
-    end
-
-    if type(action.getTooltip) == "function" then
-        return action.getTooltip(itemKey)
-    end
-    return action.tooltip
 end
 
 local function ResolveStreamFullLabel(streamKey, channelNumber, fallbackLabel)
@@ -310,11 +298,6 @@ function addon.Shelf:BuildItemDescriptors()
                     local rightActionKey = item.rightClick
                     local leftActionLabel = ResolveActionLabel(leftActionKey, item.key)
                     local rightActionLabel = ResolveActionLabel(rightActionKey, item.key)
-                    local primaryActionKey = leftActionKey or rightActionKey
-                    local tooltipDescription = item.tooltip
-                        or ResolveActionTooltip(primaryActionKey, item.key)
-                        or leftActionLabel
-                        or rightActionLabel
 
                     if leftActionLabel or rightActionLabel then
                         tooltipMode = "bindings"
@@ -334,7 +317,6 @@ function addon.Shelf:BuildItemDescriptors()
                         leftActionLabel = leftActionLabel,
                         rightActionLabel = rightActionLabel,
                         tooltipMode = tooltipMode,
-                        tooltipDescription = tooltipDescription,
                         intentItem = {
                             key = item.key,
                             itemKey = item.key,

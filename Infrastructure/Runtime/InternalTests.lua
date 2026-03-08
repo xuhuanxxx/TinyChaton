@@ -1423,15 +1423,15 @@ function addon.Tests.TestShelfDescriptorBuilderBuildsChannelAndKitDescriptors()
     addon.Tests.AssertEqual(descriptors[1].channelState, "muted", "System stream should expose muted state")
     addon.Tests.Assert(type(descriptors[1].displayText) == "string", "Channel descriptor should include display text")
     addon.Tests.Assert(type(descriptors[1].leftActionKey) == "string", "Channel descriptor should include left action")
-    addon.Tests.Assert(type(descriptors[1].tooltipDescription) == "string" and descriptors[1].tooltipDescription ~= "",
-        "Channel descriptor should include tooltip description")
-    addon.Tests.Assert(descriptors[1].tooltipDescription:find("%%s", 1, true) == nil,
-        "Channel tooltip description should be fully formatted")
+    addon.Tests.Assert(type(descriptors[1].fullLabel) == "string" and descriptors[1].fullLabel ~= "",
+        "Channel descriptor should include full label")
+    addon.Tests.AssertEqual(descriptors[1].leftActionLabel, ((addon.L and addon.L["ACTION_PREFIX_SEND"]) or "") .. descriptors[1].fullLabel,
+        "Channel left action label should include the send prefix plus full label")
     addon.Tests.Assert(type(descriptors[2].itemKey) == "string", "Kit descriptor should include item key")
     addon.Tests.AssertEqual(descriptors[2].itemType, "kit", "Expected kit descriptor")
     addon.Tests.Assert(type(descriptors[2].displayText) == "string", "Kit descriptor should include display text")
-    addon.Tests.Assert(type(descriptors[2].tooltipDescription) == "string" and descriptors[2].tooltipDescription ~= "",
-        "Kit descriptor should include tooltip description")
+    addon.Tests.Assert(type(descriptors[2].fullLabel) == "string" and descriptors[2].fullLabel ~= "",
+        "Kit descriptor should include full label")
 
     addon.db.profile.buttons = oldButtons
     addon.db.profile.filter = oldFilter
@@ -3389,7 +3389,6 @@ function addon.Tests.TestShelfRenderSpecResolverContainsThemeColorSizeAndTooltip
             displayText = "S",
             fullLabel = "Say",
             channelState = "ready",
-            tooltipDescription = "Send to Say",
             leftActionKey = "send_say",
             leftActionLabel = "Send",
             rightActionKey = "mute_toggle_say",
@@ -3406,7 +3405,7 @@ function addon.Tests.TestShelfRenderSpecResolverContainsThemeColorSizeAndTooltip
     addon.Tests.Assert(type(renderSpec.items[1].visual.textColor) == "table", "Item visual should include text color")
     addon.Tests.Assert(type(renderSpec.items[1].size) == "table", "Item should include measured size")
     addon.Tests.Assert(type(renderSpec.items[1].tooltip) == "table", "Item should include tooltip metadata")
-    addon.Tests.AssertEqual(renderSpec.items[1].tooltip.description, "Send to Say", "Tooltip should include description text")
+    addon.Tests.AssertEqual(renderSpec.items[1].tooltip.header, "Say", "Tooltip should use the full label as header")
     addon.Tests.AssertEqual(#(renderSpec.items[1].tooltip.bindings or {}), 2, "Tooltip should include action bindings")
     addon.Tests.Assert(type(renderSpec.alpha) == "number", "Render spec should include alpha")
     addon.Tests.Assert(type(renderSpec.scale) == "number", "Render spec should include scale")
@@ -3492,7 +3491,6 @@ function addon.Tests.TestTinyReactorShelfAdapterRendersFromRenderSpecOnly()
                     actions = {},
                     tooltip = {
                         header = "Say",
-                        description = "Send to Say",
                         bindings = {},
                     },
                     intentItem = {

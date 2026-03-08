@@ -2774,91 +2774,96 @@ function addon.Tests.TestRealtimeAndReplayShareDisplayTransformPipeline()
     local capturedReplay
     local capturedRealtime
 
-    addon.Gateway = {
-        Display = {
-            Transform = function(_, frame, msg, r, g, b, extraArgs)
-                return "[PIPE]" .. tostring(msg), r, g, b, extraArgs
+    local ok, err = xpcall(function()
+        addon.Gateway = {
+            Display = {
+                Transform = function(_, frame, msg, r, g, b, extraArgs)
+                    return "[PIPE]" .. tostring(msg), r, g, b, extraArgs
+                end,
+            },
+        }
+
+        local frame = {
+            AddMessage = function(_, msg)
+                capturedRealtime = msg
             end,
-        },
-    }
-
-    local frame = {
-        AddMessage = function(_, msg)
-            capturedRealtime = msg
-        end,
-        IsEventRegistered = function()
-            return true
-        end,
-        GetName = function()
-            return "TinyChatonTestFrameDelivery"
-        end,
-    }
-    _G.C_CVar.GetCVar = function(name)
-        if name == "showTimestamps" then
-            return "%H:%M"
+            IsEventRegistered = function()
+                return true
+            end,
+            GetName = function()
+                return "TinyChatonTestFrameDelivery"
+            end,
+        }
+        _G.C_CVar.GetCVar = function(name)
+            if name == "showTimestamps" then
+                return "%H:%M"
+            end
+            if oldCVarApi then
+                return oldCVarApi(name)
+            end
+            return nil
         end
-        if oldCVarApi then
-            return oldCVarApi(name)
-        end
-        return nil
-    end
 
-    local replayFrame = {
-        AddMessage = function(_, msg)
-            capturedReplay = msg
-        end,
-        IsEventRegistered = function()
-            return true
-        end,
-        GetName = function()
-            return "TinyChatonTestFrameDelivery"
-        end,
-    }
+        local replayFrame = {
+            AddMessage = function(_, msg)
+                capturedReplay = msg
+            end,
+            IsEventRegistered = function()
+                return true
+            end,
+            GetName = function()
+                return "TinyChatonTestFrameDelivery"
+            end,
+        }
 
-    local streamContext = {
-        text = "hello",
-        author = "tester",
-        wowChatType = "SAY",
-        streamKey = "say",
-        args = addon.Utils.PackArgs("hello", "tester", nil, nil, nil, nil, nil, nil, nil, nil, 1001),
-    }
-    local packedArgs = addon.Utils.PackArgs("hello", "tester")
-    local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", {
-        text = streamContext.text,
-        author = streamContext.author,
-        wowChatType = streamContext.wowChatType,
-        streamKey = streamContext.streamKey,
-        args = streamContext.args,
-    }, packedArgs, { shouldHide = false })
+        local streamContext = {
+            text = "hello",
+            author = "tester",
+            wowChatType = "SAY",
+            streamKey = "say",
+            args = addon.Utils.PackArgs("hello", "tester", nil, nil, nil, nil, nil, nil, nil, nil, 1001),
+        }
+        local packedArgs = addon.Utils.PackArgs("hello", "tester")
+        local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", {
+            text = streamContext.text,
+            author = streamContext.author,
+            wowChatType = streamContext.wowChatType,
+            streamKey = streamContext.streamKey,
+            args = streamContext.args,
+        }, packedArgs, { shouldHide = false })
 
-    addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block")
-    addon.Tests.AssertEqual(realtimeMsg, "hello", "Realtime delivery should keep filter-stage body untouched")
-    frame:AddMessage("hello", 1, 1, 1, 0, 0, nil, 0, 1001)
-    addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("[PIPE]", 1, true) ~= nil,
-        "Realtime display should flow through unified display pipeline")
-    addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:prefix:", 1, true) ~= nil,
-        "Realtime display should include prefix interaction link")
-    addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:copy:", 1, true) ~= nil,
-        "Realtime display should include clickable timestamp copy link")
+        addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block")
+        addon.Tests.AssertEqual(realtimeMsg, "hello", "Realtime delivery should keep filter-stage body untouched")
+        frame:AddMessage("hello", 1, 1, 1, 0, 0, nil, 0, 1001)
+        addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("[PIPE]", 1, true) ~= nil,
+            "Realtime display should flow through unified display pipeline")
+        addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:prefix:", 1, true) ~= nil,
+            "Realtime display should include prefix interaction link")
+        addon.Tests.Assert(type(capturedRealtime) == "string" and capturedRealtime:find("tinychat:copy:", 1, true) ~= nil,
+            "Realtime display should include clickable timestamp copy link")
 
-    addon.StreamDeliveryService:DeliverReplay({
-        event = "CHAT_MSG_SAY",
-        frameName = "TinyChatonTestFrameDelivery",
-        text = "hello",
-        author = "tester",
-        wowChatType = "SAY",
-        streamKey = "say",
-        time = time(),
-    }, { frame = replayFrame })
-    addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("[PIPE]", 1, true) ~= nil,
-        "Replay delivery should go through display transform")
-    addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:prefix:", 1, true) ~= nil,
-        "Replay delivery should include prefix interaction link")
-    addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:copy:", 1, true) ~= nil,
-        "Replay delivery should include clickable timestamp copy link")
+        addon.StreamDeliveryService:DeliverReplay({
+            event = "CHAT_MSG_SAY",
+            frameName = "TinyChatonTestFrameDelivery",
+            text = "hello",
+            author = "tester",
+            wowChatType = "SAY",
+            streamKey = "say",
+            time = time(),
+        }, { frame = replayFrame })
+        addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("[PIPE]", 1, true) ~= nil,
+            "Replay delivery should go through display transform")
+        addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:prefix:", 1, true) ~= nil,
+            "Replay delivery should include prefix interaction link")
+        addon.Tests.Assert(type(capturedReplay) == "string" and capturedReplay:find("tinychat:copy:", 1, true) ~= nil,
+            "Replay delivery should include clickable timestamp copy link")
+    end, debug.traceback)
 
     addon.Gateway = oldGateway
     _G.C_CVar.GetCVar = oldCVarApi
+    if not ok then
+        error(err, 0)
+    end
 end
 
 function addon.Tests.TestRealtimeAndReplayClickToCopyRespectsCopyStreams()
@@ -2874,74 +2879,80 @@ function addon.Tests.TestRealtimeAndReplayClickToCopyRespectsCopyStreams()
     local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
     local replayMsg
 
-    _G.C_CVar = _G.C_CVar or {}
-    _G.C_CVar.GetCVar = function(name)
-        if name == "showTimestamps" then
-            return "%H:%M"
+    local ok, err = xpcall(function()
+        _G.C_CVar = _G.C_CVar or {}
+        _G.C_CVar.GetCVar = function(name)
+            if name == "showTimestamps" then
+                return "%H:%M"
+            end
+            if oldCVarApi then
+                return oldCVarApi(name)
+            end
+            return nil
         end
-        if oldCVarApi then
-            return oldCVarApi(name)
-        end
-        return nil
-    end
 
-    interaction.clickToCopy = true
-    interaction.copyStreams = interaction.copyStreams or {}
-    interaction.copyStreams.say = false
+        interaction.clickToCopy = true
+        interaction.copyStreams = interaction.copyStreams or {}
+        interaction.copyStreams.say = false
 
-    local frame = {
-        AddMessage = function() end,
-        IsEventRegistered = function()
-            return true
-        end,
-    }
-
-    local streamContext = {
-        text = "copy-disabled",
-        author = "tester",
-        wowChatType = "SAY",
-        streamKey = "say",
-        args = addon.Utils.PackArgs("copy-disabled", "tester", nil, nil, nil, nil, nil, nil, nil, nil, 1102),
-    }
-    local realtimeRendered
-    frame.AddMessage = function(_, msg)
-        realtimeRendered = msg
-    end
-    local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", streamContext,
-        addon.Utils.PackArgs("copy-disabled", "tester"), { shouldHide = false })
-    addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block when visible")
-    addon.Tests.AssertEqual(realtimeMsg, "copy-disabled", "Realtime delivery should keep filter-stage body untouched")
-    frame:AddMessage("copy-disabled", 1, 1, 1, 0, 0, nil, 0, 1102)
-    addon.Tests.Assert(type(realtimeRendered) == "string" and realtimeRendered:find("tinychat:copy:", 1, true) == nil,
-        "Realtime display should not inject copy link when stream copy is disabled")
-
-    addon.StreamDeliveryService:DeliverReplay({
-        event = "CHAT_MSG_SAY",
-        text = "copy-disabled",
-        author = "tester",
-        wowChatType = "SAY",
-        streamKey = "say",
-        time = time(),
-    }, {
-        frame = {
-            AddMessage = function(_, msg)
-                replayMsg = msg
-            end,
+        local frame = {
+            AddMessage = function() end,
             IsEventRegistered = function()
                 return true
             end,
-        },
-    })
-    addon.Tests.Assert(type(replayMsg) == "string" and replayMsg:find("tinychat:copy:", 1, true) == nil,
-        "Replay delivery should not inject copy link when stream copy is disabled")
+        }
+
+        local streamContext = {
+            text = "copy-disabled",
+            author = "tester",
+            wowChatType = "SAY",
+            streamKey = "say",
+            args = addon.Utils.PackArgs("copy-disabled", "tester", nil, nil, nil, nil, nil, nil, nil, nil, 1102),
+        }
+        local realtimeRendered
+        frame.AddMessage = function(_, msg)
+            realtimeRendered = msg
+        end
+        local blocked, realtimeMsg = addon.StreamDeliveryService:DeliverRealtime(frame, "CHAT_MSG_SAY", streamContext,
+            addon.Utils.PackArgs("copy-disabled", "tester"), { shouldHide = false })
+        addon.Tests.AssertEqual(blocked, false, "Realtime delivery should not block when visible")
+        addon.Tests.AssertEqual(realtimeMsg, "copy-disabled", "Realtime delivery should keep filter-stage body untouched")
+        frame:AddMessage("copy-disabled", 1, 1, 1, 0, 0, nil, 0, 1102)
+        addon.Tests.Assert(type(realtimeRendered) == "string" and realtimeRendered:find("tinychat:copy:", 1, true) == nil,
+            "Realtime display should not inject copy link when stream copy is disabled")
+
+        addon.StreamDeliveryService:DeliverReplay({
+            event = "CHAT_MSG_SAY",
+            text = "copy-disabled",
+            author = "tester",
+            wowChatType = "SAY",
+            streamKey = "say",
+            time = time(),
+        }, {
+            frame = {
+                AddMessage = function(_, msg)
+                    replayMsg = msg
+                end,
+                IsEventRegistered = function()
+                    return true
+                end,
+            },
+        })
+        addon.Tests.Assert(type(replayMsg) == "string" and replayMsg:find("tinychat:copy:", 1, true) == nil,
+            "Replay delivery should not inject copy link when stream copy is disabled")
+    end, debug.traceback)
 
     interaction.clickToCopy = oldClickToCopy
     interaction.copyStreams = oldCopyStreams
     _G.C_CVar.GetCVar = oldCVarApi
+    if not ok then
+        error(err, 0)
+    end
 end
 
 function addon.Tests.TestClickableTimestampCachesPlainTextForEditBox()
-    addon.Tests.Assert(type(addon.CreateClickableTimestamp) == "function", "CreateClickableTimestamp missing")
+    addon.Tests.Assert(type(addon.TimestampCopyService) == "table", "TimestampCopyService missing")
+    addon.Tests.Assert(type(addon.TimestampCopyService.BuildLink) == "function", "TimestampCopyService.BuildLink missing")
 
     local interaction = addon.db and addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.interaction
     addon.Tests.Assert(type(interaction) == "table", "interaction settings missing")
@@ -2949,7 +2960,7 @@ function addon.Tests.TestClickableTimestampCachesPlainTextForEditBox()
     local oldClickToCopy = interaction.clickToCopy
     interaction.clickToCopy = true
 
-    local linkified, id = addon:CreateClickableTimestamp(
+    local linkified, id = addon.TimestampCopyService:BuildLink(
         "[12:34] ",
         "[12:34] |Htinychat:prefix:test|h[PIPE]|h|Hplayer:tester|h[tester]|h: |cff00ff00hello|r |TInterface\\Icons\\INV_Misc_QuestionMark:0|t"
     )
@@ -2965,11 +2976,11 @@ function addon.Tests.TestClickableTimestampCachesPlainTextForEditBox()
     interaction.clickToCopy = oldClickToCopy
 end
 
-function addon.Tests.TestTimestampInteractionLinkActivatesEditBox()
-    addon.Tests.Assert(type(addon.HandleTimestampInteractionLink) == "function", "HandleTimestampInteractionLink missing")
+function addon.Tests.TestTimestampCopyLinkActivatesEditBox()
+    addon.Tests.Assert(type(addon.TimestampCopyService) == "table", "TimestampCopyService missing")
+    addon.Tests.Assert(type(addon.TimestampCopyService.OpenChatWithPayload) == "function",
+        "TimestampCopyService.OpenChatWithPayload missing")
 
-    local oldCan = addon.Can
-    local oldIsFeatureEnabled = addon.IsFeatureEnabled
     local oldChooseBox = _G.ChatEdit_ChooseBoxForSend
     local oldActivateChat = _G.ChatEdit_ActivateChat
 
@@ -2985,12 +2996,6 @@ function addon.Tests.TestTimestampInteractionLinkActivatesEditBox()
         end,
     }
 
-    addon.Can = function()
-        return true
-    end
-    addon.IsFeatureEnabled = function(_, name)
-        return name == "InteractionTimestamp"
-    end
     _G.ChatEdit_ChooseBoxForSend = function()
         return editBox
     end
@@ -3001,16 +3006,47 @@ function addon.Tests.TestTimestampInteractionLinkActivatesEditBox()
 
     addon.messageCache.test_click = { msg = "hello world", time = 1 }
 
-    local handled = addon:HandleTimestampInteractionLink("tinychat:copy:test_click", nil, "LeftButton", nil)
+    local handled = addon.TimestampCopyService:OpenChatWithPayload("test_click")
     addon.Tests.AssertEqual(handled, true, "Timestamp interaction should handle copy links")
     addon.Tests.AssertEqual(activated, true, "Timestamp interaction should activate the chat edit box")
     addon.Tests.AssertEqual(textSet, "hello world", "Timestamp interaction should copy cached text into the edit box")
 
     addon.messageCache.test_click = nil
-    addon.Can = oldCan
-    addon.IsFeatureEnabled = oldIsFeatureEnabled
     _G.ChatEdit_ChooseBoxForSend = oldChooseBox
     _G.ChatEdit_ActivateChat = oldActivateChat
+end
+
+function addon.Tests.TestChatLinkRouterDispatchesPrefixAndCopy()
+    addon.Tests.Assert(type(addon.ChatLinkRouter) == "table", "ChatLinkRouter missing")
+    addon.Tests.Assert(type(addon.ChatLinkRouter.Dispatch) == "function", "ChatLinkRouter.Dispatch missing")
+
+    local oldExecute = addon.ChatLinkAdapter and addon.ChatLinkAdapter.Execute
+    local oldOpen = addon.TimestampCopyService and addon.TimestampCopyService.OpenChatWithPayload
+
+    local prefixPayload = nil
+    local copyPayload = nil
+
+    addon.ChatLinkAdapter = addon.ChatLinkAdapter or {}
+    addon.ChatLinkAdapter.Execute = function(_, interactionId)
+        prefixPayload = interactionId
+        return { ok = true }
+    end
+    addon.TimestampCopyService = addon.TimestampCopyService or {}
+    addon.TimestampCopyService.OpenChatWithPayload = function(_, id)
+        copyPayload = id
+        return true
+    end
+
+    addon.Tests.AssertEqual(addon.ChatLinkRouter:Dispatch("tinychat:prefix:test_prefix", nil, "LeftButton", nil), true,
+        "ChatLinkRouter should dispatch prefix links")
+    addon.Tests.AssertEqual(prefixPayload, "test_prefix", "ChatLinkRouter should forward prefix payload")
+
+    addon.Tests.AssertEqual(addon.ChatLinkRouter:Dispatch("tinychat:copy:test_copy", nil, "LeftButton", nil), true,
+        "ChatLinkRouter should dispatch copy links")
+    addon.Tests.AssertEqual(copyPayload, "test_copy", "ChatLinkRouter should forward copy payload")
+
+    addon.ChatLinkAdapter.Execute = oldExecute
+    addon.TimestampCopyService.OpenChatWithPayload = oldOpen
 end
 
 function addon.Tests.TestRealtimeChannelPrefixPreservesCanonicalChannelString()
@@ -3218,7 +3254,9 @@ end
 
 function addon.Tests.TestDisplayAugmentHighlightUsesEnvelopeStreamKey()
     addon.Tests.Assert(type(addon.DisplayAugmentPipeline) == "table", "DisplayAugmentPipeline missing")
-    addon.Tests.Assert(type(addon.DisplayAugmentPipeline.Render) == "function", "DisplayAugmentPipeline.Render missing")
+    addon.Tests.Assert(type(addon.DisplayRenderOrchestrator) == "table", "DisplayRenderOrchestrator missing")
+    addon.Tests.Assert(type(addon.DisplayRenderOrchestrator.RenderEnvelope) == "function",
+        "DisplayRenderOrchestrator.RenderEnvelope missing")
 
     local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
     addon.db.profile.filter = addon.db.profile.filter or {}

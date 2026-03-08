@@ -116,7 +116,8 @@ Domain\Chat\Render\Transformers\StripPrefix.lua
 Domain\Chat\Render\ChatFont.lua
 Domain\Chat\Interaction\StickyChannels.lua
 Domain\Chat\Render\Transformers\CleanMessage.lua
-Domain\Chat\Render\Transformers\TimestampInteraction.lua
+Domain\Chat\Interaction\TimestampCopyService.lua
+Infrastructure\WowApi\ChatLinkRouter.lua
 Domain\Chat\Render\Emotes\EmoteCatalog.lua
 Domain\Chat\Render\Emotes\EmoteParser.lua
 Domain\Chat\Render\Emotes\ChatLineEmoteAdapter.lua

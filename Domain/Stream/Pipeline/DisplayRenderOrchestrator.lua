@@ -100,10 +100,31 @@ function Orchestrator:RenderEnvelope(frame, envelope, opts)
         return nil, "render_failed"
     end
 
+    context.displayText = displayText
+    context.r = type(r) == "number" and r or 1
+    context.g = type(g) == "number" and g or 1
+    context.b = type(b) == "number" and b or 1
+    context.extraArgs = CreateExtraArgs(context.r, context.g, context.b, line.streamKey)
+
+    if addon.ValidateContract then
+        addon:ValidateContract("DisplayAugmentContext", context)
+    end
+
+    if addon.DisplayAugmentPipeline and addon.DisplayAugmentPipeline.ExecutePhase then
+        addon.DisplayAugmentPipeline:ExecutePhase("pre_transform", context)
+    end
+
     local targetFrame = frame or ChatFrame1
-    local extraArgs = CreateExtraArgs(r, g, b, line.streamKey)
+    local extraArgs = context.extraArgs
     if addon.Gateway and addon.Gateway.Display and addon.Gateway.Display.Transform then
-        displayText, r, g, b, extraArgs = addon.Gateway.Display:Transform(targetFrame, displayText, r, g, b, extraArgs)
+        displayText, r, g, b, extraArgs = addon.Gateway.Display:Transform(
+            targetFrame,
+            context.displayText,
+            context.r,
+            context.g,
+            context.b,
+            extraArgs
+        )
     end
 
     context.displayText = displayText

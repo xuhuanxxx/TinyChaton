@@ -80,7 +80,7 @@ local function EnsureDefaultStages(self)
         return
     end
 
-    self:RegisterStage("patch_prefix", 10, "post_render", function(_, context)
+    self:RegisterStage("patch_prefix", 10, "pre_transform", function(_, context)
         if type(context.displayText) ~= "string" or context.displayText == "" then
             return
         end
@@ -118,7 +118,7 @@ local function EnsureDefaultStages(self)
         context.renderOptions.prefixInteraction = policy and policy.ResolvePrefixInteraction and policy:ResolvePrefixInteraction(context.frame, envelope) or nil
     end)
 
-    self:RegisterStage("inject_copy_timestamp", 30, "post_render", function(_, context)
+    self:RegisterStage("inject_copy_timestamp", 30, "pre_transform", function(_, context)
         if type(context.displayText) ~= "string" or context.displayText == "" then
             return
         end
@@ -146,7 +146,14 @@ local function EnsureDefaultStages(self)
         local rest = context.displayText:sub(finish + 1)
         local colorHex = addon.MessageFormatter.ResolveTimestampColor({ r = context.r, g = context.g, b = context.b },
             context.renderOptions.preferTimestampConfig == true)
-        local linkified = addon:CreateClickableTimestamp(plainTs, plainTs .. rest, colorHex)
+        local service = addon.TimestampCopyService
+        if not service or type(service.BuildLink) ~= "function" then
+            return
+        end
+        local linkified = service:BuildLink(plainTs, plainTs .. rest, colorHex)
+        if type(linkified) ~= "string" or linkified == "" then
+            return
+        end
         context.displayText = linkified .. rest
         context.renderOptions.copyInjected = true
     end)
@@ -193,7 +200,7 @@ function Pipeline:RegisterStage(name, priority, phase, fn)
     if type(priority) ~= "number" then
         return false, "invalid_priority"
     end
-    if phase ~= "pre_render" and phase ~= "post_render" then
+    if phase ~= "pre_render" and phase ~= "pre_transform" and phase ~= "post_render" then
         return false, "invalid_phase"
     end
     if type(fn) ~= "function" then

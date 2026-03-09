@@ -36,7 +36,7 @@ end
 
 local function ResolveLineId(...)
     local packed = addon.Utils and addon.Utils.PackArgs and addon.Utils.PackArgs(...) or { ... }
-    for i = 1, packed.n or #packed do
+    for i = (packed.n or #packed), 1, -1 do
         local value = packed[i]
         if type(value) == "number" then
             return value

@@ -29,7 +29,10 @@ function addon.Utils.DeepCopy(orig, copies)
             for origKey, origValue in next, orig, nil do
                 copy[addon.Utils.DeepCopy(origKey, copies)] = addon.Utils.DeepCopy(origValue, copies)
             end
-            setmetatable(copy, addon.Utils.DeepCopy(getmetatable(orig), copies))
+            local mt = getmetatable(orig)
+            if type(mt) == "table" then
+                setmetatable(copy, addon.Utils.DeepCopy(mt, copies))
+            end
         end
     else
         copy = orig

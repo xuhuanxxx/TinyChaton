@@ -128,11 +128,22 @@ function addon:ValidateRegistryDefinitions()
             if type(stream) ~= "table" then
                 error(sourceLabel .. " must be table")
             end
+            AssertNonEmptyString(stream.kind, sourceLabel .. ".kind")
+            AssertNonEmptyString(stream.group, sourceLabel .. ".group")
+            if type(stream.capabilities) ~= "table" then
+                error(sourceLabel .. ".capabilities must be table")
+            end
             RegisterKey(stream.key, sourceLabel)
             AssertPriority(stream, sourceLabel)
             RegisterPriority(string.format("STREAM.%s.%s", tostring(stream.kind), tostring(stream.group)), stream.priority, stream.key)
 
             local caps = addon:GetStreamCapabilities(stream.key)
+            if type(caps) ~= "table" then
+                error(sourceLabel .. ".capabilities must resolve to table")
+            end
+            if stream.kind == "notice" and caps.outbound == true then
+                error(sourceLabel .. " notice stream cannot set capabilities.outbound=true")
+            end
             if type(caps) == "table" and caps.outbound == true then
                 ValidateBindings(stream.defaultBindings, ResolveChannelBindingActionKey, stream.key, sourceLabel, actionSet)
             end

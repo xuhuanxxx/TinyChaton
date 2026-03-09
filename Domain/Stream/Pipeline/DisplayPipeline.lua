@@ -9,6 +9,24 @@ local function EscapePattern(s)
     return (tostring(s):gsub("([%%%(%)%.%+%-%*%?%[%]%^%$])", "%%%1"))
 end
 
+local function ExtractTimestampPrefix(displayText)
+    if type(displayText) ~= "string" or displayText == "" then
+        return nil, nil
+    end
+
+    local ts, finish = displayText:match("^(|c%x%x%x%x%x%x%x%x.-%s|r)()")
+    if type(ts) == "string" and ts ~= "" then
+        return ts, finish
+    end
+
+    local plainTs, plainFinish = displayText:match("^(%b[]%s)()")
+    if type(plainTs) == "string" and plainTs ~= "" then
+        return plainTs, plainFinish
+    end
+
+    return nil, nil
+end
+
 local function CreateExtraArgs(r, g, b, streamKey)
     local extraArgs = addon.Utils and addon.Utils.PackArgs and addon.Utils.PackArgs(r, g, b) or { r, g, b }
     if type(extraArgs) == "table" then
@@ -147,19 +165,20 @@ local function InjectTimestampCopy(context)
         return
     end
 
-    local startPos, finish, ts = context.displayText:find("^(|c%x%x%x%x%x%x%x%x.-|r%s)")
-    if not startPos or type(ts) ~= "string" then
+    local ts, finish = ExtractTimestampPrefix(context.displayText)
+    if type(ts) ~= "string" or type(finish) ~= "number" then
         context.renderOptions.timestampCopyState = "timestamp_not_found"
         return
     end
 
     local plainTs = ts:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-    if plainTs == "" then
+    local trimmedTs = plainTs:gsub("%s+$", "")
+    if trimmedTs == "" then
         context.renderOptions.timestampCopyState = "timestamp_empty"
         return
     end
 
-    local rest = context.displayText:sub(finish + 1)
+    local rest = context.displayText:sub(finish)
     local service = addon.TimestampCopyService
     if not service or type(service.BuildLink) ~= "function" then
         context.renderOptions.timestampCopyState = "service_missing"
@@ -168,7 +187,11 @@ local function InjectTimestampCopy(context)
 
     local colorHex = addon.MessageFormatter.ResolveTimestampColor({ r = context.r, g = context.g, b = context.b },
         context.renderOptions.preferTimestampConfig == true)
-    local linkified = service:BuildLink(plainTs, plainTs .. rest, colorHex)
+    local payload = trimmedTs
+    if rest ~= "" then
+        payload = payload .. " " .. rest
+    end
+    local linkified = service:BuildLink(trimmedTs, payload, colorHex)
     if type(linkified) ~= "string" or linkified == "" then
         context.renderOptions.timestampCopyState = "placeholder"
         return

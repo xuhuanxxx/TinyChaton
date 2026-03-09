@@ -1,7 +1,8 @@
 local addonName, addon = ...
 
 local function FormatChannelLine(message, options, helpers)
-    if type(message) ~= "table" or type(message.rawText) ~= "string" then
+    local rawText = type(message) == "table" and (message.rawText or message.text) or nil
+    if type(message) ~= "table" or type(rawText) ~= "string" then
         return nil, 1, 1, 1
     end
 
@@ -12,7 +13,7 @@ local function FormatChannelLine(message, options, helpers)
     local preferConfig = options and options.preferTimestampConfig == true
 
     local timestamp = helpers.getTimestamp(message.timestamp, msgColor, preferConfig)
-    local displayLine = string.format("%s%s%s%s", timestamp, streamTag, authorTag, message.rawText)
+    local displayLine = string.format("%s%s%s%s", timestamp, streamTag, authorTag, rawText)
     return displayLine, r, g, b
 end
 

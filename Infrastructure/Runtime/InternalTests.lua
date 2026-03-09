@@ -3355,6 +3355,64 @@ function addon.Tests.TestDisplayAugmentPipelineStageRegistryExtensionPoint()
     _G.C_CVar.GetCVar = oldCVarApi
 end
 
+function addon.Tests.TestDisplayPipelineStageFailureFallsBackToVisibleMessage()
+    addon.Tests.Assert(type(addon.DisplayPipeline) == "table", "DisplayPipeline missing")
+    addon.Tests.Assert(type(addon.DisplayPipeline.Render) == "function", "DisplayPipeline.Render missing")
+    addon.Tests.Assert(type(addon.ChatLineEmoteAdapter) == "table", "ChatLineEmoteAdapter missing")
+
+    local oldApply = addon.ChatLineEmoteAdapter.Apply
+    local oldFilter = addon.Utils.DeepCopy(addon.db.profile.filter)
+    local oldCVarApi = _G.C_CVar and _G.C_CVar.GetCVar or nil
+
+    addon.db.profile.filter = addon.db.profile.filter or {}
+    addon.db.profile.filter.highlight = { enabled = false, names = {}, keywords = {}, color = "FF00FF00" }
+    _G.C_CVar = _G.C_CVar or {}
+    _G.C_CVar.GetCVar = function(name)
+        if name == "showTimestamps" then
+            return "none"
+        end
+        if oldCVarApi then
+            return oldCVarApi(name)
+        end
+        return nil
+    end
+
+    addon.ChatLineEmoteAdapter.Apply = function()
+        error("stage explosion")
+    end
+
+    local rendered = addon.DisplayPipeline:Render({
+        AddMessage = function() end,
+        IsEventRegistered = function() return true end,
+    }, {
+        sourceMode = "replay",
+        event = "CHAT_MSG_SAY",
+        streamKey = "say",
+        streamKind = "channel",
+        streamGroup = "personal",
+        wowChatType = "SAY",
+        author = "tester",
+        channelId = nil,
+        channelNameObserved = nil,
+        rawText = "hello",
+        timestamp = time(),
+    })
+
+    addon.Tests.Assert(type(rendered) == "table" and type(rendered.displayText) == "string",
+        "Render should still return visible text when stage fails")
+    addon.Tests.Assert(rendered.displayText:find("hello", 1, true) ~= nil,
+        "Stage failure should preserve the rendered message body")
+    addon.Tests.AssertEqual(rendered.debug.stageFailureCount, 1,
+        "Stage failure should be reported in render diagnostics")
+    addon.Tests.Assert(type(rendered.debug.stageFailures) == "table"
+        and type(rendered.debug.stageFailures.apply_emotes) == "string",
+        "Stage failure diagnostics should include the failing stage")
+
+    addon.ChatLineEmoteAdapter.Apply = oldApply
+    addon.db.profile.filter = oldFilter
+    _G.C_CVar.GetCVar = oldCVarApi
+end
+
 function addon.Tests.TestShelfRenderSpecResolverContainsThemeColorSizeAndTooltipMetadata()
     addon.Tests.Assert(type(addon.ShelfRenderSpecResolver) == "table", "ShelfRenderSpecResolver missing")
 

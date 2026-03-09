@@ -4,6 +4,9 @@ addon.DisplayPipeline = addon.DisplayPipeline or {}
 local Pipeline = addon.DisplayPipeline
 
 local PREFIX_TOKEN = addon.MessageFormatter and addon.MessageFormatter.PREFIX_TOKEN or "<<TC_PREFIX>>"
+local Traceback = (_G.debug and _G.debug.traceback) or function(err)
+    return tostring(err)
+end
 
 local function EscapePattern(s)
     return (tostring(s):gsub("([%%%(%)%.%+%-%*%?%[%]%^%$])", "%%%1"))
@@ -65,6 +68,26 @@ local function CreateContext(frame, message, opts)
     end
 
     return context
+end
+
+local function RecordStageFailure(context, stageName, err)
+    local renderOptions = context.renderOptions
+    renderOptions.stageFailures = renderOptions.stageFailures or {}
+    renderOptions.stageFailures[stageName] = tostring(err)
+    renderOptions.stageFailureCount = (renderOptions.stageFailureCount or 0) + 1
+
+    if addon.Warn then
+        addon:Warn("DisplayPipeline stage failed: %s (%s)", tostring(stageName), tostring(err))
+    end
+end
+
+local function RunStage(context, stageName, stageFn)
+    local ok, err = xpcall(function()
+        stageFn(context)
+    end, Traceback)
+    if not ok then
+        RecordStageFailure(context, stageName, err)
+    end
 end
 
 local function ResolvePrefixDisplay(message)
@@ -289,11 +312,11 @@ function Pipeline:Render(frame, message, opts)
     context.b = type(b) == "number" and b or 1
     context.extraArgs = CreateExtraArgs(context.r, context.g, context.b, message.streamKey)
 
-    ApplyPrefixInteraction(context)
-    InjectTimestampCopy(context)
-    ApplyHighlight(context)
-    ApplyEmotes(context)
-    ApplyCleanup(context)
+    RunStage(context, "apply_prefix_interaction", ApplyPrefixInteraction)
+    RunStage(context, "inject_timestamp_copy", InjectTimestampCopy)
+    RunStage(context, "apply_highlight", ApplyHighlight)
+    RunStage(context, "apply_emotes", ApplyEmotes)
+    RunStage(context, "apply_cleanup", ApplyCleanup)
 
     local debug = {
         sourceMode = message.sourceMode,
@@ -302,6 +325,8 @@ function Pipeline:Render(frame, message, opts)
         copyInjected = context.renderOptions.copyInjected == true,
         timestampCopyState = context.renderOptions.timestampCopyState or "skipped",
         highlightApplied = context.renderOptions.highlightApplied == true,
+        stageFailureCount = context.renderOptions.stageFailureCount or 0,
+        stageFailures = context.renderOptions.stageFailures,
     }
 
     local result = addon.DisplayRenderResult.Create(

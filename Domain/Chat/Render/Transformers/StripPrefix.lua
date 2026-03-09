@@ -31,27 +31,3 @@ function addon.StripPrefix.Apply(msg)
 
     return msg
 end
-
-local function StripPrefixTransformer(frame, text, r, g, b, extraArgs)
-    if not addon.db or not addon.db.enabled then return text, r, g, b, extraArgs end
-    return addon.StripPrefix.Apply(text), r, g, b, extraArgs
-end
-
-function addon:InitDisplayStripPrefix()
-    local function EnableStripPrefix()
-        addon:RegisterChatFrameTransformer("display_strip_prefix", StripPrefixTransformer)
-    end
-
-    local function DisableStripPrefix()
-        addon.chatFrameTransformers["display_strip_prefix"] = nil
-    end
-
-    addon:RegisterFeature("StripPrefix", {
-        requires = { "MUTATE_CHAT_DISPLAY" },
-        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
-        onEnable = EnableStripPrefix,
-        onDisable = DisableStripPrefix,
-    })
-end
-
-addon:RegisterModule("DisplayStripPrefix", addon.InitDisplayStripPrefix)

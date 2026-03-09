@@ -5,8 +5,8 @@ addon.StreamTypes = addon.StreamTypes or {
     VISIBILITY_DECISION = "VisibilityDecision",
     VISIBILITY_ENVELOPE = "VisibilityEnvelope",
     SNAPSHOT_RECORD = "SnapshotRecord",
-    DISPLAY_ENVELOPE = "DisplayEnvelope",
-    DISPLAY_AUGMENT_CONTEXT = "DisplayAugmentContext",
+    DISPLAY_MESSAGE = "DisplayMessage",
+    DISPLAY_PIPELINE_CONTEXT = "DisplayPipelineContext",
     DISPLAY_RENDER_RESULT = "DisplayRenderResult",
 }
 

@@ -325,7 +325,7 @@ function addon:InitSnapshotManager()
         end
 
         local function EmitLine(line)
-            if not line or type(line) ~= "table" or not line.text then
+            if not line or type(line) ~= "table" or (type(line.rawText) ~= "string" and type(line.text) ~= "string") then
                 return
             end
 

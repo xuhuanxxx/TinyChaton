@@ -1,14 +1,14 @@
 local addonName, addon = ...
 
-addon.RealtimeDisplayCoordinator = addon.RealtimeDisplayCoordinator or {}
-local Coordinator = addon.RealtimeDisplayCoordinator
+addon.RealtimeDisplayBridge = addon.RealtimeDisplayBridge or {}
+local Bridge = addon.RealtimeDisplayBridge
 
 local TTL_SECONDS = 2
 local MAX_PENDING_PER_FRAME = 128
 
-Coordinator.pendingByFrame = Coordinator.pendingByFrame or {}
-Coordinator.hookedFrames = Coordinator.hookedFrames or {}
-Coordinator.stats = Coordinator.stats or {
+Bridge.pendingByFrame = Bridge.pendingByFrame or {}
+Bridge.hookedFrames = Bridge.hookedFrames or {}
+Bridge.stats = Bridge.stats or {
     pushed = 0,
     consumedByLineId = 0,
     consumedByFallback = 0,
@@ -136,7 +136,7 @@ local function TryExtractAuthorAndBody(msg)
     return author, msg:sub(bodyStart)
 end
 
-local function ConsumeEnvelope(self, frame, msg, lineId)
+local function ConsumeMessage(self, frame, msg, lineId)
     local bucket = EnsureBucket(self, frame)
     if not bucket then
         return nil
@@ -156,8 +156,8 @@ local function ConsumeEnvelope(self, frame, msg, lineId)
         local author, body = TryExtractAuthorAndBody(msg)
         if type(author) == "string" and type(body) == "string" then
             for _, item in ipairs(bucket.items) do
-                local envelope = item.envelope
-                if type(envelope) == "table" and envelope.author == author and envelope.rawText == body then
+                local message = item.message
+                if type(message) == "table" and message.author == author and message.rawText == body then
                     matched = item
                     self.stats.consumedByFallback = self.stats.consumedByFallback + 1
                     break
@@ -177,10 +177,10 @@ local function ConsumeEnvelope(self, frame, msg, lineId)
     end
 
     RemoveItem(bucket, matched)
-    return matched.envelope
+    return matched.message
 end
 
-function Coordinator:EnsureHook(frame)
+function Bridge:EnsureHook(frame)
     if type(frame) ~= "table" or type(frame.AddMessage) ~= "function" then
         return false
     end
@@ -203,9 +203,9 @@ function Coordinator:EnsureHook(frame)
         local finalMsg = msg
 
         local lineId = ResolveLineId(...)
-        local envelope = ConsumeEnvelope(Coordinator, targetFrame, msg, lineId)
-        if type(envelope) == "table" and addon.DisplayRenderOrchestrator and addon.DisplayRenderOrchestrator.RenderEnvelope then
-            local rendered = addon.DisplayRenderOrchestrator:RenderEnvelope(targetFrame, envelope)
+        local message = ConsumeMessage(Bridge, targetFrame, msg, lineId)
+        if type(message) == "table" and addon.DisplayPipeline and addon.DisplayPipeline.Render then
+            local rendered = addon.DisplayPipeline:Render(targetFrame, message)
             if type(rendered) == "table" and type(rendered.displayText) == "string" then
                 finalMsg = rendered.displayText
             end
@@ -223,13 +223,12 @@ function Coordinator:EnsureHook(frame)
     return true
 end
 
-function Coordinator:Register(frame, envelope)
-    if type(envelope) ~= "table" then
+function Bridge:Register(frame, message)
+    if type(message) ~= "table" then
         return false
     end
-
     if addon.ValidateContract then
-        addon:ValidateContract("DisplayEnvelope", envelope)
+        addon:ValidateContract("DisplayMessage", message)
     end
 
     local bucket = EnsureBucket(self, frame)
@@ -241,12 +240,12 @@ function Coordinator:Register(frame, envelope)
 
     local item = {
         createdAt = GetNow(),
-        lineId = envelope.lineId,
-        envelope = envelope,
+        lineId = message.lineId,
+        message = message,
     }
     bucket.items[#bucket.items + 1] = item
-    if envelope.lineId ~= nil then
-        bucket.byLineId[tostring(envelope.lineId)] = item
+    if message.lineId ~= nil then
+        bucket.byLineId[tostring(message.lineId)] = item
     end
 
     self.stats.pushed = self.stats.pushed + 1
@@ -255,7 +254,7 @@ function Coordinator:Register(frame, envelope)
     return self:EnsureHook(frame)
 end
 
-function Coordinator:GetStats()
+function Bridge:GetStats()
     return {
         pushed = self.stats.pushed,
         consumedByLineId = self.stats.consumedByLineId,
@@ -266,4 +265,4 @@ function Coordinator:GetStats()
     }
 end
 
-return Coordinator
+return Bridge

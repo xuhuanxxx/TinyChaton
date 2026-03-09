@@ -1,6 +1,5 @@
 local addonName, addon = ...
 
-addon.chatFrameTransformers = addon.chatFrameTransformers or {}
 addon.callbacks = addon.callbacks or {}
 addon.moduleRegistry = addon.moduleRegistry or {}
 addon.PRIORITY_BASE = addon.PRIORITY_BASE or {
@@ -44,15 +43,6 @@ function addon:FireEvent(event, ...)
         end
     end
 end
-
-function addon:RegisterChatFrameTransformer(name, fn)
-    if not name or not fn then return end
-    self.chatFrameTransformers[name] = fn
-end
-
-addon.TRANSFORMER_ORDER = addon.TRANSFORMER_ORDER or {
-    "visual_emotes",
-}
 
 function addon:RegisterModule(name, initFn)
     if not name or not initFn then

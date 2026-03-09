@@ -322,13 +322,6 @@ local function OnSnapshotEvent(self, event, ...)
     local normalized = addon.StreamNormalizeService and addon.StreamNormalizeService.NormalizeRealtime
         and addon.StreamNormalizeService:NormalizeRealtime(nil, event, streamContext)
         or nil
-    local streamMeta
-    if event == "CHAT_MSG_CHANNEL" then
-        streamMeta = {
-            channelId = streamContext.channelNumber,
-            channelBaseName = (type(normalized) == "table" and normalized.channelBaseName) or streamContext.channelName,
-        }
-    end
 
     -- Extract Class Color info from GUID (arg 12)
     local guid = streamContext.args[12]
@@ -340,16 +333,16 @@ local function OnSnapshotEvent(self, event, ...)
     local nowTime = time()
     local record = {
         event = event,
-        text = streamContext.text,
+        rawText = type(normalized) == "table" and normalized.rawText or streamContext.text,
         author = streamContext.author,
         streamKey = streamKey,
         wowChatType = wowChatType,
-        streamMeta = streamMeta,
+        frameName = "ChatFrame1",
+        channelId = type(normalized) == "table" and normalized.channelId or tonumber(streamContext.channelNumber),
+        channelNameObserved = type(normalized) == "table" and normalized.channelNameObserved or streamContext.channelName,
         time = nowTime,
         timestamp = nowTime,
-        classFilename = classFilename,
-        -- Snapshot logger does not receive per-window frame callback, use deterministic target.
-        frameName = "ChatFrame1",
+        classFilename = type(normalized) == "table" and normalized.classFilename or classFilename,
     }
     if addon.ValidateContract then
         addon:ValidateContract("SnapshotRecord", record)

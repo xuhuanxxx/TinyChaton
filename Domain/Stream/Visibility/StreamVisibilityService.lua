@@ -204,7 +204,8 @@ function Service:BuildSnapshotEnvelope(line, frame)
     if type(line) ~= "table" then
         return nil
     end
-    local text = type(line.text) == "string" and line.text or ""
+    local text = type(line.rawText) == "string" and line.rawText
+        or (type(line.text) == "string" and line.text or "")
     local author = type(line.author) == "string" and line.author or ""
     local pureName, authorLower = BuildAuthorFields(author)
     local metadata = type(line.metadata) == "table" and line.metadata or {}

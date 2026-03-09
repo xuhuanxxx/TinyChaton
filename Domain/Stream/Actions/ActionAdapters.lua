@@ -115,7 +115,6 @@ local function ResolveNativeChannelMenuContext(frame, envelope)
         return nil
     end
 
-    local meta = type(envelope.channelMeta) == "table" and envelope.channelMeta or {}
     local resolver = addon.ChannelSemanticResolver
     if type(resolver) ~= "table" or type(resolver.ResolveDynamic) ~= "function" then
         return nil
@@ -123,11 +122,11 @@ local function ResolveNativeChannelMenuContext(frame, envelope)
 
     local resolved = resolver.ResolveDynamic({
         streamKey = envelope.streamKey,
-        channelId = meta.channelId,
-        channelName = meta.channelBaseName,
+        channelId = envelope.channelId,
+        channelName = envelope.channelNameObserved,
     })
-    local chatTarget = resolved and tonumber(resolved.channelId) or nil
-    local chatName = resolved and resolved.activeName or meta.channelBaseName
+    local chatTarget = resolved and tonumber(resolved.channelId) or tonumber(envelope.channelId) or nil
+    local chatName = resolved and resolved.activeName or envelope.channelNameObserved
     if not chatTarget or chatTarget <= 0 then
         return nil
     end
@@ -185,7 +184,7 @@ function addon.PrefixInteractionAdapter:BuildRenderSpec(frame, envelope)
 
     local spec = {
         streamKey = streamKey,
-        mode = envelope.mode,
+        mode = envelope.sourceMode,
         leftActionKey = leftActionKey,
         rightInteractionKind = rightInteractionKind,
         nativeMenuContext = nativeMenuContext,

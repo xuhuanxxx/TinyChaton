@@ -378,23 +378,6 @@ addon.STREAM_REGISTRY = {
                 isInboundOnly = false,
                 defaultBindings = { left = "send" },
             },
-            {
-                key = "bn_whisper",
-                wowChatType = "BN_WHISPER",
-                identity = {
-                    labelKey = "STREAM_BATTLENET_LABEL",
-                    shortOneKey = "STREAM_BATTLENET_SHORT_ONE",
-                    shortTwoKey = "STREAM_BATTLENET_SHORT_TWO",
-                },
-
-                events = { "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM" },
-                priority = (PRI_BASE.DYNAMIC or 200) + PRI_STEP * 7,
-                defaultPinned = false,
-                defaultSnapshotted = true,
-                defaultCopyable = true,
-                isInboundOnly = false,
-                defaultBindings = { left = "send" },
-            },
         })
     },
 
@@ -573,7 +556,7 @@ function addon:OpenChatForActionSend(payload)
     end
 
     local cmd
-    if wowChatType == "WHISPER" or wowChatType == "BN_WHISPER" then
+    if wowChatType == "WHISPER" then
         cmd = "w"
     else
         cmd = SLASH_COMMANDS[wowChatType] or string.lower(wowChatType)

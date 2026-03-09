@@ -42,7 +42,6 @@ addon.Colors = {
                     services = {0.8, 1, 1, 1},
                     world = {1, 0.7529, 0.7529, 1},
                     whisper = {1, 0.5, 1, 1},
-                    bn_whisper = {0, 1, 0.96, 1},
                 },
                 KIT = {
                     readyCheck = {1, 1, 1, 1},

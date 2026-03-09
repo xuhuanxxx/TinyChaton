@@ -166,11 +166,6 @@ local function ConsumeMessage(self, frame, msg, lineId)
         end
     end
 
-    if not matched and #bucket.items > 0 then
-        matched = bucket.items[1]
-        self.stats.consumedByQueue = self.stats.consumedByQueue + 1
-    end
-
     if not matched then
         self.stats.missed = self.stats.missed + 1
         return nil

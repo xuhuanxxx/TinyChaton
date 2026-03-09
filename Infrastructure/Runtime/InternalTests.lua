@@ -1324,6 +1324,19 @@ function addon.Tests.TestResolveStreamToggleDefaults()
     addon.Tests.AssertEqual(addon:ResolveStreamToggle("monster_say", nil, "copyDefault", true), false, "monster_say copy default mismatch")
 end
 
+function addon.Tests.TestBattleNetWhisperIsNotRegistered()
+    addon.Tests.Assert(addon:GetStreamByKey("bn_whisper") == nil, "bn_whisper should not be registered")
+
+    local events = addon:GetChatEvents()
+    local seen = {}
+    for _, event in ipairs(events or {}) do
+        seen[event] = true
+    end
+
+    addon.Tests.Assert(seen.CHAT_MSG_BN_WHISPER ~= true, "CHAT_MSG_BN_WHISPER should not be registered")
+    addon.Tests.Assert(seen.CHAT_MSG_BN_WHISPER_INFORM ~= true, "CHAT_MSG_BN_WHISPER_INFORM should not be registered")
+end
+
 function addon.Tests.TestStreamGroupPartition()
     local systemItems = addon:GetSnapshotStreamsItems("system")
     local noticeItems = addon:GetSnapshotStreamsItems("notice")
@@ -3244,6 +3257,51 @@ function addon.Tests.TestFrameHookDoesNotMutateUnmatchedMessages()
     addon.RealtimeDisplayBridge:EnsureHook(frame)
     frame:AddMessage("plain message")
     addon.Tests.AssertEqual(captured, "plain message", "Unmatched message should passthrough unchanged")
+end
+
+function addon.Tests.TestFrameHookDoesNotConsumePendingMessageForUnmatchedNativeText()
+    addon.Tests.Assert(type(addon.RealtimeDisplayBridge) == "table", "RealtimeDisplayBridge missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayBridge.Register) == "function", "Register missing")
+    addon.Tests.Assert(type(addon.RealtimeDisplayBridge.EnsureHook) == "function", "EnsureHook missing")
+    addon.Tests.Assert(type(addon.DisplayPipeline) == "table", "DisplayPipeline missing")
+
+    local captured = {}
+    local frame = {
+        AddMessage = function(_, msg)
+            captured[#captured + 1] = msg
+        end,
+        IsEventRegistered = function()
+            return true
+        end,
+        GetName = function()
+            return "TinyChatonHookPendingFrame"
+        end,
+    }
+
+    local oldRender = addon.DisplayPipeline.Render
+    addon.DisplayPipeline.Render = function(_, _, message)
+        return {
+            displayText = "[rendered]" .. tostring(message.rawText),
+        }
+    end
+
+    addon.RealtimeDisplayBridge:Register(frame, {
+        lineId = 4001,
+        author = "tester",
+        rawText = "expected payload",
+        streamKey = "say",
+        wowChatType = "SAY",
+    })
+
+    frame:AddMessage("Battle.net native message")
+    addon.Tests.AssertEqual(captured[1], "Battle.net native message",
+        "Unmatched native text should passthrough without consuming pending bridge data")
+
+    frame:AddMessage("expected payload", 1, 1, 1, 0, 0, nil, 0, 4001)
+    addon.Tests.AssertEqual(captured[2], "[rendered]expected payload",
+        "Pending bridge data should remain available for later deterministic match")
+
+    addon.DisplayPipeline.Render = oldRender
 end
 
 function addon.Tests.TestRealtimeDisplayCoordinatorStatsReport()

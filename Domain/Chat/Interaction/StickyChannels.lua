@@ -11,7 +11,7 @@ addon.StickyChannelService = addon.StickyChannelService or {}
 local function UpdateSticky()
     if not addon.db or not addon.db.profile.chat or not addon.db.profile.chat.interaction then return end
     local enabled = addon.db.profile.chat.interaction.sticky
-    local types = { "SAY", "YELL", "EMOTE", "PARTY", "RAID", "GUILD", "OFFICER", "CHANNEL", "WHISPER", "BN_WHISPER" }
+    local types = { "SAY", "YELL", "EMOTE", "PARTY", "RAID", "GUILD", "OFFICER", "CHANNEL", "WHISPER" }
     for _, t in ipairs(types) do
         if ChatTypeInfo[t] then
             ChatTypeInfo[t].sticky = enabled and 1 or 0

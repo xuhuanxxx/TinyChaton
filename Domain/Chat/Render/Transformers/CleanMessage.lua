@@ -24,22 +24,3 @@ function addon.CleanMessage.Process(frame, text, r, g, b, extraArgs)
 
     return text, r, g, b, extraArgs
 end
-
-function addon:InitDisplayCleanMessage()
-    local function EnableCleanMessage()
-        addon:RegisterChatFrameTransformer("clean_message", addon.CleanMessage.Process)
-    end
-
-    local function DisableCleanMessage()
-        addon.chatFrameTransformers["clean_message"] = nil
-    end
-
-    addon:RegisterFeature("CleanMessage", {
-        requires = { "MUTATE_CHAT_DISPLAY" },
-        plane = addon.RUNTIME_PLANES and addon.RUNTIME_PLANES.CHAT_DATA or "CHAT_DATA",
-        onEnable = EnableCleanMessage,
-        onDisable = DisableCleanMessage,
-    })
-end
-
-addon:RegisterModule("DisplayCleanMessage", addon.InitDisplayCleanMessage)

@@ -96,12 +96,10 @@ Domain\Stream\Visibility\StreamVisibilityService.lua
 Domain\Stream\Render\MessageFormatter.lua
 Domain\Stream\Pipeline\FrameResolver.lua
 Domain\Stream\Pipeline\StreamNormalizeService.lua
-Domain\Stream\Pipeline\DisplayEnvelope.lua
 Domain\Stream\Pipeline\DisplayRenderResult.lua
 Domain\Stream\Pipeline\DisplayPolicyService.lua
-Domain\Stream\Pipeline\DisplayAugmentPipeline.lua
-Domain\Stream\Pipeline\DisplayRenderOrchestrator.lua
-Domain\Stream\Pipeline\RealtimeDisplayCoordinator.lua
+Domain\Stream\Pipeline\DisplayPipeline.lua
+Domain\Stream\Pipeline\RealtimeDisplayBridge.lua
 Domain\Stream\Pipeline\StreamDeliveryService.lua
 Domain\Stream\Render\Formatters\ChannelFormatter.lua
 Domain\Stream\Render\Formatters\NoticeFormatter.lua

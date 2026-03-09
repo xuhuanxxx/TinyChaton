@@ -15,16 +15,17 @@ function Service:DeliverRealtime(frame, event, streamContext, packedArgs, option
 
     local targetFrame = addon.FrameResolver:ResolveRealtime(frame, event)
     if type(targetFrame) == "table" then
-        local envelope = addon.DisplayEnvelope and addon.DisplayEnvelope.FromRealtime
-            and addon.DisplayEnvelope.FromRealtime(targetFrame, event, streamContext)
+        local message = addon.StreamNormalizeService and addon.StreamNormalizeService.NormalizeRealtime
+            and addon.StreamNormalizeService:NormalizeRealtime(targetFrame, event, streamContext)
             or nil
 
-        if type(envelope) == "table"
-            and addon.RealtimeDisplayCoordinator
-            and addon.RealtimeDisplayCoordinator.Register then
-            addon.RealtimeDisplayCoordinator:Register(targetFrame, envelope)
+        if type(message) == "table"
+            and addon.RealtimeDisplayBridge
+            and addon.RealtimeDisplayBridge.Register then
+            addon.RealtimeDisplayBridge:Register(targetFrame, message)
         end
     end
+
     return false, addon.Utils.UnpackArgs(packedArgs)
 end
 
@@ -35,15 +36,15 @@ function Service:DeliverReplay(line, options)
         return false
     end
 
-    local envelope = addon.DisplayEnvelope and addon.DisplayEnvelope.FromReplayLine
-        and addon.DisplayEnvelope.FromReplayLine(line, frame)
+    local message = addon.StreamNormalizeService and addon.StreamNormalizeService.NormalizeReplay
+        and addon.StreamNormalizeService:NormalizeReplay(line, frame)
         or nil
-    if type(envelope) ~= "table" then
+    if type(message) ~= "table" then
         return false
     end
 
-    local rendered = addon.DisplayRenderOrchestrator and addon.DisplayRenderOrchestrator.RenderEnvelope
-        and addon.DisplayRenderOrchestrator:RenderEnvelope(frame, envelope)
+    local rendered = addon.DisplayPipeline and addon.DisplayPipeline.Render
+        and addon.DisplayPipeline:Render(frame, message)
         or nil
     if type(rendered) ~= "table" or type(rendered.displayText) ~= "string" then
         return false

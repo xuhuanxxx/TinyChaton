@@ -5,8 +5,10 @@ addon.MessageFormatter = addon.MessageFormatter or {}
 local Formatter = addon.MessageFormatter
 
 local DEFAULT_TIMESTAMP_COLOR = "FF888888"
-local function ResolveKindFromContext(context)
-    local streamKey = type(context) == "table" and context.streamKey or nil
+Formatter.PREFIX_TOKEN = Formatter.PREFIX_TOKEN or "<<TC_PREFIX>>"
+
+local function ResolveKindFromMessage(message)
+    local streamKey = type(message) == "table" and message.streamKey or nil
     if type(streamKey) ~= "string" or streamKey == "" then
         return nil
     end
@@ -21,7 +23,7 @@ local function EnsureKindPlugins()
         error("TinyCore Stream KindPlugins is not initialized")
     end
     addon._tinyCoreStreamKindPlugins = addon.TinyCoreStreamKindPlugins:New({
-        resolveKind = ResolveKindFromContext,
+        resolveKind = ResolveKindFromMessage,
     })
     return addon._tinyCoreStreamKindPlugins
 end
@@ -34,36 +36,28 @@ local function EnsureRenderEngine()
         error("TinyCore Stream RenderEngine is not initialized")
     end
     addon._tinyCoreStreamRenderEngine = addon.TinyCoreStreamRenderEngine:New({
-        resolveKind = function(line)
-            local streamKey = type(line) == "table" and line.streamKey or nil
-            if (type(streamKey) ~= "string" or streamKey == "") or not addon.GetStreamKind then
-                return nil
-            end
-            return addon:GetStreamKind(streamKey)
-        end,
+        resolveKind = ResolveKindFromMessage,
         getFormatter = function(kind)
             return EnsureKindPlugins():GetFormatter(kind)
         end,
-        fallbackRenderer = function(line)
-            local r, g, b = Formatter.GetLineColor(line)
-            return line.text, r, g, b
+        fallbackRenderer = function(message)
+            local r, g, b = Formatter.GetLineColor(message)
+            return message.rawText, r, g, b
         end,
     })
     return addon._tinyCoreStreamRenderEngine
 end
 
-local KIND_FORMATTERS = EnsureKindPlugins().formatters
-Formatter.kindFormatters = KIND_FORMATTERS
+Formatter.kindFormatters = EnsureKindPlugins().formatters
 
-local function ResolveColorChatType(line)
-    if not line then
+local function ResolveColorChatType(message)
+    if type(message) ~= "table" then
         return nil
     end
-    local streamMeta = type(line.streamMeta) == "table" and line.streamMeta or nil
-    if line.wowChatType == "CHANNEL" and streamMeta and streamMeta.channelId then
-        return "CHANNEL" .. tostring(streamMeta.channelId)
+    if message.wowChatType == "CHANNEL" and message.channelId then
+        return "CHANNEL" .. tostring(message.channelId)
     end
-    return line.wowChatType
+    return message.wowChatType
 end
 
 function Formatter.RegisterKindFormatter(kind, formatterFn)
@@ -82,7 +76,7 @@ function Formatter.GetTimestampText(timeVal)
 end
 
 function Formatter.ResolveTimestampColor(msgColor, preferConfig)
-    local setting = addon.db and addon.db.profile.chat and addon.db.profile.chat.interaction and addon.db.profile.chat.interaction.timestampColor
+    local setting = addon.db and addon.db.profile and addon.db.profile.chat and addon.db.profile.chat.interaction and addon.db.profile.chat.interaction.timestampColor
     local hasConfig = (setting and setting ~= "")
 
     if preferConfig and hasConfig then
@@ -107,8 +101,8 @@ function Formatter.GetTimestamp(timeVal, msgColor, preferConfig)
     return string.format("|c%s%s|r", color, text)
 end
 
-function Formatter.GetLineColor(line)
-    local chatTypeForColor = ResolveColorChatType(line)
+function Formatter.GetLineColor(message)
+    local chatTypeForColor = ResolveColorChatType(message)
     if ChatTypeInfo and chatTypeForColor and ChatTypeInfo[chatTypeForColor] then
         local info = ChatTypeInfo[chatTypeForColor]
         return info.r or 1, info.g or 1, info.b or 1
@@ -116,12 +110,12 @@ function Formatter.GetLineColor(line)
     return 1, 1, 1
 end
 
-function Formatter.GetStreamTag(line)
-    if type(line) ~= "table" then
+function Formatter.GetStreamTag(message)
+    if type(message) ~= "table" then
         return ""
     end
 
-    local streamKey = line.streamKey
+    local streamKey = message.streamKey
     if type(streamKey) ~= "string" or streamKey == "" then
         return ""
     end
@@ -130,23 +124,29 @@ function Formatter.GetStreamTag(line)
         return ""
     end
 
-    return addon.DisplayAugmentPipeline and addon.DisplayAugmentPipeline.PREFIX_TOKEN or "<<TC_PREFIX>>"
+    return Formatter.PREFIX_TOKEN
 end
 
-function Formatter.GetAuthorTag(line)
-    if not line.author or line.author == "" then return "" end
-
-    local authorName = line.author
-    if line.classFilename and RAID_CLASS_COLORS and RAID_CLASS_COLORS[line.classFilename] then
-        local classColor = RAID_CLASS_COLORS[line.classFilename]
-        authorName = string.format("|cff%02x%02x%02x%s|r", classColor.r * 255, classColor.g * 255, classColor.b * 255, line.author)
+function Formatter.GetAuthorTag(message)
+    if type(message) ~= "table" or not message.author or message.author == "" then
+        return ""
     end
 
-    return string.format("|Hplayer:%s|h[%s]|h%s", line.author, authorName, addon.L["CHAT_MESSAGE_SEPARATOR"] or ":")
+    local authorName = message.author
+    if message.classFilename and RAID_CLASS_COLORS and RAID_CLASS_COLORS[message.classFilename] then
+        local classColor = RAID_CLASS_COLORS[message.classFilename]
+        authorName = string.format("|cff%02x%02x%02x%s|r",
+            classColor.r * 255,
+            classColor.g * 255,
+            classColor.b * 255,
+            message.author)
+    end
+
+    return string.format("|Hplayer:%s|h[%s]|h%s", message.author, authorName, addon.L["CHAT_MESSAGE_SEPARATOR"] or ":")
 end
 
-function Formatter.BuildDisplayLine(line, options)
-    return EnsureRenderEngine():BuildDisplayLine(line, options, {
+function Formatter.BuildDisplayLine(message, options)
+    return EnsureRenderEngine():BuildDisplayLine(message, options, {
         getLineColor = Formatter.GetLineColor,
         getTimestamp = Formatter.GetTimestamp,
         getTimestampText = Formatter.GetTimestampText,

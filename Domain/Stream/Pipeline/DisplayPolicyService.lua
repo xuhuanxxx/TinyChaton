@@ -29,17 +29,22 @@ function Service:CanInjectSend(streamKey)
     return type(caps) == "table" and caps.outbound == true
 end
 
-function Service:ResolvePrefixInteraction(frame, envelope)
-    if type(envelope) ~= "table" then
+function Service:ResolvePrefixInteraction(frame, message)
+    if type(message) ~= "table" then
         return nil
     end
     if not addon.ChatLinkAdapter or type(addon.ChatLinkAdapter.BuildRenderSpec) ~= "function" then
         return nil
     end
-    return addon.ChatLinkAdapter:BuildRenderSpec(frame, envelope)
+    return addon.ChatLinkAdapter:BuildRenderSpec(frame, message)
 end
 
-function Service:ResolveChannelPrefix(streamKey, channelMeta)
+function Service:ResolveChannelPrefix(message)
+    if type(message) ~= "table" then
+        return nil
+    end
+
+    local streamKey = message.streamKey
     if type(streamKey) ~= "string" or streamKey == "" then
         return nil
     end
@@ -49,11 +54,10 @@ function Service:ResolveChannelPrefix(streamKey, channelMeta)
         return nil
     end
 
-    local meta = type(channelMeta) == "table" and channelMeta or {}
     return addon:FormatDisplayText(stream, "channel", "chat", {
         streamMeta = {
-            channelId = meta.channelId,
-            channelBaseName = meta.channelBaseName,
+            channelId = message.channelId,
+            channelBaseName = message.channelNameObserved,
         },
         streamKey = streamKey,
     })

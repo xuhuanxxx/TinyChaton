@@ -33,16 +33,20 @@ addon.StreamContracts.VisibilityEnvelope = {
 }
 
 addon.StreamContracts.SnapshotRecord = {
-    text = "string",
+    rawText = "string",
     author = "string|nil",
     streamKey = "string",
     wowChatType = "string",
-    streamMeta = "table|nil",
+    event = "string",
+    frameName = "string|nil",
+    channelId = "number|nil",
+    channelNameObserved = "string|nil",
+    classFilename = "string|nil",
     time = "number",
 }
 
-addon.StreamContracts.DisplayEnvelope = {
-    mode = "string",
+addon.StreamContracts.DisplayMessage = {
+    sourceMode = "string",
     frameName = "string|nil",
     event = "string",
     streamKey = "string",
@@ -50,17 +54,17 @@ addon.StreamContracts.DisplayEnvelope = {
     streamGroup = "string|nil",
     wowChatType = "string",
     author = "string",
-    channelMeta = "table",
+    channelId = "number|nil",
+    channelNameObserved = "string|nil",
     timestamp = "number",
     lineId = "number|string|nil",
     rawText = "string",
     classFilename = "string|nil",
 }
 
-addon.StreamContracts.DisplayAugmentContext = {
+addon.StreamContracts.DisplayPipelineContext = {
     frame = "table|nil",
-    envelope = "table",
-    line = "table",
+    message = "table",
     renderOptions = "table",
     displayText = "string|nil",
     r = "number|nil",

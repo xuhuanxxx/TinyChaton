@@ -42,7 +42,7 @@ local function EnsureRenderEngine()
         end,
         fallbackRenderer = function(message)
             local r, g, b = Formatter.GetLineColor(message)
-            return message.rawText, r, g, b
+            return message.rawText or message.text, r, g, b
         end,
     })
     return addon._tinyCoreStreamRenderEngine
@@ -146,6 +146,9 @@ function Formatter.GetAuthorTag(message)
 end
 
 function Formatter.BuildDisplayLine(message, options)
+    if type(message) == "table" and type(message.rawText) ~= "string" and type(message.text) == "string" then
+        message.rawText = message.text
+    end
     return EnsureRenderEngine():BuildDisplayLine(message, options, {
         getLineColor = Formatter.GetLineColor,
         getTimestamp = Formatter.GetTimestamp,

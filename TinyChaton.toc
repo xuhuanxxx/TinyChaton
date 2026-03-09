@@ -108,6 +108,7 @@ Domain\Stream\Render\Transformers\ChannelHighlight.lua
 Domain\Stream\Render\Transformers\NoticeHighlight.lua
 Domain\Stream\Ingress\StreamEventDispatcher.lua
 Domain\Stream\Storage\SnapshotStore.lua
+Domain\Settings\StreamSelectionSupport.lua
 Domain\Stream\Storage\SnapshotReplayer.lua
 
 Domain\Chat\Render\Transformers\StripPrefix.lua

@@ -417,47 +417,12 @@ end
 -- Snapshot Configuration Helpers
 -- ============================================
 
-local function IsStreamInFilter(stream, filter)
-    if type(stream) ~= "table" then
-        return false
-    end
-    local group = addon:GetStreamGroup(stream.key)
-    local kind = addon:GetStreamKind(stream.key)
-    if filter == "private" then
-        return group == "private"
-    end
-    if filter == "system" then
-        return kind == "channel" and group == "system"
-    end
-    if filter == "dynamic" then
-        return kind == "channel" and group == "dynamic"
-    end
-    if filter == "notice" then
-        return kind == "notice"
-    end
-    return (filter == nil)
-end
-
-local function BuildStreamItems(filter, includePredicate)
-    local items = {}
-    for _, stream in addon:IterateCompiledStreams() do
-        if includePredicate(stream) and IsStreamInFilter(stream, filter) then
-            local identity = addon.ResolveStreamIdentity and addon:ResolveStreamIdentity(stream, {}) or nil
-            table.insert(items, {
-                key = stream.key,
-                label = (identity and identity.label) or stream.key,
-                value = stream.key,  -- for MultiDropdown compatibility
-                text = (identity and identity.label) or stream.key,
-            })
-        end
-    end
-
-    return items
-end
-
 function addon:GetSnapshotStreamsItems(filter)
-    -- filter: "private" | "system" | "dynamic" | "notice" | nil(全部)
-    return BuildStreamItems(filter, function(stream)
+    local support = addon.StreamSelectionSupport
+    if not support or type(support.BuildItems) ~= "function" then
+        return {}
+    end
+    return support:BuildItems(filter, function(stream)
         return not stream.isNotStorable
     end)
 end
@@ -508,66 +473,6 @@ function addon:GetSnapshotStreamsSummary()
     for _, item in ipairs(items) do
         if sc[item.key] ~= false then table.insert(selected, item.label) end
     end
-    if #selected >= #items then return L["LABEL_SNAPSHOT_CHANNELS_ALL"] end
-    if #selected == 0 then return L["LABEL_SNAPSHOT_CHANNELS_NONE"] end
-    return table.concat(selected, "、")
-end
-
-function addon:GetCopyStreamsItems(filter)
-    -- filter: "private" | "system" | "dynamic" | "notice" | nil(全部)
-    return BuildStreamItems(filter, function(stream)
-        return addon:GetStreamCapabilities(stream.key) ~= nil
-    end)
-end
-
-function addon:GetCopyStreamSelection(filter)
-    local interaction = self.db and self.db.profile and self.db.profile.chat and self.db.profile.chat.interaction
-    local configured = interaction and interaction.copyStreams or nil
-    local items = self:GetCopyStreamsItems(filter)
-    local selection = {}
-    for _, item in ipairs(items) do
-        selection[item.key] = addon:ResolveStreamToggle(item.key, configured, "copyDefault", true)
-    end
-    return selection
-end
-
-function addon:SetCopyStreamSelection(filter, selection, opts)
-    if not self.db or not self.db.profile or not self.db.profile.chat or not self.db.profile.chat.interaction then
-        return
-    end
-
-    local interaction = self.db.profile.chat.interaction
-    if type(interaction.copyStreams) ~= "table" then
-        interaction.copyStreams = {}
-    end
-
-    local copyStreams = interaction.copyStreams
-    local items = self:GetCopyStreamsItems(filter)
-    for _, item in ipairs(items) do
-        copyStreams[item.key] = selection[item.key] and true or false
-    end
-
-    if not (opts and opts.skipApply) and addon.ExecuteSettingsIntent then
-        addon:ExecuteSettingsIntent()
-    end
-end
-
-function addon:GetCopyStreamsSummary()
-    local interaction = self.db and self.db.profile and self.db.profile.chat and self.db.profile.chat.interaction
-    if not interaction then
-        return L["LABEL_SNAPSHOT_CHANNELS_ALL"]
-    end
-
-    local configured = interaction.copyStreams
-    local items = self:GetCopyStreamsItems()
-    local selected = {}
-    for _, item in ipairs(items) do
-        local enabled = addon:ResolveStreamToggle(item.key, configured, "copyDefault", true)
-        if enabled then
-            table.insert(selected, item.label)
-        end
-    end
-
     if #selected >= #items then return L["LABEL_SNAPSHOT_CHANNELS_ALL"] end
     if #selected == 0 then return L["LABEL_SNAPSHOT_CHANNELS_NONE"] end
     return table.concat(selected, "、")

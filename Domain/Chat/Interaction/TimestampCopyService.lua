@@ -110,14 +110,6 @@ function Service:OpenChatWithPayload(copyId)
     return true
 end
 
-function addon:CreateClickableTimestamp(tsText, copyMsg, tsColor)
-    return Service:BuildLink(tsText, copyMsg, tsColor)
-end
-
-function addon:HandleTimestampCopyLink(id)
-    return Service:OpenChatWithPayload(id)
-end
-
 function addon:InitTimestampCopyService()
 end
 

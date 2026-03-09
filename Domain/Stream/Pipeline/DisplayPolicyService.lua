@@ -77,11 +77,4 @@ function Service:ResolveHighlightConfig(streamKey)
     }
 end
 
-function Service:ResolveTimestampColor(msgColor, preferConfig)
-    if addon.MessageFormatter and addon.MessageFormatter.ResolveTimestampColor then
-        return addon.MessageFormatter.ResolveTimestampColor(msgColor, preferConfig)
-    end
-    return "FF888888"
-end
-
 return Service
